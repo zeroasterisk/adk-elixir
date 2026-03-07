@@ -130,6 +130,54 @@ defmodule MyTools.Calculator do
 end
 ```
 
+## Session Persistence
+
+Sessions can optionally persist to a pluggable store, surviving process restarts:
+
+```elixir
+# Start the InMemory store (add to your supervision tree)
+ADK.Session.Store.InMemory.start_link([])
+
+# Start a session with persistence
+{:ok, pid} = ADK.Session.start_link(
+  app_name: "my_app",
+  user_id: "user1",
+  session_id: "sess1",
+  store: {ADK.Session.Store.InMemory, []}
+)
+
+# Work with the session normally
+ADK.Session.put_state(pid, :counter, 42)
+
+# Explicitly save
+ADK.Session.save(pid)
+
+# Or use auto_save: true to save on process termination
+```
+
+### Available Stores
+
+| Store | Backend | Best for |
+|-------|---------|----------|
+| `ADK.Session.Store.InMemory` | ETS table | Testing, single-node |
+| `ADK.Session.Store.JsonFile` | JSON files on disk | Development, simple deploys |
+
+### Custom Store
+
+Implement the `ADK.Session.Store` behaviour:
+
+```elixir
+defmodule MyApp.RedisStore do
+  @behaviour ADK.Session.Store
+
+  @impl true
+  def load(app_name, user_id, session_id), do: # ...
+  def save(session), do: # ...
+  def delete(app_name, user_id, session_id), do: # ...
+  def list(app_name, user_id), do: # ...
+end
+```
+
 ## Architecture
 
 ```
@@ -176,7 +224,7 @@ iex -S mix
 
 - [ ] LoopAgent, ParallelAgent
 - [x] Real LLM backend (Gemini via API)
-- [ ] Session persistence (Ecto/PostgreSQL)
+- [x] Session persistence (InMemory ETS + JsonFile stores)
 - [ ] Phoenix integration (LiveView, Channels)
 - [ ] A2A server/client
 - [ ] `mix adk.new` generator

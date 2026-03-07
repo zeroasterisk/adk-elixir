@@ -3,6 +3,22 @@ defmodule ADK.Session do
   Session GenServer — one process per active session.
 
   Holds session state (key-value map) and event history.
+
+  ## Persistence
+
+  Sessions can optionally persist to a store. Pass the `:store` option
+  to `start_link/1`:
+
+      ADK.Session.start_link(
+        app_name: "my_app",
+        user_id: "user1",
+        session_id: "sess1",
+        store: {ADK.Session.Store.InMemory, []}
+      )
+
+  On init, the session will attempt to load existing data from the store.
+  Call `save/1` to persist the current state, or configure `auto_save: true`
+  to auto-save on process termination.
   """
   use GenServer
 
@@ -43,35 +59,60 @@ defmodule ADK.Session do
   @spec get_events(pid() | atom()) :: [ADK.Event.t()]
   def get_events(pid), do: GenServer.call(pid, :get_events)
 
+  @doc "Persist the current session state to the configured store."
+  @spec save(pid() | atom()) :: :ok | {:error, term()}
+  def save(pid), do: GenServer.call(pid, :save)
+
   # --- Server Callbacks ---
 
   @impl true
   def init(opts) do
-    session = %__MODULE__{
-      id: opts[:session_id] || generate_id(),
-      app_name: opts[:app_name] || "default",
-      user_id: opts[:user_id] || "default",
-      state: opts[:initial_state] || %{},
-      events: []
-    }
+    store = opts[:store]
+    auto_save = opts[:auto_save] || false
 
-    {:ok, session}
+    session_id = opts[:session_id] || generate_id()
+    app_name = opts[:app_name] || "default"
+    user_id = opts[:user_id] || "default"
+
+    session =
+      case maybe_load(store, app_name, user_id, session_id) do
+        {:ok, data} ->
+          %__MODULE__{
+            id: data[:id] || session_id,
+            app_name: data[:app_name] || app_name,
+            user_id: data[:user_id] || user_id,
+            state: deserialize_state(data[:state] || %{}),
+            events: deserialize_events(data[:events] || [])
+          }
+
+        _ ->
+          %__MODULE__{
+            id: session_id,
+            app_name: app_name,
+            user_id: user_id,
+            state: opts[:initial_state] || %{},
+            events: []
+          }
+      end
+
+    {:ok, %{session: session, store: store, auto_save: auto_save}}
   end
 
   @impl true
-  def handle_call(:get, _from, session) do
-    {:reply, {:ok, session}, session}
+  def handle_call(:get, _from, %{session: session} = state) do
+    {:reply, {:ok, session}, state}
   end
 
-  def handle_call({:get_state, key}, _from, session) do
-    {:reply, Map.get(session.state, key), session}
+  def handle_call({:get_state, key}, _from, %{session: session} = state) do
+    {:reply, Map.get(session.state, key), state}
   end
 
-  def handle_call({:put_state, key, value}, _from, session) do
-    {:reply, :ok, %{session | state: Map.put(session.state, key, value)}}
+  def handle_call({:put_state, key, value}, _from, %{session: session} = state) do
+    new_session = %{session | state: Map.put(session.state, key, value)}
+    {:reply, :ok, %{state | session: new_session}}
   end
 
-  def handle_call({:append_event, event}, _from, session) do
+  def handle_call({:append_event, event}, _from, %{session: session} = state) do
     # Apply state delta if present
     new_state =
       case event.actions do
@@ -83,11 +124,87 @@ defmodule ADK.Session do
       end
 
     new_session = %{session | state: new_state, events: session.events ++ [event]}
-    {:reply, :ok, new_session}
+    {:reply, :ok, %{state | session: new_session}}
   end
 
-  def handle_call(:get_events, _from, session) do
-    {:reply, session.events, session}
+  def handle_call(:get_events, _from, %{session: session} = state) do
+    {:reply, session.events, state}
+  end
+
+  def handle_call(:save, _from, %{session: session, store: store} = state) do
+    result = do_save(store, session)
+    {:reply, result, state}
+  end
+
+  @impl true
+  def terminate(_reason, %{session: session, store: store, auto_save: true}) do
+    do_save(store, session)
+    :ok
+  end
+
+  def terminate(_reason, _state), do: :ok
+
+  # --- Private Helpers ---
+
+  defp maybe_load(nil, _app, _user, _id), do: :no_store
+  defp maybe_load({mod, _opts}, app, user, id), do: mod.load(app, user, id)
+
+  defp do_save(nil, _session), do: {:error, :no_store}
+  defp do_save({mod, _opts}, session), do: mod.save(session)
+
+  defp deserialize_state(state) when is_map(state) do
+    # Convert string keys to atoms for consistency
+    state
+    |> Enum.map(fn
+      {k, v} when is_binary(k) -> {String.to_atom(k), v}
+      {k, v} -> {k, v}
+    end)
+    |> Map.new()
+  end
+
+  defp deserialize_events(events) when is_list(events) do
+    Enum.map(events, &deserialize_event/1)
+  end
+
+  defp deserialize_event(%ADK.Event{} = event), do: event
+
+  defp deserialize_event(data) when is_map(data) do
+    timestamp =
+      case data[:timestamp] do
+        nil -> nil
+        %DateTime{} = dt -> dt
+        ts when is_binary(ts) ->
+          case DateTime.from_iso8601(ts) do
+            {:ok, dt, _} -> dt
+            _ -> nil
+          end
+      end
+
+    actions =
+      case data[:actions] do
+        %ADK.EventActions{} = a -> a
+        a when is_map(a) ->
+          %ADK.EventActions{
+            state_delta: a[:state_delta] || %{},
+            transfer_to_agent: a[:transfer_to_agent],
+            escalate: a[:escalate] || false
+          }
+        _ -> %ADK.EventActions{}
+      end
+
+    %ADK.Event{
+      id: data[:id],
+      invocation_id: data[:invocation_id],
+      author: data[:author],
+      branch: data[:branch],
+      timestamp: timestamp,
+      content: data[:content],
+      partial: data[:partial] || false,
+      actions: actions,
+      function_calls: data[:function_calls],
+      function_responses: data[:function_responses],
+      error: data[:error]
+    }
   end
 
   defp generate_id do

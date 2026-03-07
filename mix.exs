@@ -29,6 +29,7 @@ defmodule ADK.MixProject do
   defp deps do
     [
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
       {:plug, "~> 1.0", only: :test}
     ]
@@ -47,7 +48,7 @@ defmodule ADK.MixProject do
         "Core": [ADK, ADK.Agent, ADK.Tool, ADK.Event, ADK.Context],
         "Agents": [ADK.Agent.LlmAgent, ADK.Agent.SequentialAgent],
         "Tools": [ADK.Tool.FunctionTool, ADK.Tool.Declarative],
-        "State & Sessions": [ADK.Session, ADK.State.Delta, ADK.EventActions],
+        "State & Sessions": [ADK.Session, ADK.Session.Store, ADK.Session.Store.InMemory, ADK.Session.Store.JsonFile, ADK.State.Delta, ADK.EventActions],
         "LLM": [ADK.LLM, ADK.LLM.Mock, ADK.LLM.Gemini],
         "Runner": [ADK.Runner]
       ],

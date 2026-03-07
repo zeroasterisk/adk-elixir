@@ -40,6 +40,54 @@ defmodule ADK.SessionTest do
     assert hd(events).author == "user"
   end
 
+  test "save persists to store", %{pid: pid} do
+    # No store configured, returns error
+    assert {:error, :no_store} = ADK.Session.save(pid)
+  end
+
+  describe "with InMemory store" do
+    setup do
+      # Ensure InMemory store is running
+      case GenServer.whereis(ADK.Session.Store.InMemory) do
+        nil -> ADK.Session.Store.InMemory.start_link([])
+        _pid -> :ets.delete_all_objects(ADK.Session.Store.InMemory)
+      end
+
+      {:ok, pid} =
+        ADK.Session.start_link(
+          app_name: "test",
+          user_id: "user1",
+          session_id: "persist1",
+          store: {ADK.Session.Store.InMemory, []}
+        )
+
+      on_exit(fn ->
+        if Process.alive?(pid), do: GenServer.stop(pid)
+      end)
+
+      %{store_pid: pid}
+    end
+
+    test "save and reload from store", %{store_pid: pid} do
+      :ok = ADK.Session.put_state(pid, :foo, "bar")
+      :ok = ADK.Session.save(pid)
+
+      # Stop and restart — should load from store
+      GenServer.stop(pid)
+
+      {:ok, pid2} =
+        ADK.Session.start_link(
+          app_name: "test",
+          user_id: "user1",
+          session_id: "persist1",
+          store: {ADK.Session.Store.InMemory, []}
+        )
+
+      assert ADK.Session.get_state(pid2, :foo) == "bar"
+      GenServer.stop(pid2)
+    end
+  end
+
   test "append_event applies state delta", %{pid: pid} do
     :ok = ADK.Session.put_state(pid, :a, 1)
 
