@@ -1,0 +1,33 @@
+defmodule <%= @module_name %>.AgentTest do
+  use ExUnit.Case, async: true
+
+  test "agent builds successfully" do
+    agent = <%= @module_name %>.Agent.build()
+    assert agent.name == "<%= @app_name %>"
+    assert length(agent.config.tools) == 2
+  end
+
+  test "greeting tool works" do
+    tool = <%= @module_name %>.Tools.greeting_tool()
+    result = tool.config.function.(%{"name" => "Blackbeard"}, %{})
+    assert result =~ "Blackbeard"
+    assert result =~ "Ahoy"
+  end
+
+  test "calculator tool works" do
+    tool = <%= @module_name %>.Tools.calculator_tool()
+    result = tool.config.function.(%{"expression" => "2 + 3"}, %{})
+    assert result =~ "5"
+  end
+
+  test "agent runs with mock backend" do
+    # Configure mock to return a simple response
+    Application.put_env(:adk, :llm_backend, ADK.LLM.Mock)
+
+    agent = <%= @module_name %>.Agent.build()
+    session = ADK.Session.new(id: "test", app_name: "<%= @app_name %>")
+
+    assert {:ok, events} = ADK.Runner.run(agent, session, "Hello!")
+    assert length(events) > 0
+  end
+end

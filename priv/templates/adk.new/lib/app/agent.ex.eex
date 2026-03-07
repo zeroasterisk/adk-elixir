@@ -1,0 +1,50 @@
+defmodule <%= @module_name %>.Agent do
+  @moduledoc """
+  The main agent for `<%= @module_name %>`.
+
+  Uses ADK's LlmAgent with tools for greeting and calculating.
+  """
+
+  @doc """
+  Run the agent with a user message.
+
+  ## Examples
+
+      iex> <%= @module_name %>.Agent.run("Greet me as Captain Hook!")
+
+  """
+  def run(message, opts \\ []) do
+    agent = build(opts)
+    session = ADK.Session.new(id: "default", app_name: "<%= @app_name %>")
+
+    case ADK.Runner.run(agent, session, message) do
+      {:ok, events} ->
+        events
+        |> Enum.filter(&(&1.author == agent.name))
+        |> Enum.map(& &1.content.text)
+        |> Enum.join("\n")
+
+      {:error, reason} ->
+        "Error: #{inspect(reason)}"
+    end
+  end
+
+  @doc "Build the agent spec."
+  def build(opts \\ []) do
+    model = opts[:model] || Application.get_env(:<%= @app_name %>, :model, "gemini-2.0-flash")
+
+    ADK.Agent.LlmAgent.new(
+      name: "<%= @app_name %>",
+      model: model,
+      instruction: """
+      You are a friendly pirate assistant! Arrr! 🏴‍☠️
+      You help people with greetings and math. Use your tools when appropriate.
+      Always stay in character as a pirate.
+      """,
+      tools: [
+        <%= @module_name %>.Tools.greeting_tool(),
+        <%= @module_name %>.Tools.calculator_tool()
+      ]
+    )
+  end
+end

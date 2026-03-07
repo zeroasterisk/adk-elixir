@@ -227,7 +227,7 @@ iex -S mix
 - [x] Session persistence (InMemory ETS + JsonFile stores)
 - [ ] Phoenix integration (LiveView, Channels)
 - [ ] A2A server/client
-- [ ] `mix adk.new` generator
+- [x] `mix adk.new` generator
 - [ ] Publish to Hex
 
 ## License

@@ -1,0 +1,65 @@
+# <%= @module_name %>
+
+An ADK-powered agent built with [ADK Elixir](https://github.com/zeroasterisk/adk-elixir). 🏴‍☠️
+
+## Getting Started
+
+### 1. Install dependencies
+
+```bash
+mix deps.get
+```
+
+### 2. Set your API key
+
+```bash
+export GEMINI_API_KEY=your_key_here
+```
+
+Get a key at [Google AI Studio](https://aistudio.google.com/apikey).
+
+### 3. Run the agent
+
+```bash
+iex -S mix
+```
+
+```elixir
+<%= @module_name %>.Agent.run("Greet me as Captain Hook!")
+# => "Ahoy, Captain Hook! Welcome aboard, ye scurvy dog! 🏴‍☠️"
+
+<%= @module_name %>.Agent.run("What is 42 * 13?")
+# => "The answer be 546.0, matey!"
+```
+
+### 4. Run tests
+
+Tests use a mock LLM backend — no API key needed:
+
+```bash
+mix test
+```
+
+## Project Structure
+
+```
+<%= @app_name %>/
+├── lib/
+│   ├── <%= @app_name %>.ex              # Main module
+│   ├── <%= @app_name %>/
+│   │   ├── agent.ex           # Agent definition
+│   │   ├── tools.ex           # Tool definitions
+│   │   └── application.ex     # OTP Application
+├── config/
+│   ├── config.exs             # Base config
+│   ├── dev.exs                # Dev config
+│   └── test.exs               # Test config (mock LLM)
+└── test/
+    └── <%= @app_name %>/
+        └── agent_test.exs     # Agent tests
+```
+
+## Learn More
+
+- [ADK Elixir](https://github.com/zeroasterisk/adk-elixir) — the framework
+- [Google ADK](https://google.github.io/adk-docs/) — the concept

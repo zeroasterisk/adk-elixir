@@ -1,0 +1,12 @@
+import Config
+
+# ADK Configuration
+config :<%= @app_name %>,
+  model: "gemini-2.0-flash"
+
+# Set your Gemini API key:
+#   export GEMINI_API_KEY=your_key_here
+config :adk,
+  gemini_api_key: System.get_env("GEMINI_API_KEY")
+
+import_config "#{config_env()}.exs"

@@ -1,0 +1,15 @@
+defmodule <%= @module_name %>.Application do
+  @moduledoc false
+  use Application
+
+  @impl true
+  def start(_type, _args) do
+    children = [
+      # Session store supervisor
+      {ADK.Session.Store.InMemory, name: <%= @module_name %>.SessionStore}
+    ]
+
+    opts = [strategy: :one_for_one, name: <%= @module_name %>.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
+end
