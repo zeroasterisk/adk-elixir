@@ -38,6 +38,34 @@ ADK.chat(agent, "What is Elixir?")
 events = ADK.run(agent, "Tell me about OTP")
 ```
 
+## Using a Real LLM (Gemini)
+
+By default, ADK uses a mock LLM for testing. To use Google's Gemini API:
+
+```elixir
+# config/config.exs (or config/runtime.exs)
+config :adk, :llm_backend, ADK.LLM.Gemini
+config :adk, :gemini_api_key, System.get_env("GEMINI_API_KEY")
+```
+
+Or set the `GEMINI_API_KEY` environment variable and configure the backend:
+
+```elixir
+config :adk, :llm_backend, ADK.LLM.Gemini
+```
+
+Then use ADK as normal — all agents will use Gemini:
+
+```elixir
+agent = ADK.new("assistant",
+  model: "gemini-2.0-flash",
+  instruction: "You are a helpful assistant."
+)
+
+ADK.chat(agent, "What is Elixir?")
+#=> "Elixir is a dynamic, functional language..."
+```
+
 ## Agents
 
 ### LLM Agent
@@ -147,7 +175,7 @@ iex -S mix
 ## Roadmap
 
 - [ ] LoopAgent, ParallelAgent
-- [ ] Real LLM backend (Gemini via API)
+- [x] Real LLM backend (Gemini via API)
 - [ ] Session persistence (Ecto/PostgreSQL)
 - [ ] Phoenix integration (LiveView, Channels)
 - [ ] A2A server/client

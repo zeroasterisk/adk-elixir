@@ -15,6 +15,9 @@ defmodule ADK.LLM do
     backend().generate(model, request)
   end
 
+  @doc "Returns the Gemini backend module."
+  def gemini_backend, do: ADK.LLM.Gemini
+
   defp backend do
     Application.get_env(:adk, :llm_backend, ADK.LLM.Mock)
   end
