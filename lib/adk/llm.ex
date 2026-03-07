@@ -9,10 +9,40 @@ defmodule ADK.LLM do
   @callback generate(model :: String.t(), request :: map()) ::
               {:ok, response()} | {:error, term()}
 
-  @doc "Generate a response using the configured LLM backend."
-  @spec generate(String.t(), map()) :: {:ok, response()} | {:error, term()}
-  def generate(model, request) do
-    backend().generate(model, request)
+  @doc """
+  Generate a response using the configured LLM backend.
+
+  ## Options
+
+    * `:retry` - Retry options keyword list, or `false` to disable (default: enabled with defaults)
+    * `:circuit_breaker` - Circuit breaker server name/pid, or `nil` to disable (default: `nil`)
+
+  ## Examples
+
+      ADK.LLM.generate("gemini-2.0-flash", %{messages: msgs})
+      ADK.LLM.generate("gemini-2.0-flash", %{messages: msgs}, retry: [max_retries: 5])
+      ADK.LLM.generate("gemini-2.0-flash", %{messages: msgs}, retry: false)
+      ADK.LLM.generate("gemini-2.0-flash", %{messages: msgs}, circuit_breaker: :llm_breaker)
+  """
+  @spec generate(String.t(), map(), keyword()) :: {:ok, response()} | {:error, term()}
+  def generate(model, request, opts \\ []) do
+    retry_opts = Keyword.get(opts, :retry, [])
+    cb_server = Keyword.get(opts, :circuit_breaker, nil)
+
+    call_fn = fn -> backend().generate(model, request) end
+
+    call_fn =
+      if retry_opts == false do
+        call_fn
+      else
+        fn -> ADK.LLM.Retry.with_retry(call_fn, retry_opts) end
+      end
+
+    if cb_server do
+      ADK.LLM.CircuitBreaker.call(cb_server, call_fn)
+    else
+      call_fn.()
+    end
   end
 
   @doc "Returns the Gemini backend module."
