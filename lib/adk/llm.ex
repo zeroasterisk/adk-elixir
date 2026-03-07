@@ -38,11 +38,15 @@ defmodule ADK.LLM do
         fn -> ADK.LLM.Retry.with_retry(call_fn, retry_opts) end
       end
 
-    if cb_server do
-      ADK.LLM.CircuitBreaker.call(cb_server, call_fn)
-    else
-      call_fn.()
-    end
+    telemetry_meta = %{model: model, agent_name: Map.get(request, :agent_name, "unknown")}
+
+    ADK.Telemetry.span([:adk, :llm], telemetry_meta, fn ->
+      if cb_server do
+        ADK.LLM.CircuitBreaker.call(cb_server, call_fn)
+      else
+        call_fn.()
+      end
+    end)
   end
 
   @doc "Returns the Gemini backend module."

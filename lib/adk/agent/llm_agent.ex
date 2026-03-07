@@ -184,14 +184,16 @@ defmodule ADK.Agent.LlmAgent do
           cb_ctx = %{agent: ctx.agent, context: ctx, tool: tool, tool_args: call.args}
 
           tool_result =
-            case ADK.Callback.run_before(ctx.callbacks, :before_tool, cb_ctx) do
-              {:halt, result} ->
-                result
+            ADK.Telemetry.span([:adk, :tool], %{tool_name: call.name, agent_name: ADK.Agent.name(ctx.agent)}, fn ->
+              case ADK.Callback.run_before(ctx.callbacks, :before_tool, cb_ctx) do
+                {:halt, result} ->
+                  result
 
-              {:cont, cb_ctx} ->
-                result = ADK.Tool.FunctionTool.run(tool, tool_ctx, cb_ctx.tool_args)
-                ADK.Callback.run_after(ctx.callbacks, :after_tool, result, cb_ctx)
-            end
+                {:cont, cb_ctx} ->
+                  result = ADK.Tool.FunctionTool.run(tool, tool_ctx, cb_ctx.tool_args)
+                  ADK.Callback.run_after(ctx.callbacks, :after_tool, result, cb_ctx)
+              end
+            end)
 
           case tool_result do
             {:ok, result} ->

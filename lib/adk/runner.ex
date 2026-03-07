@@ -69,9 +69,15 @@ defmodule ADK.Runner do
     # Gather global plugins
     plugins = get_plugins()
 
-    # Run before_run plugins
+    telemetry_meta = %{
+      agent_name: ADK.Agent.name(runner.agent),
+      session_id: session_id
+    }
+
+    # Run before_run plugins — emit telemetry around the full agent execution
     {agent_events, _plugins} =
-      case ADK.Plugin.run_before(plugins, ctx) do
+      ADK.Telemetry.span([:adk, :agent], telemetry_meta, fn ->
+        case ADK.Plugin.run_before(plugins, ctx) do
         {:halt, result, updated_plugins} ->
           {result, updated_plugins}
 
@@ -92,6 +98,7 @@ defmodule ADK.Runner do
           # Run after_run plugins
           ADK.Plugin.run_after(updated_plugins, events, ctx)
       end
+      end)
 
     # Append agent events to session
     Enum.each(agent_events, fn event ->
