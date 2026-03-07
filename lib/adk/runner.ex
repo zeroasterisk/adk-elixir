@@ -66,17 +66,31 @@ defmodule ADK.Runner do
       callbacks: callbacks
     }
 
-    # Run before_agent callbacks
-    cb_ctx = %{agent: runner.agent, context: ctx}
+    # Gather global plugins
+    plugins = get_plugins()
 
-    agent_events =
-      case ADK.Callback.run_before(callbacks, :before_agent, cb_ctx) do
-        {:halt, events} ->
-          events
+    # Run before_run plugins
+    {agent_events, _plugins} =
+      case ADK.Plugin.run_before(plugins, ctx) do
+        {:halt, result, updated_plugins} ->
+          {result, updated_plugins}
 
-        {:cont, cb_ctx} ->
-          events = cb_ctx.context.agent.module.run(cb_ctx.context)
-          ADK.Callback.run_after(callbacks, :after_agent, events, cb_ctx)
+        {:cont, ctx, updated_plugins} ->
+          # Run before_agent callbacks
+          cb_ctx = %{agent: runner.agent, context: ctx}
+
+          events =
+            case ADK.Callback.run_before(callbacks, :before_agent, cb_ctx) do
+              {:halt, events} ->
+                events
+
+              {:cont, cb_ctx} ->
+                events = cb_ctx.context.agent.module.run(cb_ctx.context)
+                ADK.Callback.run_after(callbacks, :after_agent, events, cb_ctx)
+            end
+
+          # Run after_run plugins
+          ADK.Plugin.run_after(updated_plugins, events, ctx)
       end
 
     # Append agent events to session
@@ -98,6 +112,14 @@ defmodule ADK.Runner do
 
   defp message_text(%{text: t}), do: t
   defp message_text(t) when is_binary(t), do: t
+
+  defp get_plugins do
+    if Process.whereis(ADK.Plugin.Registry) do
+      ADK.Plugin.list()
+    else
+      []
+    end
+  end
 
   defp generate_id do
     "inv-" <> (:crypto.strong_rand_bytes(8) |> Base.url_encode64(padding: false))
