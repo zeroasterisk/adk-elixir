@@ -222,7 +222,7 @@ iex -S mix
 
 ## Roadmap
 
-- [ ] LoopAgent, ParallelAgent
+- [x] LoopAgent, ParallelAgent
 - [x] Real LLM backend (Gemini via API)
 - [x] Session persistence (InMemory ETS + JsonFile stores)
 - [ ] Phoenix integration (LiveView, Channels)
