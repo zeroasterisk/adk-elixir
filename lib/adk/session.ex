@@ -153,13 +153,9 @@ defmodule ADK.Session do
   defp do_save({mod, _opts}, session), do: mod.save(session)
 
   defp deserialize_state(state) when is_map(state) do
-    # Convert string keys to atoms for consistency
+    # Keep string keys as-is to avoid atom table exhaustion from untrusted input.
+    # Users should use string keys or convert explicitly with known atoms.
     state
-    |> Enum.map(fn
-      {k, v} when is_binary(k) -> {String.to_atom(k), v}
-      {k, v} -> {k, v}
-    end)
-    |> Map.new()
   end
 
   defp deserialize_events(events) when is_list(events) do
