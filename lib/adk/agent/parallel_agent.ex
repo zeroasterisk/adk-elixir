@@ -2,9 +2,6 @@ defmodule ADK.Agent.ParallelAgent do
   @moduledoc """
   Runs sub-agents concurrently using `Task.async_stream`, collecting all events.
 
-  This leverages OTP's lightweight process model — each sub-agent runs in its
-  own task, and results are collected in order.
-
   ## Examples
 
       agent = ADK.Agent.ParallelAgent.new(
@@ -12,19 +9,19 @@ defmodule ADK.Agent.ParallelAgent do
         sub_agents: [research_agent, analysis_agent, summary_agent]
       )
   """
-  @behaviour ADK.Agent
 
-  @default_timeout 30_000
+  @enforce_keys [:name]
+  defstruct [:name, description: "Runs agents in parallel", sub_agents: [], timeout: 30_000]
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          description: String.t(),
+          sub_agents: [ADK.Agent.t()],
+          timeout: pos_integer()
+        }
 
   @doc """
-  Create a parallel agent spec.
-
-  ## Options
-
-    * `:name` - agent name (default: `"parallel"`)
-    * `:description` - agent description
-    * `:sub_agents` - list of agent specs to run concurrently
-    * `:timeout` - per-agent timeout in ms (default: #{@default_timeout})
+  Create a parallel agent.
 
   ## Examples
 
@@ -32,37 +29,40 @@ defmodule ADK.Agent.ParallelAgent do
       iex> agent.name
       "fan_out"
   """
-  @spec new(keyword()) :: ADK.Agent.t()
-  def new(opts) do
-    %ADK.Agent{
-      name: opts[:name] || "parallel",
-      description: opts[:description] || "Runs agents in parallel",
-      module: __MODULE__,
-      config: %{
-        sub_agents: opts[:sub_agents] || [],
-        timeout: opts[:timeout] || @default_timeout
-      },
-      sub_agents: opts[:sub_agents] || []
-    }
+  @spec new(keyword()) :: t()
+  def new(opts), do: struct!(__MODULE__, opts)
+
+  @doc """
+  Create a parallel agent with validation.
+
+  Returns `{:ok, agent}` or `{:error, reason}`.
+  """
+  @spec build(keyword()) :: {:ok, t()} | {:error, String.t()}
+  def build(opts) do
+    {:ok, new(opts)}
+  rescue
+    e in ArgumentError -> {:error, Exception.message(e)}
   end
 
-  @impl true
-  def run(ctx) do
-    timeout = ctx.agent.config.timeout
-    sub_agents = ctx.agent.config.sub_agents
+  defimpl ADK.Agent do
+    def name(agent), do: agent.name
+    def description(agent), do: agent.description
+    def sub_agents(agent), do: agent.sub_agents
 
-    sub_agents
-    |> Task.async_stream(
-      fn agent_spec ->
-        child_ctx = ADK.Context.for_child(ctx, agent_spec)
-        agent_spec.module.run(child_ctx)
-      end,
-      timeout: timeout,
-      ordered: true
-    )
-    |> Enum.flat_map(fn
-      {:ok, events} -> events
-      {:exit, reason} -> [ADK.Event.new(author: "parallel", content: "Agent failed: #{inspect(reason)}")]
-    end)
+    def run(agent, ctx) do
+      agent.sub_agents
+      |> Task.async_stream(
+        fn agent_spec ->
+          child_ctx = ADK.Context.for_child(ctx, agent_spec)
+          ADK.Agent.run(agent_spec, child_ctx)
+        end,
+        timeout: agent.timeout,
+        ordered: true
+      )
+      |> Enum.flat_map(fn
+        {:ok, events} -> events
+        {:exit, reason} -> [ADK.Event.new(author: "parallel", content: "Agent failed: #{inspect(reason)}")]
+      end)
+    end
   end
 end

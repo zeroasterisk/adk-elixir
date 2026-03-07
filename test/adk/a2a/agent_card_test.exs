@@ -4,13 +4,13 @@ defmodule ADK.A2A.AgentCardTest do
   alias ADK.A2A.AgentCard
 
   test "generates card from agent spec" do
-    agent = %ADK.Agent{
+    agent = ADK.Agent.LlmAgent.new(
       name: "helper",
       description: "A helpful agent",
-      module: ADK.Agent.LlmAgent,
-      config: %{tools: []},
-      sub_agents: []
-    }
+      model: "test",
+      instruction: "Help",
+      tools: []
+    )
 
     card = AgentCard.from_agent(agent, url: "http://localhost:4000/a2a")
 
@@ -28,13 +28,13 @@ defmodule ADK.A2A.AgentCardTest do
       func: fn _, _ -> {:ok, "result"} end
     )
 
-    agent = %ADK.Agent{
+    agent = ADK.Agent.LlmAgent.new(
       name: "researcher",
       description: "Researches topics",
-      module: ADK.Agent.LlmAgent,
-      config: %{tools: [tool]},
-      sub_agents: []
-    }
+      model: "test",
+      instruction: "Research",
+      tools: [tool]
+    )
 
     card = AgentCard.from_agent(agent, url: "http://localhost:4000/a2a")
 
@@ -43,7 +43,7 @@ defmodule ADK.A2A.AgentCardTest do
   end
 
   test "includes provider when given" do
-    agent = %ADK.Agent{name: "bot", description: "", module: nil, config: %{tools: []}, sub_agents: []}
+    agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help", tools: [])
     card = AgentCard.from_agent(agent, url: "http://x", provider: %{"name" => "Acme"})
 
     assert card["provider"] == %{"name" => "Acme"}

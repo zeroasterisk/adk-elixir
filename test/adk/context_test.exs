@@ -24,7 +24,7 @@ defmodule ADK.ContextTest do
 
   test "for_child sets agent and clears temp" do
     ctx = %ADK.Context{invocation_id: "inv-1", temp_state: %{x: 1}}
-    agent = %ADK.Agent{name: "child", module: ADK.Agent.LlmAgent}
+    agent = ADK.Agent.LlmAgent.new(name: "child", model: "test", instruction: "Help")
     child = ADK.Context.for_child(ctx, agent)
     assert child.agent == agent
     assert child.temp_state == %{}

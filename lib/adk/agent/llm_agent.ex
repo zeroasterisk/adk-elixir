@@ -5,56 +5,73 @@ defmodule ADK.Agent.LlmAgent do
   This is the primary agent type. It calls an LLM, handles tool calls,
   and loops until a final response is produced.
   """
-  @behaviour ADK.Agent
 
+  @enforce_keys [:name, :model, :instruction]
   defstruct [
     :name,
-    :description,
     :model,
     :instruction,
     :output_key,
+    description: "",
     tools: [],
     sub_agents: [],
     max_iterations: 10
   ]
 
+  @type t :: %__MODULE__{
+          name: String.t(),
+          model: String.t(),
+          instruction: String.t(),
+          output_key: atom() | String.t() | nil,
+          description: String.t(),
+          tools: [map()],
+          sub_agents: [ADK.Agent.t()],
+          max_iterations: pos_integer()
+        }
+
   @doc """
-  Create an LLM agent spec.
+  Create an LLM agent.
 
   ## Examples
 
       iex> agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help.")
       iex> agent.name
       "bot"
-      iex> agent.module
-      ADK.Agent.LlmAgent
+      iex> is_struct(agent, ADK.Agent.LlmAgent)
+      true
   """
-  @spec new(keyword()) :: ADK.Agent.t()
-  def new(opts) do
-    config = struct!(__MODULE__, opts)
+  @spec new(keyword()) :: t()
+  def new(opts), do: struct!(__MODULE__, opts)
 
-    %ADK.Agent{
-      name: config.name,
-      description: config.description || "",
-      module: __MODULE__,
-      config: config,
-      sub_agents: config.sub_agents
-    }
+  @doc """
+  Create an LLM agent with validation.
+
+  Returns `{:ok, agent}` or `{:error, reason}`.
+  """
+  @spec build(keyword()) :: {:ok, t()} | {:error, String.t()}
+  def build(opts) do
+    {:ok, new(opts)}
+  rescue
+    e in ArgumentError -> {:error, Exception.message(e)}
   end
 
-  @impl true
-  def run(ctx) do
-    config = ctx.agent.config
-    do_run(ctx, config, 0)
+  # --- Protocol implementation ---
+
+  defimpl ADK.Agent do
+    def name(agent), do: agent.name
+    def description(agent), do: agent.description
+    def sub_agents(agent), do: agent.sub_agents
+    def run(agent, ctx), do: ADK.Agent.LlmAgent.do_run(ctx, agent, 0)
   end
 
-  defp do_run(_ctx, config, iteration) when iteration >= config.max_iterations, do: []
+  # --- Execution ---
 
-  defp do_run(ctx, config, iteration) do
-    # Build LLM request
-    request = build_request(ctx, config)
+  @doc false
+  def do_run(_ctx, agent, iteration) when iteration >= agent.max_iterations, do: []
 
-    # before_model callback
+  def do_run(ctx, agent, iteration) do
+    request = build_request(ctx, agent)
+
     cb_ctx = %{agent: ctx.agent, context: ctx, request: request}
 
     llm_result =
@@ -63,58 +80,54 @@ defmodule ADK.Agent.LlmAgent do
           result
 
         {:cont, cb_ctx} ->
-          result = ADK.LLM.generate(config.model, cb_ctx.request)
+          result = ADK.LLM.generate(agent.model, cb_ctx.request)
           ADK.Callback.run_after(ctx.callbacks, :after_model, result, cb_ctx)
       end
 
     case llm_result do
       {:ok, response} ->
-        event = event_from_response(response, ctx, config)
+        event = event_from_response(response, ctx, agent)
 
         case extract_function_calls(response) do
           [] ->
-            # Final response — possibly save to output_key
-            event = maybe_save_output(event, ctx, config)
+            event = maybe_save_output(event, ctx, agent)
             [event]
 
           calls ->
-            # Execute tools
-            tool_results = execute_tools(ctx, config, calls)
+            tool_results = execute_tools(ctx, agent, calls)
 
             response_event =
               ADK.Event.new(%{
                 invocation_id: ctx.invocation_id,
-                author: config.name,
+                author: agent.name,
                 function_responses: tool_results
               })
 
-            # Append tool events to session if available
             if ctx.session_pid do
               ADK.Session.append_event(ctx.session_pid, event)
               ADK.Session.append_event(ctx.session_pid, response_event)
             end
 
-            # Loop for next LLM call
-            [event, response_event | do_run(ctx, config, iteration + 1)]
+            [event, response_event | do_run(ctx, agent, iteration + 1)]
         end
 
       {:error, reason} ->
-        [ADK.Event.error(reason, %{invocation_id: ctx.invocation_id, author: config.name})]
+        [ADK.Event.error(reason, %{invocation_id: ctx.invocation_id, author: agent.name})]
     end
   end
 
-  defp build_request(ctx, config) do
-    messages = build_messages(ctx, config)
+  defp build_request(ctx, agent) do
+    messages = build_messages(ctx)
 
     %{
-      model: config.model,
-      instruction: config.instruction,
+      model: agent.model,
+      instruction: agent.instruction,
       messages: messages,
-      tools: Enum.map(config.tools, &ADK.Tool.declaration/1)
+      tools: Enum.map(agent.tools, &ADK.Tool.declaration/1)
     }
   end
 
-  defp build_messages(ctx, _config) do
+  defp build_messages(ctx) do
     history =
       if ctx.session_pid do
         ADK.Session.get_events(ctx.session_pid)
@@ -137,10 +150,10 @@ defmodule ADK.Agent.LlmAgent do
     history ++ user_msg
   end
 
-  defp event_from_response(response, ctx, config) do
+  defp event_from_response(response, ctx, agent) do
     ADK.Event.new(%{
       invocation_id: ctx.invocation_id,
-      author: config.name,
+      author: agent.name,
       content: response.content,
       function_calls: extract_function_calls(response)
     })
@@ -155,9 +168,9 @@ defmodule ADK.Agent.LlmAgent do
 
   defp extract_function_calls(_), do: []
 
-  defp execute_tools(ctx, config, calls) do
+  defp execute_tools(ctx, agent, calls) do
     tools_map =
-      config.tools
+      agent.tools
       |> Enum.map(fn t -> {t.name, t} end)
       |> Map.new()
 
@@ -201,5 +214,5 @@ defmodule ADK.Agent.LlmAgent do
     event
   end
 
-  defp maybe_save_output(event, _ctx, _config), do: event
+  defp maybe_save_output(event, _ctx, _agent), do: event
 end

@@ -3,26 +3,19 @@ defmodule ADK.A2A.ServerTest do
 
   alias ADK.A2A.Server
 
-  # A simple mock agent module that returns a canned response
-  defmodule MockAgent do
-    def run(_ctx) do
-      [
-        ADK.Event.new(%{
-          author: "test_agent",
-          content: %{parts: [%{text: "Hello from agent"}]}
-        })
-      ]
-    end
-  end
-
   setup do
-    agent = %ADK.Agent{
+    agent = ADK.Agent.Custom.new(
       name: "test_agent",
       description: "A test agent",
-      module: MockAgent,
-      config: %{tools: []},
-      sub_agents: []
-    }
+      run_fn: fn _agent, _ctx ->
+        [
+          ADK.Event.new(%{
+            author: "test_agent",
+            content: %{parts: [%{text: "Hello from agent"}]}
+          })
+        ]
+      end
+    )
 
     runner = %ADK.Runner{app_name: "test", agent: agent}
 
@@ -71,7 +64,6 @@ defmodule ADK.A2A.ServerTest do
   end
 
   test "POST / with tasks/get returns task", %{config: config} do
-    # First send a task
     send_body =
       Jason.encode!(%{
         "jsonrpc" => "2.0",
@@ -92,7 +84,6 @@ defmodule ADK.A2A.ServerTest do
 
     task_id = Jason.decode!(send_conn.resp_body)["result"]["id"]
 
-    # Now get it
     get_body =
       Jason.encode!(%{
         "jsonrpc" => "2.0",
@@ -112,7 +103,6 @@ defmodule ADK.A2A.ServerTest do
   end
 
   test "POST / with tasks/cancel cancels a task", %{config: config} do
-    # Send a task first
     send_body =
       Jason.encode!(%{
         "jsonrpc" => "2.0",
@@ -133,7 +123,6 @@ defmodule ADK.A2A.ServerTest do
 
     task_id = Jason.decode!(send_conn.resp_body)["result"]["id"]
 
-    # Cancel it
     cancel_body =
       Jason.encode!(%{
         "jsonrpc" => "2.0",

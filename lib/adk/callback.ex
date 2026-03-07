@@ -32,7 +32,7 @@ defmodule ADK.Callback do
   """
 
   @type callback_ctx :: %{
-          :agent => ADK.Agent.t(),
+          :agent => any(),
           :context => ADK.Context.t(),
           optional(:request) => map(),
           optional(:tool) => map(),

@@ -11,54 +11,59 @@ defmodule ADK.Agent.LoopAgent do
         max_iterations: 5
       )
   """
-  @behaviour ADK.Agent
 
-  @default_max_iterations 10
+  @enforce_keys [:name]
+  defstruct [:name, description: "Runs agents in a loop", sub_agents: [], max_iterations: 10]
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          description: String.t(),
+          sub_agents: [ADK.Agent.t()],
+          max_iterations: pos_integer()
+        }
 
   @doc """
-  Create a loop agent spec.
-
-  ## Options
-
-    * `:name` - agent name (default: `"loop"`)
-    * `:description` - agent description
-    * `:sub_agents` - list of agent specs to run each iteration
-    * `:max_iterations` - maximum loop count (default: #{@default_max_iterations})
+  Create a loop agent.
 
   ## Examples
 
       iex> agent = ADK.Agent.LoopAgent.new(name: "loop", sub_agents: [], max_iterations: 3)
-      iex> agent.config.max_iterations
+      iex> agent.max_iterations
       3
   """
-  @spec new(keyword()) :: ADK.Agent.t()
-  def new(opts) do
-    %ADK.Agent{
-      name: opts[:name] || "loop",
-      description: opts[:description] || "Runs agents in a loop",
-      module: __MODULE__,
-      config: %{
-        sub_agents: opts[:sub_agents] || [],
-        max_iterations: opts[:max_iterations] || @default_max_iterations
-      },
-      sub_agents: opts[:sub_agents] || []
-    }
+  @spec new(keyword()) :: t()
+  def new(opts), do: struct!(__MODULE__, opts)
+
+  @doc """
+  Create a loop agent with validation.
+
+  Returns `{:ok, agent}` or `{:error, reason}`.
+  """
+  @spec build(keyword()) :: {:ok, t()} | {:error, String.t()}
+  def build(opts) do
+    {:ok, new(opts)}
+  rescue
+    e in ArgumentError -> {:error, Exception.message(e)}
   end
 
-  @impl true
-  def run(ctx) do
-    max = ctx.agent.config.max_iterations
-    sub_agents = ctx.agent.config.sub_agents
-    do_loop(ctx, sub_agents, max, 0, [])
+  defimpl ADK.Agent do
+    def name(agent), do: agent.name
+    def description(agent), do: agent.description
+    def sub_agents(agent), do: agent.sub_agents
+
+    def run(agent, ctx) do
+      ADK.Agent.LoopAgent.do_loop(ctx, agent.sub_agents, agent.max_iterations, 0, [])
+    end
   end
 
-  defp do_loop(_ctx, _sub_agents, max, iteration, acc) when iteration >= max, do: acc
+  @doc false
+  def do_loop(_ctx, _sub_agents, max, iteration, acc) when iteration >= max, do: acc
 
-  defp do_loop(ctx, sub_agents, max, iteration, acc) do
+  def do_loop(ctx, sub_agents, max, iteration, acc) do
     {events, escalated?} =
       Enum.reduce_while(sub_agents, {[], false}, fn agent_spec, {evts, _} ->
         child_ctx = ADK.Context.for_child(ctx, agent_spec)
-        new_events = agent_spec.module.run(child_ctx)
+        new_events = ADK.Agent.run(agent_spec, child_ctx)
 
         if Enum.any?(new_events, &escalated?/1) do
           {:halt, {evts ++ new_events, true}}

@@ -23,7 +23,7 @@ defmodule ADK.Agent.LlmAgentTest do
       user_content: %{text: "Hi"}
     }
 
-    events = agent.module.run(ctx)
+    events = ADK.Agent.run(agent, ctx)
     assert length(events) == 1
     assert ADK.Event.text(hd(events)) == "Hello there!"
 
@@ -64,7 +64,7 @@ defmodule ADK.Agent.LlmAgentTest do
       user_content: %{text: "What's the weather in Tokyo?"}
     }
 
-    events = agent.module.run(ctx)
+    events = ADK.Agent.run(agent, ctx)
 
     # Should have: function_call event, function_response event, final text event
     assert length(events) >= 3
@@ -96,7 +96,7 @@ defmodule ADK.Agent.LlmAgentTest do
       user_content: %{text: "Hi"}
     }
 
-    events = agent.module.run(ctx)
+    events = ADK.Agent.run(agent, ctx)
     assert length(events) == 1
     assert hd(events).error != nil
 
@@ -124,7 +124,7 @@ defmodule ADK.Agent.LlmAgentTest do
       user_content: %{text: "Research Elixir"}
     }
 
-    _events = agent.module.run(ctx)
+    _events = ADK.Agent.run(agent, ctx)
 
     assert ADK.Session.get_state(session_pid, :research) == "Research results here"
 

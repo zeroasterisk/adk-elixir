@@ -85,7 +85,7 @@ defmodule ADK.Runner do
                 events
 
               {:cont, cb_ctx} ->
-                events = cb_ctx.context.agent.module.run(cb_ctx.context)
+                events = ADK.Agent.run(cb_ctx.context.agent, cb_ctx.context)
                 ADK.Callback.run_after(callbacks, :after_agent, events, cb_ctx)
             end
 

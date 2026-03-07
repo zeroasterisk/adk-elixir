@@ -20,7 +20,7 @@ defmodule ADK.Agent.SequentialAgentTest do
       user_content: %{text: "Go"}
     }
 
-    events = pipeline.module.run(ctx)
+    events = ADK.Agent.run(pipeline, ctx)
 
     texts = Enum.map(events, &ADK.Event.text/1) |> Enum.reject(&is_nil/1)
     assert texts == ["Step 1 done", "Step 2 done"]

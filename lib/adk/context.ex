@@ -4,7 +4,7 @@ defmodule ADK.Context do
   @type t :: %__MODULE__{
           invocation_id: String.t(),
           session_pid: pid() | nil,
-          agent: map() | nil,
+          agent: any(),
           branch: String.t() | nil,
           user_content: map() | nil,
           temp_state: map(),

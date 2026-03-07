@@ -9,7 +9,7 @@ defmodule ADK do
   """
 
   @doc "Create a new LLM agent with minimal configuration."
-  @spec new(String.t(), keyword()) :: ADK.Agent.t()
+  @spec new(String.t(), keyword()) :: ADK.Agent.LlmAgent.t()
   def new(name, opts \\ []) do
     ADK.Agent.LlmAgent.new(Keyword.merge(opts, name: name))
   end

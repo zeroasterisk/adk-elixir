@@ -4,7 +4,7 @@ defmodule ADKTest do
   test "ADK.new creates an agent" do
     agent = ADK.new("bot", model: "test", instruction: "Help")
     assert agent.name == "bot"
-    assert agent.module == ADK.Agent.LlmAgent
+    assert is_struct(agent, ADK.Agent.LlmAgent)
   end
 
   test "ADK.chat returns final text" do
@@ -23,11 +23,11 @@ defmodule ADKTest do
   end
 
   test "ADK.sequential creates pipeline" do
-    a1 = ADK.new("a", model: "test")
-    a2 = ADK.new("b", model: "test")
+    a1 = ADK.new("a", model: "test", instruction: "Help")
+    a2 = ADK.new("b", model: "test", instruction: "Help")
     pipeline = ADK.sequential([a1, a2])
     assert pipeline.name == "sequential"
-    assert pipeline.module == ADK.Agent.SequentialAgent
+    assert is_struct(pipeline, ADK.Agent.SequentialAgent)
     assert length(pipeline.sub_agents) == 2
   end
 end
