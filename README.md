@@ -220,12 +220,29 @@ mix docs
 iex -S mix
 ```
 
+## Phoenix Integration
+
+ADK works seamlessly with Phoenix — no Phoenix dependency required. We provide optional helpers for three patterns:
+
+- **REST API** — `ADK.Phoenix.Controller` for JSON endpoints and SSE streaming
+- **WebSocket** — `ADK.Phoenix.Channel` for real-time bidirectional communication
+- **LiveView** — `ADK.Phoenix.LiveHandler` for server-rendered real-time UIs
+
+The foundation is `ADK.Runner.Async`, a pure OTP module that runs agents in background processes:
+
+```elixir
+{:ok, _pid} = ADK.Runner.Async.run(runner, user_id, session_id, "Hello!")
+# Receive {:adk_event, event} messages in your process
+```
+
+📖 **[Full Phoenix Integration Guide](guides/phoenix-integration.md)**
+
 ## Roadmap
 
 - [x] LoopAgent, ParallelAgent
 - [x] Real LLM backend (Gemini via API)
 - [x] Session persistence (InMemory ETS + JsonFile stores)
-- [ ] Phoenix integration (LiveView, Channels)
+- [x] Phoenix integration (LiveView, Channels)
 - [ ] A2A server/client
 - [x] `mix adk.new` generator
 - [ ] Publish to Hex

@@ -120,6 +120,90 @@ defmodule ADK.Event do
 
   defp has_function_calls?(_), do: false
 
+  @doc """
+  Convert an Event struct to a plain map suitable for JSON serialization.
+
+  ## Examples
+
+      iex> event = ADK.Event.new(%{author: "agent", content: %{parts: [%{text: "hi"}]}})
+      iex> map = ADK.Event.to_map(event)
+      iex> map.author
+      "agent"
+      iex> is_binary(map.timestamp)
+      true
+  """
+  @spec to_map(t()) :: map()
+  def to_map(%__MODULE__{} = event) do
+    %{
+      id: event.id,
+      invocation_id: event.invocation_id,
+      author: event.author,
+      branch: event.branch,
+      timestamp: event.timestamp && DateTime.to_iso8601(event.timestamp),
+      content: event.content,
+      partial: event.partial,
+      error: event.error,
+      function_calls: event.function_calls,
+      function_responses: event.function_responses,
+      actions: %{
+        state_delta: event.actions.state_delta,
+        transfer_to_agent: event.actions.transfer_to_agent,
+        escalate: event.actions.escalate
+      }
+    }
+  end
+
+  @doc """
+  Convert a plain map (e.g., from JSON) back to an Event struct.
+
+  ## Examples
+
+      iex> event = ADK.Event.new(%{author: "user", content: %{parts: [%{text: "hello"}]}})
+      iex> roundtripped = event |> ADK.Event.to_map() |> ADK.Event.from_map()
+      iex> roundtripped.author
+      "user"
+  """
+  @spec from_map(map()) :: t()
+  def from_map(map) when is_map(map) do
+    map = for {k, v} <- map, into: %{}, do: {to_string(k), v}
+
+    actions =
+      case map["actions"] do
+        nil ->
+          %ADK.EventActions{}
+
+        a ->
+          a = for {k, v} <- a, into: %{}, do: {to_string(k), v}
+
+          %ADK.EventActions{
+            state_delta: a["state_delta"] || %{},
+            transfer_to_agent: a["transfer_to_agent"],
+            escalate: a["escalate"] || false
+          }
+      end
+
+    timestamp =
+      case map["timestamp"] do
+        nil -> nil
+        %DateTime{} = dt -> dt
+        ts when is_binary(ts) -> DateTime.from_iso8601(ts) |> elem(1)
+      end
+
+    %__MODULE__{
+      id: map["id"],
+      invocation_id: map["invocation_id"],
+      author: map["author"],
+      branch: map["branch"],
+      timestamp: timestamp,
+      content: map["content"],
+      partial: map["partial"] || false,
+      error: map["error"],
+      function_calls: map["function_calls"],
+      function_responses: map["function_responses"],
+      actions: actions
+    }
+  end
+
   defp generate_id do
     :crypto.strong_rand_bytes(12) |> Base.url_encode64(padding: false)
   end
