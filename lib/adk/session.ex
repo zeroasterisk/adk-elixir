@@ -36,7 +36,38 @@ defmodule ADK.Session do
 
   @doc "Start a session process."
   def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts, name: opts[:name])
+    name = opts[:name] || via_tuple(opts[:app_name], opts[:user_id], opts[:session_id])
+    GenServer.start_link(__MODULE__, opts, name: name)
+  end
+
+  @doc """
+  Start a session under `ADK.SessionSupervisor`.
+
+  Returns `{:ok, pid}` or `{:error, reason}`.
+  """
+  @spec start_supervised(keyword()) :: {:ok, pid()} | {:error, term()}
+  def start_supervised(opts) do
+    DynamicSupervisor.start_child(ADK.SessionSupervisor, {__MODULE__, opts})
+  end
+
+  @doc """
+  Look up an existing session by app_name, user_id, and session_id.
+
+  Returns `{:ok, pid}` or `:error`.
+  """
+  @spec lookup(String.t(), String.t(), String.t()) :: {:ok, pid()} | :error
+  def lookup(app_name, user_id, session_id) do
+    case Registry.lookup(ADK.SessionRegistry, {app_name, user_id, session_id}) do
+      [{pid, _}] -> {:ok, pid}
+      [] -> :error
+    end
+  end
+
+  defp via_tuple(nil, _, _), do: nil
+  defp via_tuple(_, nil, _), do: nil
+  defp via_tuple(_, _, nil), do: nil
+  defp via_tuple(app_name, user_id, session_id) do
+    {:via, Registry, {ADK.SessionRegistry, {app_name, user_id, session_id}}}
   end
 
   @doc "Get the full session struct."

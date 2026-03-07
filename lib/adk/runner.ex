@@ -26,13 +26,22 @@ defmodule ADK.Runner do
   def run(%__MODULE__{} = runner, user_id, session_id, message, opts \\ []) do
     message = normalize_message(message)
 
-    # Start a session process
-    {:ok, session_pid} =
-      ADK.Session.start_link(
-        app_name: runner.app_name,
-        user_id: user_id,
-        session_id: session_id
-      )
+    # Find existing session or start a new one
+    session_pid =
+      case ADK.Session.lookup(runner.app_name, user_id, session_id) do
+        {:ok, pid} ->
+          pid
+
+        :error ->
+          {:ok, pid} =
+            ADK.Session.start_supervised(
+              app_name: runner.app_name,
+              user_id: user_id,
+              session_id: session_id
+            )
+
+          pid
+      end
 
     invocation_id = generate_id()
 
@@ -46,16 +55,29 @@ defmodule ADK.Runner do
 
     ADK.Session.append_event(session_pid, user_event)
 
+    callbacks = Keyword.get(opts, :callbacks, [])
+
     # Build context
     ctx = %ADK.Context{
       invocation_id: invocation_id,
       session_pid: session_pid,
       agent: runner.agent,
-      user_content: message
+      user_content: message,
+      callbacks: callbacks
     }
 
-    # Run the agent
-    agent_events = runner.agent.module.run(ctx)
+    # Run before_agent callbacks
+    cb_ctx = %{agent: runner.agent, context: ctx}
+
+    agent_events =
+      case ADK.Callback.run_before(callbacks, :before_agent, cb_ctx) do
+        {:halt, events} ->
+          events
+
+        {:cont, cb_ctx} ->
+          events = cb_ctx.context.agent.module.run(cb_ctx.context)
+          ADK.Callback.run_after(callbacks, :after_agent, events, cb_ctx)
+      end
 
     # Append agent events to session
     Enum.each(agent_events, fn event ->

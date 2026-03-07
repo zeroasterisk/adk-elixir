@@ -7,7 +7,7 @@ defmodule ADK.Agent.ParallelAgentTest do
     @behaviour ADK.Agent
 
     def new(name, delay_ms \\ 10) do
-      %{
+      %ADK.Agent{
         name: name,
         description: "Slow agent",
         module: __MODULE__,

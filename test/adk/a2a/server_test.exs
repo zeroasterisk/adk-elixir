@@ -16,7 +16,7 @@ defmodule ADK.A2A.ServerTest do
   end
 
   setup do
-    agent = %{
+    agent = %ADK.Agent{
       name: "test_agent",
       description: "A test agent",
       module: MockAgent,

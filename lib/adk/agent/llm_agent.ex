@@ -33,7 +33,7 @@ defmodule ADK.Agent.LlmAgent do
   def new(opts) do
     config = struct!(__MODULE__, opts)
 
-    %{
+    %ADK.Agent{
       name: config.name,
       description: config.description || "",
       module: __MODULE__,
@@ -54,7 +54,20 @@ defmodule ADK.Agent.LlmAgent do
     # Build LLM request
     request = build_request(ctx, config)
 
-    case ADK.LLM.generate(config.model, request) do
+    # before_model callback
+    cb_ctx = %{agent: ctx.agent, context: ctx, request: request}
+
+    llm_result =
+      case ADK.Callback.run_before(ctx.callbacks, :before_model, cb_ctx) do
+        {:halt, result} ->
+          result
+
+        {:cont, cb_ctx} ->
+          result = ADK.LLM.generate(config.model, cb_ctx.request)
+          ADK.Callback.run_after(ctx.callbacks, :after_model, result, cb_ctx)
+      end
+
+    case llm_result do
       {:ok, response} ->
         event = event_from_response(response, ctx, config)
 
@@ -155,8 +168,19 @@ defmodule ADK.Agent.LlmAgent do
 
         tool ->
           tool_ctx = ADK.ToolContext.new(ctx, call[:id] || "call-1", tool)
+          cb_ctx = %{agent: ctx.agent, context: ctx, tool: tool, tool_args: call.args}
 
-          case ADK.Tool.FunctionTool.run(tool, tool_ctx, call.args) do
+          tool_result =
+            case ADK.Callback.run_before(ctx.callbacks, :before_tool, cb_ctx) do
+              {:halt, result} ->
+                result
+
+              {:cont, cb_ctx} ->
+                result = ADK.Tool.FunctionTool.run(tool, tool_ctx, cb_ctx.tool_args)
+                ADK.Callback.run_after(ctx.callbacks, :after_tool, result, cb_ctx)
+            end
+
+          case tool_result do
             {:ok, result} ->
               %{id: call[:id] || "call-1", name: call.name, result: result}
 

@@ -2,7 +2,7 @@ defmodule ADK.Agent do
   @moduledoc """
   The core agent behaviour. Every agent type implements this.
 
-  An agent spec is a map with:
+  An agent spec is a struct with:
   - `name` — identifier
   - `description` — human-readable
   - `module` — implementing module
@@ -10,7 +10,9 @@ defmodule ADK.Agent do
   - `sub_agents` — child agents for delegation
   """
 
-  @type t :: %{
+  defstruct [:name, :description, :module, :config, sub_agents: []]
+
+  @type t :: %__MODULE__{
           name: String.t(),
           description: String.t(),
           module: module(),

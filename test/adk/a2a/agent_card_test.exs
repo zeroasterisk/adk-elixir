@@ -4,7 +4,7 @@ defmodule ADK.A2A.AgentCardTest do
   alias ADK.A2A.AgentCard
 
   test "generates card from agent spec" do
-    agent = %{
+    agent = %ADK.Agent{
       name: "helper",
       description: "A helpful agent",
       module: ADK.Agent.LlmAgent,
@@ -28,7 +28,7 @@ defmodule ADK.A2A.AgentCardTest do
       func: fn _, _ -> {:ok, "result"} end
     )
 
-    agent = %{
+    agent = %ADK.Agent{
       name: "researcher",
       description: "Researches topics",
       module: ADK.Agent.LlmAgent,
@@ -43,7 +43,7 @@ defmodule ADK.A2A.AgentCardTest do
   end
 
   test "includes provider when given" do
-    agent = %{name: "bot", description: "", config: %{tools: []}, sub_agents: []}
+    agent = %ADK.Agent{name: "bot", description: "", module: nil, config: %{tools: []}, sub_agents: []}
     card = AgentCard.from_agent(agent, url: "http://x", provider: %{"name" => "Acme"})
 
     assert card["provider"] == %{"name" => "Acme"}

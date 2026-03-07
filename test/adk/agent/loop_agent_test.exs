@@ -7,7 +7,7 @@ defmodule ADK.Agent.LoopAgentTest do
     @behaviour ADK.Agent
 
     def new(opts \\ []) do
-      %{
+      %ADK.Agent{
         name: opts[:name] || "counter",
         description: "Increments counter",
         module: __MODULE__,
@@ -26,7 +26,7 @@ defmodule ADK.Agent.LoopAgentTest do
     @behaviour ADK.Agent
 
     def new(opts \\ []) do
-      %{
+      %ADK.Agent{
         name: opts[:name] || "escalator",
         description: "Escalates",
         module: __MODULE__,

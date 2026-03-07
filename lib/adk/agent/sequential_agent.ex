@@ -15,7 +15,7 @@ defmodule ADK.Agent.SequentialAgent do
   """
   @spec new(keyword()) :: ADK.Agent.t()
   def new(opts) do
-    %{
+    %ADK.Agent{
       name: opts[:name] || "sequential",
       description: opts[:description] || "Runs agents in sequence",
       module: __MODULE__,

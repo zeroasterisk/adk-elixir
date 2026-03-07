@@ -16,7 +16,7 @@ defmodule ADK.A2A.AgentCard do
 
   ## Examples
 
-      iex> agent = %{name: "helper", description: "A helpful agent", config: %{tools: []}}
+      iex> agent = %ADK.Agent{name: "helper", description: "A helpful agent", module: nil, config: %{tools: []}}
       iex> card = ADK.A2A.AgentCard.from_agent(agent, url: "http://localhost:4000/a2a")
       iex> card["name"]
       "helper"
@@ -27,7 +27,7 @@ defmodule ADK.A2A.AgentCard do
 
     %{
       "name" => agent.name,
-      "description" => agent[:description] || "",
+      "description" => agent.description || "",
       "url" => url,
       "version" => Keyword.get(opts, :version, "1.0.0"),
       "capabilities" => %{

@@ -33,7 +33,7 @@ defmodule ADK.Agent.LoopAgent do
   """
   @spec new(keyword()) :: ADK.Agent.t()
   def new(opts) do
-    %{
+    %ADK.Agent{
       name: opts[:name] || "loop",
       description: opts[:description] || "Runs agents in a loop",
       module: __MODULE__,

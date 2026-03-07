@@ -34,7 +34,7 @@ defmodule ADK.Agent.ParallelAgent do
   """
   @spec new(keyword()) :: ADK.Agent.t()
   def new(opts) do
-    %{
+    %ADK.Agent{
       name: opts[:name] || "parallel",
       description: opts[:description] || "Runs agents in parallel",
       module: __MODULE__,

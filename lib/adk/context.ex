@@ -8,7 +8,8 @@ defmodule ADK.Context do
           branch: String.t() | nil,
           user_content: map() | nil,
           temp_state: map(),
-          ended: boolean()
+          ended: boolean(),
+          callbacks: [module()]
         }
 
   defstruct [
@@ -18,7 +19,8 @@ defmodule ADK.Context do
     :branch,
     :user_content,
     temp_state: %{},
-    ended: false
+    ended: false,
+    callbacks: []
   ]
 
   @doc """
