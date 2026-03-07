@@ -237,13 +237,66 @@ The foundation is `ADK.Runner.Async`, a pure OTP module that runs agents in back
 
 📖 **[Full Phoenix Integration Guide](guides/phoenix-integration.md)**
 
+## A2A Protocol (Agent-to-Agent)
+
+ADK Elixir supports the [A2A protocol](https://a2a-protocol.org/latest/) for inter-agent communication over HTTP using JSON-RPC 2.0.
+
+### A2A Server
+
+Expose any ADK agent as an A2A-compatible server using a plain Plug (no Phoenix required):
+
+```elixir
+# In your Plug router or endpoint
+agent = ADK.new("assistant", model: "gemini-2.0-flash", instruction: "Help users")
+runner = %ADK.Runner{app_name: "my_app", agent: agent}
+
+plug ADK.A2A.Server,
+  agent: agent,
+  runner: runner,
+  url: "http://localhost:4000"
+```
+
+This serves:
+- `GET /.well-known/agent.json` — Agent Card (describes capabilities)
+- `POST /` — JSON-RPC 2.0 endpoint (`tasks/send`, `tasks/get`, `tasks/cancel`)
+
+### A2A Client
+
+Call remote A2A agents:
+
+```elixir
+# Discover
+{:ok, card} = ADK.A2A.Client.get_agent_card("http://remote:4000")
+
+# Send a task
+{:ok, result} = ADK.A2A.Client.send_task("http://remote:4000", "Research Elixir OTP")
+```
+
+### Remote Agent as a Tool
+
+Use a remote A2A agent as a tool for your local agent:
+
+```elixir
+researcher = ADK.A2A.RemoteAgentTool.new(
+  name: "researcher",
+  url: "http://researcher:4000",
+  description: "Researches any topic"
+)
+
+agent = ADK.new("orchestrator",
+  model: "gemini-2.0-flash",
+  instruction: "Use tools to help users",
+  tools: [researcher]
+)
+```
+
 ## Roadmap
 
 - [x] LoopAgent, ParallelAgent
 - [x] Real LLM backend (Gemini via API)
 - [x] Session persistence (InMemory ETS + JsonFile stores)
 - [x] Phoenix integration (LiveView, Channels)
-- [ ] A2A server/client
+- [x] A2A server/client
 - [x] `mix adk.new` generator
 - [ ] Publish to Hex
 

@@ -31,7 +31,7 @@ defmodule ADK.MixProject do
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
-      {:plug, "~> 1.0", only: :test}
+      {:plug, "~> 1.14", optional: true}
     ]
   end
 
