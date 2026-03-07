@@ -50,7 +50,7 @@ defmodule ADK.MixProject do
         "Agents": [ADK.Agent.LlmAgent, ADK.Agent.SequentialAgent],
         "Tools": [ADK.Tool.FunctionTool, ADK.Tool.Declarative],
         "State & Sessions": [ADK.Session, ADK.Session.Store, ADK.Session.Store.InMemory, ADK.Session.Store.JsonFile, ADK.State.Delta, ADK.EventActions],
-        "LLM": [ADK.LLM, ADK.LLM.Mock, ADK.LLM.Gemini],
+        "LLM": [ADK.LLM, ADK.LLM.Mock, ADK.LLM.Gemini, ADK.LLM.OpenAI],
         "Runner": [ADK.Runner]
       ],
       groups_for_extras: [
