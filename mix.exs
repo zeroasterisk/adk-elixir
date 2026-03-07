@@ -32,7 +32,10 @@ defmodule ADK.MixProject do
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
-      {:plug, "~> 1.14", optional: true}
+      {:plug, "~> 1.14", optional: true},
+      {:ecto, "~> 3.10", optional: true},
+      {:ecto_sql, "~> 3.10", optional: true},
+      {:ecto_sqlite3, "~> 0.17", only: :test}
     ]
   end
 
@@ -49,7 +52,7 @@ defmodule ADK.MixProject do
         "Core": [ADK, ADK.Agent, ADK.Tool, ADK.Event, ADK.Context],
         "Agents": [ADK.Agent.LlmAgent, ADK.Agent.SequentialAgent],
         "Tools": [ADK.Tool.FunctionTool, ADK.Tool.Declarative],
-        "State & Sessions": [ADK.Session, ADK.Session.Store, ADK.Session.Store.InMemory, ADK.Session.Store.JsonFile, ADK.State.Delta, ADK.EventActions],
+        "State & Sessions": [ADK.Session, ADK.Session.Store, ADK.Session.Store.InMemory, ADK.Session.Store.JsonFile, ADK.Session.Store.Ecto, ADK.State.Delta, ADK.EventActions],
         "LLM": [ADK.LLM, ADK.LLM.Mock, ADK.LLM.Gemini, ADK.LLM.OpenAI],
         "Runner": [ADK.Runner]
       ],
