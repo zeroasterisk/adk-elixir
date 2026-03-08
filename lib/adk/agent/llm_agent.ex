@@ -12,6 +12,8 @@ defmodule ADK.Agent.LlmAgent do
     :model,
     :instruction,
     :output_key,
+    :global_instruction,
+    :output_schema,
     description: "",
     tools: [],
     sub_agents: [],
@@ -21,8 +23,10 @@ defmodule ADK.Agent.LlmAgent do
   @type t :: %__MODULE__{
           name: String.t(),
           model: String.t(),
-          instruction: String.t(),
+          instruction: String.t() | (ADK.Context.t() -> String.t()),
           output_key: atom() | String.t() | nil,
+          global_instruction: String.t() | nil,
+          output_schema: map() | nil,
           description: String.t(),
           tools: [map()],
           sub_agents: [ADK.Agent.t()],
@@ -118,13 +122,24 @@ defmodule ADK.Agent.LlmAgent do
 
   defp build_request(ctx, agent) do
     messages = build_messages(ctx)
+    compiled_instruction = ADK.InstructionCompiler.compile(agent, ctx)
+    all_tools = effective_tools(agent)
 
     %{
       model: agent.model,
-      instruction: agent.instruction,
+      instruction: compiled_instruction,
       messages: messages,
-      tools: Enum.map(agent.tools, &ADK.Tool.declaration/1)
+      tools: Enum.map(all_tools, &ADK.Tool.declaration/1)
     }
+  end
+
+  defp effective_tools(agent) do
+    if agent.sub_agents != [] do
+      transfer_tool = ADK.Tool.TransferTool.new(agent.sub_agents)
+      agent.tools ++ [transfer_tool]
+    else
+      agent.tools
+    end
   end
 
   defp build_messages(ctx) do
@@ -170,7 +185,7 @@ defmodule ADK.Agent.LlmAgent do
 
   defp execute_tools(ctx, agent, calls) do
     tools_map =
-      agent.tools
+      effective_tools(agent)
       |> Enum.map(fn t -> {t.name, t} end)
       |> Map.new()
 

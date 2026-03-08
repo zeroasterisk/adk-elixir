@@ -75,6 +75,10 @@ defmodule ADK.Session do
   @spec get(pid() | atom()) :: {:ok, t()}
   def get(pid), do: GenServer.call(pid, :get)
 
+  @doc "Get all session state as a map."
+  @spec get_all_state(pid() | atom()) :: map()
+  def get_all_state(pid), do: GenServer.call(pid, :get_all_state)
+
   @doc "Get a value from session state."
   @spec get_state(pid() | atom(), term()) :: term() | nil
   def get_state(pid, key), do: GenServer.call(pid, {:get_state, key})
@@ -133,6 +137,10 @@ defmodule ADK.Session do
   @impl true
   def handle_call(:get, _from, %{session: session} = state) do
     {:reply, {:ok, session}, state}
+  end
+
+  def handle_call(:get_all_state, _from, %{session: session} = state) do
+    {:reply, session.state, state}
   end
 
   def handle_call({:get_state, key}, _from, %{session: session} = state) do
