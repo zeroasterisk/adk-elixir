@@ -9,7 +9,8 @@ defmodule ADK.Context do
           user_content: map() | nil,
           temp_state: map(),
           ended: boolean(),
-          callbacks: [module()]
+          callbacks: [module()],
+          policies: [module()]
         }
 
   defstruct [
@@ -20,7 +21,8 @@ defmodule ADK.Context do
     :user_content,
     temp_state: %{},
     ended: false,
-    callbacks: []
+    callbacks: [],
+    policies: []
   ]
 
   @doc """

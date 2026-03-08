@@ -56,6 +56,7 @@ defmodule ADK.Runner do
     ADK.Session.append_event(session_pid, user_event)
 
     callbacks = Keyword.get(opts, :callbacks, [])
+    policies = Keyword.get(opts, :policies, [])
 
     # Build context
     ctx = %ADK.Context{
@@ -63,7 +64,8 @@ defmodule ADK.Runner do
       session_pid: session_pid,
       agent: runner.agent,
       user_content: message,
-      callbacks: callbacks
+      callbacks: callbacks,
+      policies: policies
     }
 
     # Gather global plugins
@@ -82,21 +84,33 @@ defmodule ADK.Runner do
           {result, updated_plugins}
 
         {:cont, ctx, updated_plugins} ->
-          # Run before_agent callbacks
-          cb_ctx = %{agent: runner.agent, context: ctx}
+          # Run input policy filters
+          case ADK.Policy.run_input_filters(policies, ctx.user_content, ctx) do
+            {:halt, events} ->
+              {events, updated_plugins}
 
-          events =
-            case ADK.Callback.run_before(callbacks, :before_agent, cb_ctx) do
-              {:halt, events} ->
-                events
+            {:cont, filtered_content} ->
+              ctx = %{ctx | user_content: filtered_content}
 
-              {:cont, cb_ctx} ->
-                events = ADK.Agent.run(cb_ctx.context.agent, cb_ctx.context)
-                ADK.Callback.run_after(callbacks, :after_agent, events, cb_ctx)
-            end
+              # Run before_agent callbacks
+              cb_ctx = %{agent: runner.agent, context: ctx}
 
-          # Run after_run plugins
-          ADK.Plugin.run_after(updated_plugins, events, ctx)
+              events =
+                case ADK.Callback.run_before(callbacks, :before_agent, cb_ctx) do
+                  {:halt, events} ->
+                    events
+
+                  {:cont, cb_ctx} ->
+                    events = ADK.Agent.run(cb_ctx.context.agent, cb_ctx.context)
+                    ADK.Callback.run_after(callbacks, :after_agent, events, cb_ctx)
+                end
+
+              # Run output policy filters
+              events = ADK.Policy.run_output_filters(policies, events, ctx)
+
+              # Run after_run plugins
+              ADK.Plugin.run_after(updated_plugins, events, ctx)
+          end
       end
       end)
 

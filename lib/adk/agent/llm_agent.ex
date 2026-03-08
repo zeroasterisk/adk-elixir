@@ -185,13 +185,20 @@ defmodule ADK.Agent.LlmAgent do
 
           tool_result =
             ADK.Telemetry.span([:adk, :tool], %{tool_name: call.name, agent_name: ADK.Agent.name(ctx.agent)}, fn ->
-              case ADK.Callback.run_before(ctx.callbacks, :before_tool, cb_ctx) do
-                {:halt, result} ->
-                  result
+              # Check policy authorization first
+              case ADK.Policy.check_tool_authorization(ctx.policies, tool, call.args || %{}, ctx) do
+                {:deny, reason} ->
+                  {:error, "Policy denied tool '#{call.name}': #{reason}"}
 
-                {:cont, cb_ctx} ->
-                  result = ADK.Tool.FunctionTool.run(tool, tool_ctx, cb_ctx.tool_args)
-                  ADK.Callback.run_after(ctx.callbacks, :after_tool, result, cb_ctx)
+                :allow ->
+                  case ADK.Callback.run_before(ctx.callbacks, :before_tool, cb_ctx) do
+                    {:halt, result} ->
+                      result
+
+                    {:cont, cb_ctx} ->
+                      result = ADK.Tool.FunctionTool.run(tool, tool_ctx, cb_ctx.tool_args)
+                      ADK.Callback.run_after(ctx.callbacks, :after_tool, result, cb_ctx)
+                  end
               end
             end)
 
