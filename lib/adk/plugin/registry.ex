@@ -9,6 +9,7 @@ defmodule ADK.Plugin.Registry do
   use Agent
 
   @doc "Start the plugin registry."
+  @spec start_link(keyword()) :: Agent.on_start()
   def start_link(_opts \\ []) do
     Agent.start_link(fn -> [] end, name: __MODULE__)
   end

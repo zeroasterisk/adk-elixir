@@ -35,6 +35,7 @@ defmodule ADK.Session do
   # --- Client API ---
 
   @doc "Start a session process."
+  @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
     name = opts[:name] || via_tuple(opts[:app_name], opts[:user_id], opts[:session_id])
     GenServer.start_link(__MODULE__, opts, name: name)

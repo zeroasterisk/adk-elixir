@@ -11,6 +11,7 @@ defmodule ADK.ToolContext do
   defstruct [:context, :function_call_id, :tool_name, :tool_def]
 
   @doc "Create a tool context from an invocation context."
+  @spec new(ADK.Context.t(), String.t(), map() | module()) :: t()
   def new(%ADK.Context{} = ctx, call_id, tool) do
     %__MODULE__{
       context: ctx,

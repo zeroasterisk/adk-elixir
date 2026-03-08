@@ -50,6 +50,7 @@ defmodule ADK.LLM do
   end
 
   @doc "Returns the Gemini backend module."
+  @spec gemini_backend() :: module()
   def gemini_backend, do: ADK.LLM.Gemini
 
   defp backend do

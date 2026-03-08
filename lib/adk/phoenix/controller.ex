@@ -28,6 +28,7 @@ defmodule ADK.Phoenix.Controller do
   Expects `params` to contain `"message"`, and optionally `"user_id"` and `"session_id"`.
   Returns a JSON response with `%{events: [...]}`.
   """
+  @spec run(Plug.Conn.t(), ADK.Runner.t(), map(), keyword()) :: Plug.Conn.t()
   def run(conn, %ADK.Runner{} = runner, params, opts \\ []) do
     user_id = params["user_id"] || opts[:user_id] || "anonymous"
     session_id = params["session_id"] || opts[:session_id] || "default"
@@ -47,6 +48,7 @@ defmodule ADK.Phoenix.Controller do
   Each event is sent as an SSE `data:` line with JSON payload.
   The stream ends with a `data: [DONE]` sentinel.
   """
+  @spec stream_sse(Plug.Conn.t(), ADK.Runner.t(), map(), keyword()) :: Plug.Conn.t()
   def stream_sse(conn, %ADK.Runner{} = runner, params, opts \\ []) do
     user_id = params["user_id"] || opts[:user_id] || "anonymous"
     session_id = params["session_id"] || opts[:session_id] || "default"

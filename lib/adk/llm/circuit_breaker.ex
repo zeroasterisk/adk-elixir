@@ -25,6 +25,14 @@ defmodule ADK.LLM.CircuitBreaker do
   @default_failure_threshold 5
   @default_reset_timeout_ms 60_000
 
+  @type t :: %__MODULE__{
+          failure_threshold: pos_integer(),
+          reset_timeout_ms: pos_integer(),
+          state: :closed | :open | :half_open,
+          failure_count: non_neg_integer(),
+          opened_at: integer() | nil
+        }
+
   defstruct [
     :failure_threshold,
     :reset_timeout_ms,

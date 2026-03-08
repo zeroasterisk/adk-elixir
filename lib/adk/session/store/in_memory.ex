@@ -27,6 +27,7 @@ defmodule ADK.Session.Store.InMemory do
 
   # --- Client API ---
 
+  @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts \\ []) do
     name = opts[:name] || __MODULE__
     GenServer.start_link(__MODULE__, opts, name: name)

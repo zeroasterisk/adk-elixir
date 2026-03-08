@@ -21,6 +21,7 @@ defmodule ADK.A2A.Server do
   alias ADK.A2A.{AgentCard, Message}
 
   @impl true
+  @spec init(keyword()) :: map()
   def init(opts) do
     table = :ets.new(:a2a_tasks, [:set, :public])
 
@@ -34,6 +35,7 @@ defmodule ADK.A2A.Server do
   end
 
   @impl true
+  @spec call(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def call(%Plug.Conn{method: "GET", path_info: [".well-known", "agent.json"]} = conn, config) do
     card_opts = Keyword.merge(config.card_opts, url: config.url)
     card = AgentCard.from_agent(config.agent, card_opts)
