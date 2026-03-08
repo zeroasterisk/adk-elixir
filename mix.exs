@@ -38,7 +38,10 @@ defmodule ADK.MixProject do
       {:ecto_sqlite3, "~> 0.17", only: :test},
       {:telemetry, "~> 1.0"},
       {:opentelemetry_api, "~> 1.0", optional: true},
-      {:oban, "~> 2.18", optional: true}
+      {:oban, "~> 2.18", optional: true},
+      {:phoenix, "~> 1.7", optional: true},
+      {:phoenix_live_view, "~> 1.0", optional: true},
+      {:phoenix_html, "~> 4.0", optional: true}
     ]
   end
 
