@@ -86,8 +86,10 @@ defmodule ADK.ToolContext do
       nil ->
         {:error, :no_artifact_service}
 
-      service ->
+      service_config ->
+        {service, backend_opts} = normalize_service(service_config)
         session_id = get_session_id(ctx)
+        merged_opts = Keyword.merge(backend_opts, opts)
 
         case service.save(
                ctx.app_name || "default",
@@ -95,7 +97,7 @@ defmodule ADK.ToolContext do
                session_id,
                filename,
                artifact,
-               opts
+               merged_opts
              ) do
           {:ok, version} ->
             updated_actions = %{actions | artifact_delta: Map.put(actions.artifact_delta, filename, version)}
@@ -118,14 +120,15 @@ defmodule ADK.ToolContext do
   def load_artifact(%__MODULE__{context: ctx}, filename, opts \\ []) do
     case ctx.artifact_service do
       nil -> {:error, :no_artifact_service}
-      service ->
+      service_config ->
+        {service, backend_opts} = normalize_service(service_config)
         session_id = get_session_id(ctx)
         service.load(
           ctx.app_name || "default",
           ctx.user_id || "default",
           session_id,
           filename,
-          opts
+          Keyword.merge(backend_opts, opts)
         )
     end
   end
@@ -135,13 +138,14 @@ defmodule ADK.ToolContext do
   def list_artifacts(%__MODULE__{context: ctx}) do
     case ctx.artifact_service do
       nil -> {:error, :no_artifact_service}
-      service ->
+      service_config ->
+        {service, backend_opts} = normalize_service(service_config)
         session_id = get_session_id(ctx)
         service.list(
           ctx.app_name || "default",
           ctx.user_id || "default",
           session_id,
-          []
+          backend_opts
         )
     end
   end
@@ -248,6 +252,9 @@ defmodule ADK.ToolContext do
   # ---------------------------------------------------------------------------
   # Private
   # ---------------------------------------------------------------------------
+
+  defp normalize_service({mod, opts}) when is_atom(mod) and is_list(opts), do: {mod, opts}
+  defp normalize_service(mod) when is_atom(mod), do: {mod, []}
 
   defp tool_name(%{name: n}), do: n
   defp tool_name(m) when is_atom(m), do: m.name()

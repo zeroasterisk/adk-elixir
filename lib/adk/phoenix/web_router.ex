@@ -252,23 +252,23 @@ defmodule ADK.Phoenix.WebRouter do
       |> put_resp_content_type("text/event-stream")
       |> put_resp_header("cache-control", "no-cache")
       |> put_resp_header("connection", "keep-alive")
+      |> put_resp_header("x-accel-buffering", "no")
       |> send_chunked(200)
 
-    # Run the agent and stream events
+    # Stream events in real-time using Runner.run_streaming
+    # on_event runs in the caller (this) process, so conn is accessible directly
     try do
-      events =
-        ADK.Runner.run(
-          runner,
-          req["user_id"],
-          req["session_id"],
-          message,
-          stop_session: false
-        )
-
-      Enum.each(events, fn event ->
-        sse_data = Jason.encode!(event_to_python_format(event))
-        chunk(conn, "data: #{sse_data}\n\n")
-      end)
+      ADK.Runner.run_streaming(
+        runner,
+        req["user_id"],
+        req["session_id"],
+        message,
+        stop_session: false,
+        on_event: fn event ->
+          sse_data = Jason.encode!(event_to_python_format(event))
+          chunk(conn, "data: #{sse_data}\n\n")
+        end
+      )
     rescue
       e ->
         error_json = Jason.encode!(%{error: Exception.message(e)})

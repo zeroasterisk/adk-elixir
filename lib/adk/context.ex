@@ -12,7 +12,7 @@ defmodule ADK.Context do
           callbacks: [module()],
           policies: [module()],
           run_config: ADK.RunConfig.t() | nil,
-          artifact_service: module() | nil,
+          artifact_service: {module(), keyword()} | nil,
           credential_service: module() | nil,
           app_name: String.t() | nil,
           user_id: String.t() | nil

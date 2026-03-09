@@ -87,6 +87,14 @@ defmodule ADK.Session do
   @spec put_state(pid() | atom(), term(), term()) :: :ok
   def put_state(pid, key, value), do: GenServer.call(pid, {:put_state, key, value})
 
+  @doc "Subscribe to session events. The subscriber will receive `{:adk_session_event, event}` messages."
+  @spec subscribe(pid() | atom()) :: :ok
+  def subscribe(pid), do: GenServer.call(pid, {:subscribe, self()})
+
+  @doc "Unsubscribe from session events."
+  @spec unsubscribe(pid() | atom()) :: :ok
+  def unsubscribe(pid), do: GenServer.call(pid, {:unsubscribe, self()})
+
   @doc "Append an event to the session."
   @spec append_event(pid() | atom(), ADK.Event.t()) :: :ok
   def append_event(pid, event), do: GenServer.call(pid, {:append_event, event})
@@ -131,7 +139,7 @@ defmodule ADK.Session do
           }
       end
 
-    {:ok, %{session: session, store: store, auto_save: auto_save}}
+    {:ok, %{session: session, store: store, auto_save: auto_save, subscribers: MapSet.new()}}
   end
 
   @impl true
@@ -152,6 +160,15 @@ defmodule ADK.Session do
     {:reply, :ok, %{state | session: new_session}}
   end
 
+  def handle_call({:subscribe, pid}, _from, state) do
+    Process.monitor(pid)
+    {:reply, :ok, %{state | subscribers: MapSet.put(state.subscribers, pid)}}
+  end
+
+  def handle_call({:unsubscribe, pid}, _from, state) do
+    {:reply, :ok, %{state | subscribers: MapSet.delete(state.subscribers, pid)}}
+  end
+
   def handle_call({:append_event, event}, _from, %{session: session} = state) do
     # Apply state delta if present
     new_state =
@@ -164,6 +181,12 @@ defmodule ADK.Session do
       end
 
     new_session = %{session | state: new_state, events: session.events ++ [event]}
+
+    # Notify subscribers
+    Enum.each(state.subscribers, fn pid ->
+      send(pid, {:adk_session_event, event})
+    end)
+
     {:reply, :ok, %{state | session: new_session}}
   end
 
@@ -174,6 +197,11 @@ defmodule ADK.Session do
   def handle_call(:save, _from, %{session: session, store: store} = state) do
     result = do_save(store, session)
     {:reply, result, state}
+  end
+
+  @impl true
+  def handle_info({:DOWN, _ref, :process, pid, _reason}, state) do
+    {:noreply, %{state | subscribers: MapSet.delete(state.subscribers, pid)}}
   end
 
   @impl true
