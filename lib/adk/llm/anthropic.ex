@@ -91,12 +91,34 @@ defmodule ADK.LLM.Anthropic do
         inst -> Map.put(body, :system, inst)
       end
 
-    case Map.get(request, :tools) do
+    body =
+      case Map.get(request, :tools) do
+        nil -> body
+        [] -> body
+        tools -> Map.put(body, :tools, format_tools(tools))
+      end
+
+    # Apply generate_config
+    case Map.get(request, :generate_config) do
       nil -> body
-      [] -> body
-      tools -> Map.put(body, :tools, format_tools(tools))
+      config when config == %{} -> body
+      config ->
+        body
+        |> put_if(:temperature, config[:temperature])
+        |> put_if(:top_p, config[:top_p])
+        |> put_if(:top_k, config[:top_k])
+        |> put_if(:stop_sequences, config[:stop_sequences])
+        |> then(fn b ->
+          case config[:max_output_tokens] do
+            nil -> b
+            max -> %{b | max_tokens: max}
+          end
+        end)
     end
   end
+
+  defp put_if(map, _key, nil), do: map
+  defp put_if(map, key, value), do: Map.put(map, key, value)
 
   defp build_messages(request) do
     request

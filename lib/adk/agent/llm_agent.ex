@@ -15,7 +15,8 @@ defmodule ADK.Agent.LlmAgent do
     description: "",
     tools: [],
     sub_agents: [],
-    max_iterations: 10
+    max_iterations: 10,
+    generate_config: %{}
   ]
 
   @type t :: %__MODULE__{
@@ -26,7 +27,8 @@ defmodule ADK.Agent.LlmAgent do
           description: String.t(),
           tools: [map()],
           sub_agents: [ADK.Agent.t()],
-          max_iterations: pos_integer()
+          max_iterations: pos_integer(),
+          generate_config: map()
         }
 
   @doc """
@@ -96,11 +98,19 @@ defmodule ADK.Agent.LlmAgent do
           calls ->
             tool_results = execute_tools(ctx, agent, calls)
 
+            response_parts =
+              Enum.map(tool_results, fn result ->
+                %{function_response: %{
+                  name: result.name,
+                  response: Map.drop(result, [:name])
+                }}
+              end)
+
             response_event =
               ADK.Event.new(%{
                 invocation_id: ctx.invocation_id,
                 author: agent.name,
-                function_responses: tool_results
+                content: %{role: :user, parts: response_parts}
               })
 
             if ctx.session_pid do
@@ -112,7 +122,17 @@ defmodule ADK.Agent.LlmAgent do
         end
 
       {:error, reason} ->
-        [ADK.Event.error(reason, %{invocation_id: ctx.invocation_id, author: agent.name})]
+        case ADK.Callback.run_on_error(ctx.callbacks, {:error, reason}, cb_ctx) do
+          {:retry, _retry_ctx} ->
+            do_run(ctx, agent, iteration + 1)
+
+          {:fallback, {:ok, response}} ->
+            event = event_from_response(response, ctx, agent)
+            [maybe_save_output(event, ctx, agent)]
+
+          {:error, final_reason} ->
+            [ADK.Event.error(final_reason, %{invocation_id: ctx.invocation_id, author: agent.name})]
+        end
     end
   end
 
@@ -123,7 +143,8 @@ defmodule ADK.Agent.LlmAgent do
       model: agent.model,
       instruction: agent.instruction,
       messages: messages,
-      tools: Enum.map(agent.tools, &ADK.Tool.declaration/1)
+      tools: Enum.map(agent.tools, &ADK.Tool.declaration/1),
+      generate_config: agent.generate_config || %{}
     }
   end
 
@@ -154,8 +175,7 @@ defmodule ADK.Agent.LlmAgent do
     ADK.Event.new(%{
       invocation_id: ctx.invocation_id,
       author: agent.name,
-      content: response.content,
-      function_calls: extract_function_calls(response)
+      content: response.content
     })
   end
 

@@ -81,10 +81,39 @@ defmodule ADK.LLM.OpenAI do
     messages = build_messages(request)
     body = %{model: model, messages: messages}
 
-    case Map.get(request, :tools) do
+    body =
+      case Map.get(request, :tools) do
+        nil -> body
+        [] -> body
+        tools -> Map.put(body, :tools, format_tools(tools))
+      end
+
+    # Apply generate_config
+    case Map.get(request, :generate_config) do
       nil -> body
-      [] -> body
-      tools -> Map.put(body, :tools, format_tools(tools))
+      config when config == %{} -> body
+      config ->
+        body
+        |> put_if(:temperature, config[:temperature])
+        |> put_if(:top_p, config[:top_p])
+        |> put_if(:max_tokens, config[:max_output_tokens])
+        |> put_if(:stop, config[:stop_sequences])
+        |> put_if(:n, config[:candidate_count])
+        |> put_if(:response_format, translate_response_format(config))
+    end
+  end
+
+  defp put_if(map, _key, nil), do: map
+  defp put_if(map, key, value), do: Map.put(map, key, value)
+
+  defp translate_response_format(config) do
+    case config[:response_mime_type] do
+      "application/json" ->
+        case config[:response_schema] do
+          nil -> %{type: "json_object"}
+          schema -> %{type: "json_schema", json_schema: schema}
+        end
+      _ -> nil
     end
   end
 

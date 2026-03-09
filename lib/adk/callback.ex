@@ -52,6 +52,17 @@ defmodule ADK.Callback do
   @callback after_model({:ok, map()} | {:error, term()}, callback_ctx()) ::
               {:ok, map()} | {:error, term()}
 
+  @doc """
+  Called when the LLM backend returns an error.
+
+  Return one of:
+  - `{:retry, callback_ctx}` — retry the LLM call
+  - `{:fallback, {:ok, response}}` — use a fallback response
+  - `{:error, reason}` — propagate the error (re-raise)
+  """
+  @callback on_model_error({:error, term()}, callback_ctx()) ::
+              {:retry, callback_ctx()} | {:fallback, {:ok, map()}} | {:error, term()}
+
   @doc "Called before a tool executes. Return `{:cont, callback_ctx}` to continue or `{:halt, result}` to short-circuit."
   @callback before_tool(callback_ctx()) :: {:cont, callback_ctx()} | {:halt, ADK.Tool.result()}
 
@@ -63,6 +74,7 @@ defmodule ADK.Callback do
     after_agent: 2,
     before_model: 1,
     after_model: 2,
+    on_model_error: 2,
     before_tool: 1,
     after_tool: 2
   ]
@@ -81,6 +93,26 @@ defmodule ADK.Callback do
         end
       else
         {:cont, {:cont, ctx}}
+      end
+    end)
+  end
+
+  @doc """
+  Run on_model_error callbacks. Returns `{:retry, callback_ctx}`, `{:fallback, {:ok, response}}`,
+  or `{:error, reason}`. First callback to return non-error wins.
+  """
+  @spec run_on_error([module()], {:error, term()}, callback_ctx()) ::
+          {:retry, callback_ctx()} | {:fallback, {:ok, map()}} | {:error, term()}
+  def run_on_error(callbacks, error, callback_ctx) do
+    Enum.reduce_while(callbacks, error, fn mod, err ->
+      if function_exported?(mod, :on_model_error, 2) do
+        case apply(mod, :on_model_error, [err, callback_ctx]) do
+          {:retry, _} = result -> {:halt, result}
+          {:fallback, _} = result -> {:halt, result}
+          {:error, _} = new_err -> {:cont, new_err}
+        end
+      else
+        {:cont, err}
       end
     end)
   end
