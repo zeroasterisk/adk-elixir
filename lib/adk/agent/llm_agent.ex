@@ -11,24 +11,24 @@ defmodule ADK.Agent.LlmAgent do
     :name,
     :model,
     :instruction,
+    :global_instruction,
     :output_key,
     description: "",
     tools: [],
     sub_agents: [],
-    max_iterations: 10,
-    generate_config: %{}
+    max_iterations: 10
   ]
 
   @type t :: %__MODULE__{
           name: String.t(),
           model: String.t(),
           instruction: String.t(),
+          global_instruction: String.t() | nil,
           output_key: atom() | String.t() | nil,
           description: String.t(),
           tools: [map()],
           sub_agents: [ADK.Agent.t()],
-          max_iterations: pos_integer(),
-          generate_config: map()
+          max_iterations: pos_integer()
         }
 
   @doc """
@@ -98,54 +98,154 @@ defmodule ADK.Agent.LlmAgent do
           calls ->
             tool_results = execute_tools(ctx, agent, calls)
 
-            response_parts =
-              Enum.map(tool_results, fn result ->
-                %{function_response: %{
-                  name: result.name,
-                  response: Map.drop(result, [:name])
-                }}
-              end)
+            # Check if any tool result is a transfer
+            transfer = Enum.find(tool_results, &Map.get(&1, :transfer_to_agent))
 
-            response_event =
-              ADK.Event.new(%{
-                invocation_id: ctx.invocation_id,
-                author: agent.name,
-                content: %{role: :user, parts: response_parts}
-              })
+            case transfer do
+              %{transfer_to_agent: target_name} ->
+                # Find the target sub-agent
+                target = Enum.find(agent.sub_agents, fn sa ->
+                  ADK.Agent.name(sa) == target_name
+                end)
 
-            if ctx.session_pid do
-              ADK.Session.append_event(ctx.session_pid, event)
-              ADK.Session.append_event(ctx.session_pid, response_event)
+                transfer_event =
+                  ADK.Event.new(%{
+                    invocation_id: ctx.invocation_id,
+                    author: agent.name,
+                    content: %{parts: [%{text: "Transferring to #{target_name}"}]},
+                    actions: %ADK.EventActions{transfer_to_agent: target_name}
+                  })
+
+                if ctx.session_pid do
+                  ADK.Session.append_event(ctx.session_pid, event)
+                  ADK.Session.append_event(ctx.session_pid, transfer_event)
+                end
+
+                if target do
+                  child_ctx = ADK.Context.for_child(ctx, target)
+                  sub_events = ADK.Agent.run(target, child_ctx)
+                  [event, transfer_event | sub_events]
+                else
+                  error_event = ADK.Event.error(
+                    "Unknown agent: #{target_name}",
+                    %{invocation_id: ctx.invocation_id, author: agent.name}
+                  )
+                  [event, transfer_event, error_event]
+                end
+
+              nil ->
+                response_event =
+                  ADK.Event.new(%{
+                    invocation_id: ctx.invocation_id,
+                    author: agent.name,
+                    function_responses: tool_results
+                  })
+
+                if ctx.session_pid do
+                  ADK.Session.append_event(ctx.session_pid, event)
+                  ADK.Session.append_event(ctx.session_pid, response_event)
+                end
+
+                [event, response_event | do_run(ctx, agent, iteration + 1)]
             end
-
-            [event, response_event | do_run(ctx, agent, iteration + 1)]
         end
 
       {:error, reason} ->
-        case ADK.Callback.run_on_error(ctx.callbacks, {:error, reason}, cb_ctx) do
-          {:retry, _retry_ctx} ->
-            do_run(ctx, agent, iteration + 1)
-
-          {:fallback, {:ok, response}} ->
-            event = event_from_response(response, ctx, agent)
-            [maybe_save_output(event, ctx, agent)]
-
-          {:error, final_reason} ->
-            [ADK.Event.error(final_reason, %{invocation_id: ctx.invocation_id, author: agent.name})]
-        end
+        [ADK.Event.error(reason, %{invocation_id: ctx.invocation_id, author: agent.name})]
     end
   end
 
   defp build_request(ctx, agent) do
     messages = build_messages(ctx)
+    all_tools = effective_tools(agent)
+    instruction = compile_instruction(ctx, agent)
 
     %{
       model: agent.model,
-      instruction: agent.instruction,
+      instruction: instruction,
       messages: messages,
-      tools: Enum.map(agent.tools, &ADK.Tool.declaration/1),
-      generate_config: agent.generate_config || %{}
+      tools: Enum.map(all_tools, &ADK.Tool.declaration/1)
     }
+  end
+
+  @doc """
+  Compile the full system instruction by merging global + agent instruction
+  and substituting state variables via `{key}` template patterns.
+
+  This mirrors Python ADK's `_compile_system_instruction()`.
+  """
+  @spec compile_instruction(ADK.Context.t(), t()) :: String.t()
+  def compile_instruction(ctx, agent) do
+    # Merge global + agent instruction
+    base =
+      case agent.global_instruction do
+        nil -> agent.instruction || ""
+        "" -> agent.instruction || ""
+        global -> global <> "\n" <> (agent.instruction || "")
+      end
+
+    # Add transfer instructions if sub-agents exist
+    base =
+      case agent.sub_agents do
+        [] ->
+          base
+
+        subs ->
+          transfer_info =
+            subs
+            |> Enum.map(fn sa ->
+              name = ADK.Agent.name(sa)
+              desc = ADK.Agent.description(sa)
+
+              if desc != "" do
+                "- #{name}: #{desc}"
+              else
+                "- #{name}"
+              end
+            end)
+            |> Enum.join("\n")
+
+          base <>
+            "\n\nYou can transfer to these agents:\n" <> transfer_info
+      end
+
+    # Substitute state variables
+    substitute_state_variables(base, ctx)
+  end
+
+  defp substitute_state_variables(text, ctx) do
+    state = get_session_state(ctx)
+
+    Regex.replace(~r/\{(\w+)\}/, text, fn full_match, key ->
+      try do
+        case Map.get(state, key) || Map.get(state, String.to_existing_atom(key)) do
+          nil -> full_match
+          value -> to_string(value)
+        end
+      rescue
+        ArgumentError -> full_match
+      end
+    end)
+  end
+
+  defp get_session_state(%{session_pid: nil}), do: %{}
+
+  defp get_session_state(%{session_pid: pid}) do
+    case ADK.Session.get(pid) do
+      {:ok, session} -> session.state
+      _ -> %{}
+    end
+  end
+
+  @doc false
+  def effective_tools(agent) do
+    transfer_tools =
+      case agent.sub_agents do
+        [] -> []
+        subs -> ADK.Tool.TransferToAgent.tools_for_sub_agents(subs)
+      end
+
+    agent.tools ++ transfer_tools
   end
 
   defp build_messages(ctx) do
@@ -175,7 +275,8 @@ defmodule ADK.Agent.LlmAgent do
     ADK.Event.new(%{
       invocation_id: ctx.invocation_id,
       author: agent.name,
-      content: response.content
+      content: response.content,
+      function_calls: extract_function_calls(response)
     })
   end
 
@@ -190,7 +291,7 @@ defmodule ADK.Agent.LlmAgent do
 
   defp execute_tools(ctx, agent, calls) do
     tools_map =
-      agent.tools
+      effective_tools(agent)
       |> Enum.map(fn t -> {t.name, t} end)
       |> Map.new()
 
@@ -223,6 +324,9 @@ defmodule ADK.Agent.LlmAgent do
             end)
 
           case tool_result do
+            {:transfer_to_agent, target_name} ->
+              %{id: call[:id] || "call-1", name: call.name, result: "Transferring to #{target_name}", transfer_to_agent: target_name}
+
             {:ok, result} ->
               %{id: call[:id] || "call-1", name: call.name, result: result}
 
