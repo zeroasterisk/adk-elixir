@@ -62,6 +62,49 @@ defmodule ADK.RunnerSessionStoreTest do
       assert length(data.events) >= 4
     end
 
+    test "two runners with different stores work independently" do
+      ADK.LLM.Mock.set_responses(["Reply A", "Reply B"])
+
+      agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help")
+
+      # Runner 1: uses InMemory store
+      runner1 =
+        ADK.Runner.new(
+          app_name: "multi_store_1",
+          agent: agent,
+          session_store: {ADK.Session.Store.InMemory, []}
+        )
+
+      # Runner 2: uses JsonFile store
+      runner2 =
+        ADK.Runner.new(
+          app_name: "multi_store_2",
+          agent: agent,
+          session_store: {ADK.Session.Store.JsonFile, []}
+        )
+
+      # Run both
+      events1 = ADK.Runner.run(runner1, "user1", "sess1", "Hello from runner 1")
+      events2 = ADK.Runner.run(runner2, "user1", "sess1", "Hello from runner 2")
+
+      assert length(events1) >= 1
+      assert length(events2) >= 1
+
+      # Runner 1's session is in InMemory, NOT in JsonFile
+      assert {:ok, data1} = ADK.Session.Store.InMemory.load("multi_store_1", "user1", "sess1")
+      assert data1.app_name == "multi_store_1"
+
+      assert {:error, :not_found} =
+               ADK.Session.Store.InMemory.load("multi_store_2", "user1", "sess1")
+
+      # Runner 2's session is in JsonFile, NOT in InMemory
+      assert {:ok, data2} = ADK.Session.Store.JsonFile.load("multi_store_2", "user1", "sess1")
+      assert data2.app_name == "multi_store_2"
+
+      # Cleanup JsonFile artifacts
+      File.rm_rf!(Path.join(["priv/sessions", "multi_store_2"]))
+    end
+
     test "nil session_store preserves backward compatibility" do
       ADK.LLM.Mock.set_responses(["OK"])
 
