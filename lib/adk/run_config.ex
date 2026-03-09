@@ -2,17 +2,33 @@ defmodule ADK.RunConfig do
   @moduledoc """
   Configuration struct for controlling Runner execution behavior.
 
+  Mirrors Python ADK's `RunConfig` for parity. All new fields are optional
+  (nil by default) and only take effect when explicitly set.
+
   ## Fields
 
   - `:streaming_mode` — `:none`, `:sse`, or `:live` (default: `:none`)
   - `:max_llm_calls` — Maximum number of LLM calls per run (default: `nil` = unlimited)
   - `:output_format` — Output format hint, e.g. `"text"`, `"json"` (default: `"text"`)
-  - `:speech_config` — Speech configuration stub (default: `nil`)
+  - `:speech_config` — Speech configuration map (voice, language) (default: `nil`)
+  - `:generate_config` — Generation config overrides (temperature, etc.) (default: `%{}`)
+  - `:response_modalities` — Output modalities, e.g. `["text"]`, `["audio"]` (default: `nil`)
+  - `:output_config` — Structured output config: `response_mime_type`, `response_schema` (default: `nil`)
+  - `:support_cfc` — Enable Compositional Function Calling via Live API (default: `false`)
+  - `:custom_metadata` — Arbitrary metadata map for the invocation (default: `nil`)
 
   ## Examples
 
       config = ADK.RunConfig.new(streaming_mode: :sse, max_llm_calls: 10)
       ADK.Runner.run(runner, "user", "sess", "hello", run_config: config)
+
+      # Structured JSON output
+      config = ADK.RunConfig.new(
+        output_config: %{
+          response_mime_type: "application/json",
+          response_schema: %{type: "object", properties: %{name: %{type: "string"}}}
+        }
+      )
   """
 
   defstruct [
@@ -20,16 +36,30 @@ defmodule ADK.RunConfig do
     max_llm_calls: nil,
     output_format: "text",
     speech_config: nil,
-    generate_config: %{}
+    generate_config: %{},
+    response_modalities: nil,
+    output_config: nil,
+    support_cfc: false,
+    custom_metadata: nil
   ]
 
   @type streaming_mode :: :none | :sse | :live
+
+  @type output_config :: %{
+          optional(:response_mime_type) => String.t(),
+          optional(:response_schema) => map()
+        }
+
   @type t :: %__MODULE__{
           streaming_mode: streaming_mode(),
           max_llm_calls: pos_integer() | nil,
           output_format: String.t(),
           speech_config: map() | nil,
-          generate_config: map()
+          generate_config: map(),
+          response_modalities: [String.t()] | nil,
+          output_config: output_config() | nil,
+          support_cfc: boolean(),
+          custom_metadata: map() | nil
         }
 
   @valid_streaming_modes [:none, :sse, :live]

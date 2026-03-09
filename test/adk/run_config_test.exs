@@ -11,6 +11,10 @@ defmodule ADK.RunConfigTest do
     assert config.max_llm_calls == nil
     assert config.output_format == "text"
     assert config.speech_config == nil
+    assert config.response_modalities == nil
+    assert config.output_config == nil
+    assert config.support_cfc == false
+    assert config.custom_metadata == nil
   end
 
   test "new/1 accepts valid streaming modes" do
@@ -54,6 +58,30 @@ defmodule ADK.RunConfigTest do
     assert RunConfig.new(speech_config: speech).speech_config == speech
   end
 
+  # -- New fields --
+
+  test "new/1 accepts response_modalities" do
+    config = RunConfig.new(response_modalities: ["text", "audio"])
+    assert config.response_modalities == ["text", "audio"]
+  end
+
+  test "new/1 accepts output_config" do
+    oc = %{response_mime_type: "application/json", response_schema: %{type: "object"}}
+    config = RunConfig.new(output_config: oc)
+    assert config.output_config == oc
+  end
+
+  test "new/1 accepts support_cfc" do
+    config = RunConfig.new(support_cfc: true)
+    assert config.support_cfc == true
+  end
+
+  test "new/1 accepts custom_metadata" do
+    meta = %{trace_id: "abc-123", env: "prod"}
+    config = RunConfig.new(custom_metadata: meta)
+    assert config.custom_metadata == meta
+  end
+
   # -- build/1 tests --
 
   test "build/0 returns ok tuple with defaults" do
@@ -77,6 +105,20 @@ defmodule ADK.RunConfigTest do
     config = RunConfig.new(streaming_mode: :live)
     ctx = %ADK.Context{invocation_id: "test", run_config: config}
     assert ctx.run_config.streaming_mode == :live
+  end
+
+  test "all new fields round-trip through Context" do
+    config = RunConfig.new(
+      output_config: %{response_mime_type: "application/json"},
+      response_modalities: ["text"],
+      support_cfc: true,
+      custom_metadata: %{foo: "bar"}
+    )
+    ctx = %ADK.Context{invocation_id: "test", run_config: config}
+    assert ctx.run_config.output_config == %{response_mime_type: "application/json"}
+    assert ctx.run_config.response_modalities == ["text"]
+    assert ctx.run_config.support_cfc == true
+    assert ctx.run_config.custom_metadata == %{foo: "bar"}
   end
 
   # -- Doctests --

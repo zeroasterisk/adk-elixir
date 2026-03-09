@@ -78,6 +78,25 @@ defmodule ADK.Agent.LlmAgent do
   def do_run(_ctx, agent, iteration) when iteration >= agent.max_iterations, do: []
 
   def do_run(ctx, agent, iteration) do
+    # Enforce max_llm_calls from RunConfig (counts LLM invocations across the run)
+    if llm_call_limit_reached?(ctx, iteration) do
+      [ADK.Event.error(
+        "max_llm_calls limit reached",
+        %{invocation_id: ctx.invocation_id, author: agent.name}
+      )]
+    else
+      do_run_inner(ctx, agent, iteration)
+    end
+  end
+
+  defp llm_call_limit_reached?(%{run_config: %ADK.RunConfig{max_llm_calls: max}}, iteration)
+       when is_integer(max) and max >= 1 do
+    iteration >= max
+  end
+
+  defp llm_call_limit_reached?(_ctx, _iteration), do: false
+
+  defp do_run_inner(ctx, agent, iteration) do
     request = build_request(ctx, agent)
 
     cb_ctx = %{agent: ctx.agent, context: ctx, request: request}
@@ -204,14 +223,30 @@ defmodule ADK.Agent.LlmAgent do
     # Merge generate_config: agent defaults + run_config overrides
     merged_config = merge_generate_config(agent.generate_config, ctx)
 
-    case merged_config do
-      config when is_map(config) and map_size(config) > 0 ->
-        Map.put(request, :generate_config, config)
+    request =
+      case merged_config do
+        config when is_map(config) and map_size(config) > 0 ->
+          Map.put(request, :generate_config, config)
 
-      _ ->
-        request
-    end
+        _ ->
+          request
+      end
+
+    # Apply RunConfig passthrough fields
+    apply_run_config_to_request(request, ctx)
   end
+
+  defp apply_run_config_to_request(request, %{run_config: %ADK.RunConfig{} = rc}) do
+    request
+    |> maybe_put(:output_config, rc.output_config)
+    |> maybe_put(:response_modalities, rc.response_modalities)
+    |> maybe_put(:speech_config, rc.speech_config)
+  end
+
+  defp apply_run_config_to_request(request, _ctx), do: request
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
   defp merge_generate_config(agent_config, %{run_config: %ADK.RunConfig{generate_config: rc}})
        when is_map(rc) and map_size(rc) > 0 do
