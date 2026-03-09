@@ -8,8 +8,33 @@ defmodule ADK.Runner do
   @type t :: %__MODULE__{
           app_name: String.t(),
           agent: ADK.Agent.t(),
-          session_store: module() | nil
+          session_store: {module(), keyword()} | nil
         }
+
+  @doc """
+  Create a new Runner.
+
+  ## Options
+
+    * `:app_name` - application name (required)
+    * `:agent` - the agent to run (required)
+    * `:session_store` - optional `{Module, opts}` tuple for session persistence
+
+  ## Examples
+
+      iex> agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help")
+      iex> runner = ADK.Runner.new(app_name: "test", agent: agent)
+      iex> runner.app_name
+      "test"
+  """
+  @spec new(keyword()) :: t()
+  def new(opts) do
+    %__MODULE__{
+      app_name: Keyword.fetch!(opts, :app_name),
+      agent: Keyword.fetch!(opts, :agent),
+      session_store: Keyword.get(opts, :session_store)
+    }
+  end
 
   @doc """
   Run an agent with a message, returning a list of events.
@@ -26,21 +51,25 @@ defmodule ADK.Runner do
   def run(%__MODULE__{} = runner, user_id, session_id, message, opts \\ []) do
     message = normalize_message(message)
 
-    # Find existing session or start a new one
+    # Find existing session or start a new one (with store if configured)
     session_pid =
       case ADK.Session.lookup(runner.app_name, user_id, session_id) do
         {:ok, pid} ->
           pid
 
         :error ->
-          {:ok, pid} =
-            ADK.Session.start_supervised(
+          session_opts =
+            [
               app_name: runner.app_name,
               user_id: user_id,
               session_id: session_id
-            )
+            ]
+            |> maybe_add_store(runner.session_store)
 
-          pid
+          case ADK.Session.start_supervised(session_opts) do
+            {:ok, pid} -> pid
+            {:error, {:already_started, pid}} -> pid
+          end
       end
 
     invocation_id = generate_id()
@@ -121,6 +150,11 @@ defmodule ADK.Runner do
       ADK.Session.append_event(session_pid, event)
     end)
 
+    # Save session to store if configured
+    if runner.session_store do
+      ADK.Session.save(session_pid)
+    end
+
     # Stop the session process
     if Keyword.get(opts, :stop_session, true) do
       GenServer.stop(session_pid, :normal)
@@ -135,6 +169,9 @@ defmodule ADK.Runner do
 
   defp message_text(%{text: t}), do: t
   defp message_text(t) when is_binary(t), do: t
+
+  defp maybe_add_store(opts, nil), do: opts
+  defp maybe_add_store(opts, store), do: Keyword.put(opts, :store, store)
 
   defp get_plugins do
     if Process.whereis(ADK.Plugin.Registry) do
