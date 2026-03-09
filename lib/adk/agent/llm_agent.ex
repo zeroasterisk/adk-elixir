@@ -140,11 +140,20 @@ defmodule ADK.Agent.LlmAgent do
                 end
 
               nil ->
+                response_parts =
+                  Enum.map(tool_results, fn tr ->
+                    %{function_response: %{
+                      name: tr.name,
+                      id: tr[:id],
+                      response: tr[:result] || tr[:error] || ""
+                    }}
+                  end)
+
                 response_event =
                   ADK.Event.new(%{
                     invocation_id: ctx.invocation_id,
                     author: agent.name,
-                    function_responses: tool_results
+                    content: %{role: :user, parts: response_parts}
                   })
 
                 if ctx.session_pid do
@@ -321,8 +330,7 @@ defmodule ADK.Agent.LlmAgent do
     ADK.Event.new(%{
       invocation_id: ctx.invocation_id,
       author: agent.name,
-      content: response.content,
-      function_calls: extract_function_calls(response)
+      content: response.content
     })
   end
 

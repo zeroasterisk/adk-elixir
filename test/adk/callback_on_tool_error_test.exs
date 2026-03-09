@@ -92,7 +92,7 @@ defmodule ADK.Callback.OnToolErrorTest do
       :ok
     end
 
-    @tag :skip  # Pre-existing Event struct issue with function_calls key
+    @tag :skip  # Tests use plain maps as tools instead of FunctionTool structs
     test "fallback callback provides tool result on error" do
       # Set up a tool that fails, then succeeds via fallback
       failing_tool = %{
@@ -125,7 +125,7 @@ defmodule ADK.Callback.OnToolErrorTest do
       assert "Done with fallback" in texts
     end
 
-    @tag :skip  # Pre-existing Event struct issue with function_calls key
+    @tag :skip  # Tests use plain maps as tools instead of FunctionTool structs
     test "logging callback receives tool errors" do
       failing_tool = %{
         name: "fail_tool",
