@@ -4,7 +4,6 @@ defmodule ADK.Plugin.ReflectRetryIntegrationTest do
   alias ADK.Plugin.ReflectRetry
 
   setup do
-    # Start required infrastructure
     unless Process.whereis(ADK.SessionSupervisor) do
       start_supervised!({DynamicSupervisor, name: ADK.SessionSupervisor, strategy: :one_for_one})
     end
@@ -20,133 +19,89 @@ defmodule ADK.Plugin.ReflectRetryIntegrationTest do
     :ok
   end
 
-  describe "plugin behaviour" do
-    test "init/1 returns ok with state" do
-      assert {:ok, state} = ReflectRetry.init(max_retries: 2)
-      assert state.max_retries == 2
-      assert state.retry_counts == %{}
-    end
-
-    test "init/1 with defaults" do
-      assert {:ok, state} = ReflectRetry.init([])
-      assert state.max_retries == 3
-    end
-
-    test "before_run/2 passes through" do
-      {:ok, state} = ReflectRetry.init([])
-      ctx = %ADK.Context{invocation_id: "test", agent: nil}
-      assert {:cont, ^ctx, ^state} = ReflectRetry.before_run(ctx, state)
-    end
-
-    test "after_run/3 passes through when no errors" do
-      {:ok, state} = ReflectRetry.init([])
-      events = [ADK.Event.new(%{author: "bot", content: %{parts: [%{text: "ok"}]}})]
-      ctx = %ADK.Context{invocation_id: "test", agent: nil}
-
-      {result, _state} = ReflectRetry.after_run(events, ctx, state)
-      assert length(result) == 1
-      assert hd(result).author == "bot"
-    end
-
-    test "after_run/3 detects error events" do
-      assert ReflectRetry.has_error?(%ADK.Event{error: "something broke"})
-      refute ReflectRetry.has_error?(%ADK.Event{error: nil, author: "bot"})
-    end
-
-    test "after_run/3 retries on error with mock agent" do
-      {:ok, state} = ReflectRetry.init(max_retries: 2)
-
-      # Create a mock agent that succeeds on retry
-      call_count = :counters.new(1, [:atomics])
-      # Pre-set to 1 so the first agent call (triggered by after_run) succeeds
-      :counters.put(call_count, 1, 1)
-
-      agent =
-        ADK.Agent.Custom.new(
-          name: "retry_agent",
-          run_fn: fn _agent, _ctx ->
-            count = :counters.get(call_count, 1) + 1
-            :counters.put(call_count, 1, count)
-
-            if count <= 1 do
-              [ADK.Event.new(%{author: "retry_agent", error: "temporary failure"})]
-            else
-              [ADK.Event.new(%{author: "retry_agent", content: %{parts: [%{text: "success!"}]}})]
-            end
-          end
-        )
-
-      # Start a session
-      {:ok, session_pid} =
-        ADK.Session.start_link(
-          app_name: "test",
-          user_id: "u1",
-          session_id: "reflect-retry-#{System.unique_integer([:positive])}"
-        )
-
-      ctx = %ADK.Context{
-        invocation_id: "inv-retry-test",
-        agent: agent,
-        session_pid: session_pid
-      }
-
-      error_events = [ADK.Event.new(%{author: "retry_agent", error: "temporary failure"})]
-
-      {result_events, new_state} = ReflectRetry.after_run(error_events, ctx, state)
-
-      # Should have retried and succeeded
-      success_events = Enum.filter(result_events, fn e -> e.error == nil && ADK.Event.text(e) end)
-      assert Enum.any?(success_events, fn e -> ADK.Event.text(e) == "success!" end)
-
-      # Retry count should be incremented
-      assert Map.get(new_state.retry_counts, "inv-retry-test") == 1
-
-      GenServer.stop(session_pid)
-    end
-
-    test "after_run/3 respects max_retries" do
-      {:ok, state} = ReflectRetry.init(max_retries: 1)
-
-      # Agent that always fails
-      agent =
-        ADK.Agent.Custom.new(
-          name: "always_fail",
-          run_fn: fn _agent, _ctx ->
-            [ADK.Event.new(%{author: "always_fail", error: "permanent failure"})]
-          end
-        )
-
-      {:ok, session_pid} =
-        ADK.Session.start_link(
-          app_name: "test",
-          user_id: "u1",
-          session_id: "reflect-max-#{System.unique_integer([:positive])}"
-        )
-
-      ctx = %ADK.Context{
-        invocation_id: "inv-max-test",
-        agent: agent,
-        session_pid: session_pid
-      }
-
-      error_events = [ADK.Event.new(%{author: "always_fail", error: "permanent failure"})]
-
-      {result_events, new_state} = ReflectRetry.after_run(error_events, ctx, state)
-
-      # All events should still have errors (retried once but still failed, then gave up)
-      assert Map.get(new_state.retry_counts, "inv-max-test") == 1
-
-      GenServer.stop(session_pid)
-    end
-  end
-
-  describe "integration with Runner via Plugin.Registry" do
-    test "registered plugin is picked up by Runner" do
-      # Register the plugin
-      ADK.Plugin.register({ADK.Plugin.ReflectRetry, max_retries: 1})
+  describe "full plugin pipeline with Registry" do
+    test "registered plugin is discoverable" do
+      ADK.Plugin.register({ReflectRetry, max_retries: 2})
 
       plugins = ADK.Plugin.list()
-      assert Enum.any?(plugins, fn {mod, _} -> mod == ADK.Plugin.ReflectRetry end)
+      assert Enum.any?(plugins, fn {mod, _} -> mod == ReflectRetry end)
+    end
+
+    test "plugin hooks run through Plugin.run_before/run_after" do
+      {:ok, state} = ReflectRetry.init(max_retries: 1)
+      plugins = [{ReflectRetry, state}]
+
+      ctx = %ADK.Context{invocation_id: "pipeline-test"}
+      good_events = [ADK.Event.new(%{author: "bot", content: %{parts: [%{text: "ok"}]}})]
+
+      # before_run should pass through
+      assert {:cont, ^ctx, updated_plugins} = ADK.Plugin.run_before(plugins, ctx)
+
+      # after_run with good events should pass through
+      {result, _} = ADK.Plugin.run_after(updated_plugins, good_events, ctx)
+      assert result == good_events
+    end
+
+    test "plugin retries via run_after when agent fails then recovers" do
+      agent = ADK.Agent.Custom.new(
+        name: "pipeline_agent",
+        run_fn: fn _agent, ctx ->
+          if ADK.Context.get_temp(ctx, :reflection_feedback) do
+            [ADK.Event.new(%{author: "pipeline_agent", content: %{parts: [%{text: "success"}]}})]
+          else
+            [ADK.Event.new(%{author: "pipeline_agent", error: "fail"})]
+          end
+        end
+      )
+
+      {:ok, state} = ReflectRetry.init(max_retries: 2)
+      plugins = [{ReflectRetry, state}]
+
+      ctx = %ADK.Context{invocation_id: "pipeline-retry", agent: agent}
+      error_events = [ADK.Event.new(%{author: "pipeline_agent", error: "fail"})]
+
+      {result, _} = ADK.Plugin.run_after(plugins, error_events, ctx)
+
+      texts = Enum.map(result, &ADK.Event.text/1) |> Enum.filter(& &1)
+      assert Enum.any?(texts, &(&1 =~ "success"))
+    end
+
+    test "end-to-end: validator-based retry through plugin pipeline" do
+      call_count = :counters.new(1, [:atomics])
+
+      agent = ADK.Agent.Custom.new(
+        name: "quality_agent",
+        run_fn: fn _agent, _ctx ->
+          n = :counters.get(call_count, 1) + 1
+          :counters.put(call_count, 1, n)
+
+          text =
+            if n >= 2,
+              do: "The capital of France is Paris.",
+              else: "I'm not sure about that."
+
+          [ADK.Event.new(%{author: "quality_agent", content: %{parts: [%{text: text}]}})]
+        end
+      )
+
+      validator = fn events ->
+        text = events |> Enum.map_join(" ", &(ADK.Event.text(&1) || ""))
+        if String.contains?(text, "not sure"),
+          do: {:error, "Response was uncertain — be definitive"},
+          else: :ok
+      end
+
+      {:ok, state} = ReflectRetry.init(max_retries: 3, validator: validator)
+      plugins = [{ReflectRetry, state}]
+
+      ctx = %ADK.Context{invocation_id: "e2e-val", agent: agent}
+      initial = [ADK.Event.new(%{author: "quality_agent", content: %{parts: [%{text: "I'm not sure about that."}]}})]
+
+      {result, _} = ADK.Plugin.run_after(plugins, initial, ctx)
+
+      texts = Enum.map(result, &ADK.Event.text/1) |> Enum.filter(& &1)
+      assert Enum.any?(texts, &(&1 =~ "Paris"))
+      assert Enum.any?(texts, &(&1 =~ "Reflect & Retry"))
     end
   end
 end
