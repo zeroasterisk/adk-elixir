@@ -6,6 +6,14 @@ defmodule Mix.Tasks.Adk.New do
 
       mix adk.new my_agent
       mix adk.new my_agent --path ./projects
+      mix adk.new my_agent --model gemini-2.5-flash
+      mix adk.new my_agent --no-phoenix
+
+  ## Options
+
+    * `--path` — Parent directory for the project (default: `.`)
+    * `--model` — Default LLM model (default: `gemini-2.0-flash`)
+    * `--no-phoenix` — Skip Phoenix/Plug web endpoints
 
   The project name must be a valid Elixir identifier (lowercase, underscores allowed).
   """
@@ -13,11 +21,12 @@ defmodule Mix.Tasks.Adk.New do
 
   use Mix.Task
 
-  @templates_path "priv/templates/adk.new"
+  @switches [path: :string, model: :string, phoenix: :boolean]
+  @default_model "gemini-2.0-flash"
 
   @impl true
   def run(args) do
-    {opts, argv, _} = OptionParser.parse(args, strict: [path: :string])
+    {opts, argv, _} = OptionParser.parse(args, strict: @switches)
 
     case argv do
       [name] -> create_project(name, opts)
@@ -37,6 +46,8 @@ defmodule Mix.Tasks.Adk.New do
     module_name = Macro.camelize(name)
     base_path = opts[:path] || "."
     project_path = Path.join(base_path, name)
+    phoenix? = Keyword.get(opts, :phoenix, true)
+    model = Keyword.get(opts, :model, @default_model)
 
     if File.dir?(project_path) do
       Mix.raise("Directory #{project_path} already exists!")
@@ -46,10 +57,29 @@ defmodule Mix.Tasks.Adk.New do
       app_name: name,
       module_name: module_name,
       otp_app: String.to_atom(name),
-      adk_version: adk_version()
+      adk_version: adk_version(),
+      model: model,
+      phoenix: phoenix?
     ]
 
-    templates = [
+    templates = base_templates(name) ++ phoenix_templates(name, phoenix?)
+
+    Mix.shell().info([:green, "* creating", :reset, " #{project_path}"])
+
+    for {template, dest} <- templates do
+      dest_path = Path.join(project_path, dest)
+      content = render_template(template, assigns)
+
+      dest_path |> Path.dirname() |> File.mkdir_p!()
+      File.write!(dest_path, content)
+      Mix.shell().info([:green, "* creating", :reset, " #{dest}"])
+    end
+
+    print_next_steps(name, module_name, project_path, phoenix?)
+  end
+
+  defp base_templates(name) do
+    [
       {"mix.exs.eex", "mix.exs"},
       {"lib/app.ex.eex", "lib/#{name}.ex"},
       {"lib/app/agent.ex.eex", "lib/#{name}/agent.ex"},
@@ -64,17 +94,54 @@ defmodule Mix.Tasks.Adk.New do
       {"gitignore.eex", ".gitignore"},
       {"formatter.exs.eex", ".formatter.exs"}
     ]
+  end
 
-    Mix.shell().info([:green, "* creating", :reset, " #{project_path}"])
+  defp phoenix_templates(name, true) do
+    [{"lib/app/router.ex.eex", "lib/#{name}/router.ex"}]
+  end
 
-    for {template, dest} <- templates do
-      dest_path = Path.join(project_path, dest)
-      content = render_template(template, assigns)
+  defp phoenix_templates(_name, false), do: []
 
-      dest_path |> Path.dirname() |> File.mkdir_p!()
-      File.write!(dest_path, content)
-      Mix.shell().info([:green, "* creating", :reset, " #{dest}"])
+  @doc false
+  def valid_name?(name), do: Regex.match?(~r/^[a-z][a-z0-9_]*$/, name)
+
+  defp adk_version do
+    case :application.get_key(:adk, :vsn) do
+      {:ok, vsn} -> List.to_string(vsn)
+      _ -> "0.1.0"
     end
+  end
+
+  @doc false
+  def template_path do
+    case :code.priv_dir(:adk) do
+      {:error, _} -> "priv/templates/adk.new"
+      priv -> Path.join([priv, "templates", "adk.new"])
+    end
+  end
+
+  defp render_template(name, assigns) do
+    path = Path.join(template_path(), name)
+
+    path
+    |> File.read!()
+    |> EEx.eval_string(assigns: assigns)
+  end
+
+  defp print_next_steps(name, module_name, project_path, phoenix?) do
+    web_instructions =
+      if phoenix? do
+        """
+
+        To start the web server:
+
+            #{module_name}.Router.start(port: 8080)
+
+        Then visit http://localhost:8080/health
+        """
+      else
+        ""
+      end
 
     Mix.shell().info("""
 
@@ -91,31 +158,7 @@ defmodule Mix.Tasks.Adk.New do
     Then try:
 
         iex> #{module_name}.Agent.run("Hello, what can you do?")
-
+    #{web_instructions}
     """)
-  end
-
-  defp valid_name?(name) do
-    Regex.match?(~r/^[a-z][a-z0-9_]*$/, name)
-  end
-
-  defp adk_version do
-    case :application.get_key(:adk, :vsn) do
-      {:ok, vsn} -> List.to_string(vsn)
-      _ -> "0.1.0"
-    end
-  end
-
-  defp render_template(name, assigns) do
-    # Try priv dir first, fall back to relative path (for dev/test)
-    template_path =
-      case :code.priv_dir(:adk) do
-        {:error, _} -> Path.join(@templates_path, name)
-        priv -> Path.join([priv, "templates", "adk.new", name])
-      end
-
-    template_path
-    |> File.read!()
-    |> EEx.eval_string(assigns: assigns)
   end
 end

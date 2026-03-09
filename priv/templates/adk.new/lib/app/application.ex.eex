@@ -5,7 +5,7 @@ defmodule <%= @module_name %>.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      # Session store supervisor
+      # Session store
       {ADK.Session.Store.InMemory, name: <%= @module_name %>.SessionStore}
     ]
 

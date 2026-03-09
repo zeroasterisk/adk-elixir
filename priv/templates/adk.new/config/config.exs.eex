@@ -2,7 +2,7 @@ import Config
 
 # ADK Configuration
 config :<%= @app_name %>,
-  model: "gemini-2.0-flash"
+  model: "<%= @model %>"
 
 # Set your Gemini API key:
 #   export GEMINI_API_KEY=your_key_here

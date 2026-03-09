@@ -53,6 +53,7 @@ defmodule ADK.MixProject do
         "README.md",
         "guides/getting-started.md",
         "guides/concepts.md",
+        "guides/mix-adk-new.md",
         "CHANGELOG.md"
       ],
       groups_for_modules: [
