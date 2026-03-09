@@ -66,13 +66,12 @@ defmodule ADK.Tool.TransferToolTest do
   end
 
   test "LLM agent auto-injects transfer tool when sub_agents present" do
-    # First call: LLM calls transfer_to_agent
-    # Second call (sub-agent): returns result
-    # Third call: parent uses result to respond
+    # First call: parent LLM calls transfer_to_agent_helper (per-agent tool)
+    # Second call: sub-agent (helper) LLM responds
+    # Transfer is a handoff — parent does NOT continue after transfer
     ADK.LLM.Mock.set_responses([
-      %{function_call: %{name: "transfer_to_agent", args: %{"agent_name" => "helper"}, id: "fc-1"}},
-      "I am the helper sub-agent!",
-      "Based on the helper's response, here is the answer."
+      %{function_call: %{name: "transfer_to_agent_helper", args: %{}, id: "fc-1"}},
+      "I am the helper sub-agent!"
     ])
 
     sub = ADK.Agent.LlmAgent.new(
@@ -101,12 +100,18 @@ defmodule ADK.Tool.TransferToolTest do
 
     events = ADK.Agent.run(agent, ctx)
 
-    # Should have events from the transfer flow
+    # Should have: parent LLM event, transfer event, sub-agent response
     assert length(events) >= 3
 
-    # Last event should be the final response
+    # Last event should be the sub-agent's response (transfer is a handoff)
     last = List.last(events)
-    assert ADK.Event.text(last) =~ "answer"
+    assert ADK.Event.text(last) =~ "helper sub-agent"
+
+    # Verify transfer event exists
+    transfer_event = Enum.find(events, fn e ->
+      e.actions && e.actions.transfer_to_agent == "helper"
+    end)
+    assert transfer_event != nil
 
     GenServer.stop(session_pid)
   end

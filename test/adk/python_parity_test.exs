@@ -90,14 +90,13 @@ defmodule ADK.PythonParityTest do
 
   describe "agent transfer flow" do
     # Mirrors test_auto_to_auto: root transfers to sub_agent, sub_agent responds
+    # Transfer is a handoff — sub-agent runs and its response is final
     test "root agent transfers to sub-agent and gets response" do
       ADK.LLM.Mock.set_responses([
-        # Root agent calls transfer
-        %{function_call: %{name: "transfer_to_agent", args: %{"agent_name" => "specialist"}, id: "fc-t1"}},
+        # Root agent calls per-agent transfer tool
+        %{function_call: %{name: "transfer_to_agent_specialist", args: %{}, id: "fc-t1"}},
         # Specialist responds
-        "I am the specialist!",
-        # Root continues with result
-        "The specialist said everything is fine."
+        "I am the specialist!"
       ])
 
       specialist = ADK.Agent.LlmAgent.new(
@@ -126,27 +125,36 @@ defmodule ADK.PythonParityTest do
 
       events = ADK.Agent.run(root, ctx)
 
-      # Should produce: transfer_call event, transfer_response event, final text
+      # Should produce: parent LLM event, transfer event, sub-agent response
       assert length(events) >= 3
 
       # Verify the transfer call happened
       first = hd(events)
       assert ADK.Event.has_function_calls?(first)
       [fc] = ADK.Event.function_calls(first)
-      assert fc.name == "transfer_to_agent"
+      assert fc.name == "transfer_to_agent_specialist"
 
-      # Final event should have text
+      # Verify transfer event
+      transfer_event = Enum.find(events, fn e ->
+        e.actions && e.actions.transfer_to_agent == "specialist"
+      end)
+      assert transfer_event != nil
+
+      # Final event should have sub-agent's text response
       last = List.last(events)
       assert ADK.Event.text?(last)
+      assert ADK.Event.text(last) =~ "specialist"
 
       GenServer.stop(session_pid)
     end
 
-    # Python ADK: transferring to unknown agent returns error in tool response.
-    # Elixir: same behavior, error propagated through tool result.
+    # Python ADK: transferring to unknown agent returns error event.
+    # With per-agent transfer tools, calling a non-existent tool is an unknown tool error.
     test "transfer to unknown agent returns error" do
+      # LLM calls a transfer tool for an agent that doesn't exist as a tool
+      # This would be caught as "Unknown tool" in execute_tools
       ADK.LLM.Mock.set_responses([
-        %{function_call: %{name: "transfer_to_agent", args: %{"agent_name" => "ghost"}, id: "fc-t2"}},
+        %{function_call: %{name: "transfer_to_agent_ghost", args: %{}, id: "fc-t2"}},
         "I couldn't find that agent."
       ])
 
@@ -171,8 +179,12 @@ defmodule ADK.PythonParityTest do
 
       events = ADK.Agent.run(root, ctx)
 
-      # The tool response event should contain an error about unknown agent
-      tool_response_event = Enum.at(events, 1)
+      # The tool response should contain an error about unknown tool
+      tool_response_event = Enum.find(events, fn e ->
+        responses = ADK.Event.function_responses(e)
+        responses != [] && Enum.any?(responses, fn r -> r[:error] end)
+      end) || Enum.at(events, 1)
+
       responses = ADK.Event.function_responses(tool_response_event)
       assert length(responses) == 1
 
