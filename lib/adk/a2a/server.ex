@@ -33,14 +33,17 @@ defmodule ADK.A2A.Server do
     url = Keyword.get(opts, :url, "http://localhost:4000")
     card_opts = Keyword.get(opts, :card_opts, [])
 
-    # Create an ETS table to store our ADK config for the handler
-    config_table = :ets.new(:adk_a2a_config, [:set, :public])
+    # Create or reuse a named ETS table to store our ADK config for the handler
+    config_table_name = Keyword.get(opts, :config_table_name, :adk_a2a_config)
+    config_table = A2A.Server.ensure_table(config_table_name)
     :ets.insert(config_table, {:config, %{agent: agent, runner: runner, card_opts: card_opts}})
 
-    # Initialize the underlying A2A.Server
+    # Initialize the underlying A2A.Server with a named task table
+    task_table_name = Keyword.get(opts, :task_table_name, :adk_a2a_tasks)
     a2a_config = A2A.Server.init(
       handler: __MODULE__,
       url: url,
+      table_name: task_table_name,
       card_opts: [{:config_table, config_table} | card_opts]
     )
 

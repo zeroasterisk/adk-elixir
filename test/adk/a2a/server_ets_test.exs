@@ -5,19 +5,43 @@ defmodule ADK.A2A.ServerETSTest do
     agent = ADK.Agent.LlmAgent.new(name: "test", model: "test", instruction: "test")
     runner = %ADK.Runner{app_name: "test", agent: agent}
 
-    opts = [agent: agent, runner: runner]
+    opts = [
+      agent: agent,
+      runner: runner,
+      config_table_name: :ets_test_config,
+      task_table_name: :ets_test_tasks
+    ]
 
     config = ADK.A2A.Server.init(opts)
 
-    # The underlying A2A.Server creates an ETS table (anonymous ref)
-    assert is_reference(config.table)
+    # The underlying A2A.Server creates a named ETS table
+    assert config.table == :ets_test_tasks
 
-    # ADK stores its own config table reference
-    assert is_reference(config.adk_config_table)
+    # ADK stores its own named config table
+    assert config.adk_config_table == :ets_test_config
 
     # ADK config should be retrievable
     [{:config, adk_config}] = :ets.lookup(config.adk_config_table, :config)
     assert adk_config.agent == agent
     assert adk_config.runner == runner
+  end
+
+  test "multiple init/1 calls do not crash (ETS table reuse)" do
+    agent = ADK.Agent.LlmAgent.new(name: "test", model: "test", instruction: "test")
+    runner = %ADK.Runner{app_name: "test", agent: agent}
+
+    opts = [
+      agent: agent,
+      runner: runner,
+      config_table_name: :ets_multi_config,
+      task_table_name: :ets_multi_tasks
+    ]
+
+    config1 = ADK.A2A.Server.init(opts)
+    config2 = ADK.A2A.Server.init(opts)
+
+    # Both should use the same named tables
+    assert config1.table == config2.table
+    assert config1.adk_config_table == config2.adk_config_table
   end
 end
