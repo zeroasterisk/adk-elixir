@@ -92,8 +92,29 @@ defmodule ADK.LLM.Gemini do
         tools -> Map.put(body, :tools, [%{function_declarations: format_tools(tools)}])
       end
 
+    # Apply generate_config as generationConfig
+    body =
+      case Map.get(request, :generate_config) do
+        nil -> body
+        config when config == %{} -> body
+        config ->
+          gen_config = %{}
+          gen_config = put_if(gen_config, :temperature, config[:temperature])
+          gen_config = put_if(gen_config, :topP, config[:top_p])
+          gen_config = put_if(gen_config, :topK, config[:top_k])
+          gen_config = put_if(gen_config, :maxOutputTokens, config[:max_output_tokens])
+          gen_config = put_if(gen_config, :stopSequences, config[:stop_sequences])
+          gen_config = put_if(gen_config, :candidateCount, config[:candidate_count])
+          gen_config = put_if(gen_config, :responseMimeType, config[:response_mime_type])
+          gen_config = put_if(gen_config, :responseSchema, config[:response_schema])
+          if gen_config == %{}, do: body, else: Map.put(body, :generationConfig, gen_config)
+      end
+
     body
   end
+
+  defp put_if(map, _key, nil), do: map
+  defp put_if(map, key, value), do: Map.put(map, key, value)
 
   defp format_content(%{role: role, parts: parts}) do
     %{

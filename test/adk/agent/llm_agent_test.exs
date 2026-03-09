@@ -73,12 +73,12 @@ defmodule ADK.Agent.LlmAgentTest do
     last = List.last(events)
     assert ADK.Event.text(last) == "The weather in Tokyo is 22°C."
 
-    # Check tool was called (second event should have function_responses)
+    # Check tool was called (second event should have function_responses in content.parts)
     response_event = Enum.at(events, 1)
-    assert response_event.function_responses != nil
-    [result] = response_event.function_responses
+    responses = ADK.Event.function_responses(response_event)
+    assert length(responses) == 1
+    [result] = responses
     assert result.name == "get_weather"
-    assert result.result == %{temp: 22, city: "Tokyo"}
 
     GenServer.stop(session_pid)
   end

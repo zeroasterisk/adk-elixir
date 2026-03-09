@@ -237,8 +237,6 @@ defmodule ADK.Session do
       content: data[:content],
       partial: data[:partial] || false,
       actions: actions,
-      function_calls: data[:function_calls],
-      function_responses: data[:function_responses],
       error: data[:error]
     }
   end

@@ -10,8 +10,6 @@ defmodule ADK.Event do
           content: map() | nil,
           partial: boolean(),
           actions: ADK.EventActions.t(),
-          function_calls: [map()] | nil,
-          function_responses: [map()] | nil,
           error: String.t() | nil
         }
 
@@ -23,8 +21,6 @@ defmodule ADK.Event do
     :timestamp,
     :content,
     :error,
-    function_calls: nil,
-    function_responses: nil,
     partial: false,
     actions: %ADK.EventActions{}
   ]
@@ -80,6 +76,62 @@ defmodule ADK.Event do
   def text?(event), do: text(event) != nil
 
   @doc """
+  Extract function calls from event content parts.
+
+  In the ADK event model, function calls are embedded in `content.parts`
+  as `%{function_call: %{name: ..., args: ...}}` — not as top-level fields.
+
+  ## Examples
+
+      iex> event = %ADK.Event{content: %{parts: [%{function_call: %{name: "search", args: %{}}}]}}
+      iex> ADK.Event.function_calls(event)
+      [%{name: "search", args: %{}}]
+
+      iex> ADK.Event.function_calls(%ADK.Event{content: %{parts: [%{text: "hi"}]}})
+      []
+  """
+  @spec function_calls(t()) :: [map()]
+  def function_calls(%__MODULE__{content: %{parts: parts}}) when is_list(parts) do
+    Enum.flat_map(parts, fn
+      %{function_call: fc} -> [fc]
+      _ -> []
+    end)
+  end
+
+  def function_calls(_), do: []
+
+  @doc """
+  Extract function responses from event content parts.
+
+  ## Examples
+
+      iex> event = %ADK.Event{content: %{parts: [%{function_response: %{name: "search", response: %{result: "ok"}}}]}}
+      iex> ADK.Event.function_responses(event)
+      [%{name: "search", response: %{result: "ok"}}]
+  """
+  @spec function_responses(t()) :: [map()]
+  def function_responses(%__MODULE__{content: %{parts: parts}}) when is_list(parts) do
+    Enum.flat_map(parts, fn
+      %{function_response: fr} -> [fr]
+      _ -> []
+    end)
+  end
+
+  def function_responses(_), do: []
+
+  @doc """
+  Check if event has function calls in its content parts.
+  """
+  @spec has_function_calls?(t()) :: boolean()
+  def has_function_calls?(%__MODULE__{} = event), do: function_calls(event) != []
+
+  @doc """
+  Check if event has function responses in its content parts.
+  """
+  @spec has_function_responses?(t()) :: boolean()
+  def has_function_responses?(%__MODULE__{} = event), do: function_responses(event) != []
+
+  @doc """
   Check if an event is a final response.
 
   ## Examples
@@ -92,9 +144,9 @@ defmodule ADK.Event do
       false
   """
   @spec final_response?(t()) :: boolean()
-  def final_response?(%__MODULE__{partial: false, content: c, actions: a})
+  def final_response?(%__MODULE__{partial: false, content: c, actions: a} = event)
       when not is_nil(c) do
-    is_nil(a.transfer_to_agent) and (is_nil(c[:parts]) or not has_function_calls?(c))
+    is_nil(a.transfer_to_agent) and not has_function_calls?(event)
   end
 
   def final_response?(_), do: false
@@ -110,15 +162,6 @@ defmodule ADK.Event do
       })
     )
   end
-
-  defp has_function_calls?(%{parts: parts}) when is_list(parts) do
-    Enum.any?(parts, fn
-      %{function_call: _} -> true
-      _ -> false
-    end)
-  end
-
-  defp has_function_calls?(_), do: false
 
   @doc """
   Convert an Event struct to a plain map suitable for JSON serialization.
@@ -143,8 +186,6 @@ defmodule ADK.Event do
       content: event.content,
       partial: event.partial,
       error: event.error,
-      function_calls: event.function_calls,
-      function_responses: event.function_responses,
       actions: %{
         state_delta: event.actions.state_delta,
         transfer_to_agent: event.actions.transfer_to_agent,
@@ -189,19 +230,45 @@ defmodule ADK.Event do
         ts when is_binary(ts) -> DateTime.from_iso8601(ts) |> elem(1)
       end
 
+    # Migrate legacy top-level function_calls/function_responses into content.parts
+    content = migrate_legacy_function_fields(map["content"], map["function_calls"], map["function_responses"])
+
     %__MODULE__{
       id: map["id"],
       invocation_id: map["invocation_id"],
       author: map["author"],
       branch: map["branch"],
       timestamp: timestamp,
-      content: map["content"],
+      content: content,
       partial: map["partial"] || false,
       error: map["error"],
-      function_calls: map["function_calls"],
-      function_responses: map["function_responses"],
       actions: actions
     }
+  end
+
+  defp migrate_legacy_function_fields(content, nil, nil), do: content
+  defp migrate_legacy_function_fields(content, calls, responses) do
+    existing_parts = (content && content["parts"]) || (content && content[:parts]) || []
+
+    call_parts =
+      case calls do
+        nil -> []
+        list when is_list(list) -> Enum.map(list, fn fc -> %{function_call: fc} end)
+      end
+
+    response_parts =
+      case responses do
+        nil -> []
+        list when is_list(list) -> Enum.map(list, fn fr -> %{function_response: fr} end)
+      end
+
+    extra = call_parts ++ response_parts
+    if extra == [] do
+      content
+    else
+      role = (content && (content["role"] || content[:role])) || :model
+      %{role: role, parts: existing_parts ++ extra}
+    end
   end
 
   defp generate_id do

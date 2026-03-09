@@ -100,8 +100,6 @@ defmodule ADK.Session.Store.JsonFile do
       content: event.content,
       partial: event.partial,
       actions: serialize_actions(event.actions),
-      function_calls: event.function_calls,
-      function_responses: event.function_responses,
       error: event.error
     }
   end
