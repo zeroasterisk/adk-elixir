@@ -1,13 +1,15 @@
 defmodule ADK.A2A.Server do
   @moduledoc """
-  A2A protocol server implemented as a Plug.
+  A2A protocol server for ADK agents, implemented as a Plug.
+
+  Wraps the `A2A.Server` from the [a2a](https://github.com/zeroasterisk/a2a-elixir)
+  package with ADK-specific handler logic (running agents via `ADK.Runner`).
 
   Serves the Agent Card at `GET /.well-known/agent.json` and handles
   JSON-RPC 2.0 requests at `POST /`.
 
   ## Usage
 
-      # In a Plug router or endpoint:
       plug ADK.A2A.Server,
         agent: my_agent_spec,
         runner: %ADK.Runner{app_name: "my_app", agent: my_agent_spec},
@@ -17,168 +19,74 @@ defmodule ADK.A2A.Server do
   """
 
   @behaviour Plug
+  @behaviour A2A.Handler
 
   alias ADK.A2A.{AgentCard, Message}
 
-  @impl true
+  @impl Plug
   @spec init(keyword()) :: map()
   def init(opts) do
-    table = :ets.new(:a2a_tasks, [:set, :public])
+    # Store ADK-specific config in process dictionary-accessible place
+    # We need to pass it through to the A2A.Server
+    agent = Keyword.fetch!(opts, :agent)
+    runner = Keyword.fetch!(opts, :runner)
+    url = Keyword.get(opts, :url, "http://localhost:4000")
+    card_opts = Keyword.get(opts, :card_opts, [])
 
-    %{
-      agent: Keyword.fetch!(opts, :agent),
-      runner: Keyword.fetch!(opts, :runner),
-      url: Keyword.get(opts, :url, "http://localhost:4000"),
-      card_opts: Keyword.get(opts, :card_opts, []),
-      table: table
-    }
+    # Create an ETS table to store our ADK config for the handler
+    config_table = :ets.new(:adk_a2a_config, [:set, :public])
+    :ets.insert(config_table, {:config, %{agent: agent, runner: runner, card_opts: card_opts}})
+
+    # Initialize the underlying A2A.Server
+    a2a_config = A2A.Server.init(
+      handler: __MODULE__,
+      url: url,
+      card_opts: [{:config_table, config_table} | card_opts]
+    )
+
+    Map.put(a2a_config, :adk_config_table, config_table)
   end
 
-  @impl true
+  @impl Plug
   @spec call(Plug.Conn.t(), map()) :: Plug.Conn.t()
-  def call(%Plug.Conn{method: "GET", path_info: [".well-known", "agent.json"]} = conn, config) do
-    card_opts = Keyword.merge(config.card_opts, url: config.url)
-    card = AgentCard.from_agent(config.agent, card_opts)
-    json_response(conn, 200, card)
+  def call(conn, config) do
+    # Store ADK config in process dictionary so handler callbacks can access it
+    [{:config, adk_config}] = :ets.lookup(config.adk_config_table, :config)
+    Process.put(:adk_a2a_config, adk_config)
+    A2A.Server.call(conn, config)
   end
 
-  def call(%Plug.Conn{method: "POST", path_info: []} = conn, config) do
-    {:ok, body, conn} = Plug.Conn.read_body(conn)
+  # -- A2A.Handler callbacks --
 
-    case Jason.decode(body) do
-      {:ok, %{"jsonrpc" => "2.0", "id" => id, "method" => method, "params" => params}} ->
-        handle_rpc(conn, config, id, method, params)
-
-      {:ok, %{"jsonrpc" => "2.0", "id" => id, "method" => method}} ->
-        handle_rpc(conn, config, id, method, %{})
-
-      {:ok, _} ->
-        json_rpc_error(conn, nil, -32600, "Invalid Request")
-
-      {:error, _} ->
-        json_rpc_error(conn, nil, -32700, "Parse error")
-    end
+  @impl A2A.Handler
+  def agent_card(opts) do
+    adk_config = Process.get(:adk_a2a_config)
+    card_opts = Keyword.delete(adk_config.card_opts || [], :config_table)
+    AgentCard.to_a2a_card(adk_config.agent, Keyword.merge(card_opts, url: opts.url))
   end
 
-  def call(conn, _config) do
-    json_response(conn, 404, %{"error" => "not found"})
-  end
-
-  # -- JSON-RPC handlers --
-
-  defp handle_rpc(conn, config, id, "tasks/send", params) do
-    task_id = generate_task_id()
-    message_text = extract_message_text(params)
+  @impl A2A.Handler
+  def handle_task(message_text, params) do
+    adk_config = Process.get(:adk_a2a_config)
     user_id = params["sessionId"] || "a2a-user"
+    task_id = params["id"] || "a2a-task"
     session_id = params["sessionId"] || "a2a-#{task_id}"
 
-    # Store initial task
-    task = %{
-      "id" => task_id,
-      "status" => %{"state" => "working"},
-      "history" => [],
-      "artifacts" => []
-    }
+    events = ADK.Runner.run(adk_config.runner, user_id, session_id, message_text)
 
-    :ets.insert(config.table, {task_id, task})
+    # Convert events to A2A messages
+    messages = Enum.map(events, &Message.from_event/1)
 
-    # Run the agent
-    try do
-      events = ADK.Runner.run(config.runner, user_id, session_id, message_text)
+    # Build artifacts from agent messages
+    artifacts =
+      messages
+      |> Enum.filter(fn m -> m["role"] == "agent" end)
+      |> Enum.map(fn m -> %{"parts" => m["parts"]} end)
 
-      # Convert events to A2A messages
-      messages = Enum.map(events, &Message.from_event/1)
+    # Convert to A2A types
+    a2a_messages = Enum.map(messages, &A2A.Message.from_map/1)
+    a2a_artifacts = Enum.map(artifacts, &A2A.Artifact.from_map/1)
 
-      # Build artifacts from agent messages
-      artifacts =
-        messages
-        |> Enum.filter(fn m -> m["role"] == "agent" end)
-        |> Enum.map(fn m -> %{"parts" => m["parts"]} end)
-
-      completed_task = %{
-        "id" => task_id,
-        "status" => %{"state" => "completed"},
-        "history" => messages,
-        "artifacts" => artifacts
-      }
-
-      :ets.insert(config.table, {task_id, completed_task})
-      json_rpc_result(conn, id, completed_task)
-    rescue
-      e ->
-        failed_task = %{
-          "id" => task_id,
-          "status" => %{
-            "state" => "failed",
-            "message" => %{
-              "role" => "agent",
-              "parts" => [%{"type" => "text", "text" => Exception.message(e)}]
-            }
-          },
-          "history" => [],
-          "artifacts" => []
-        }
-
-        :ets.insert(config.table, {task_id, failed_task})
-        json_rpc_result(conn, id, failed_task)
-    end
-  end
-
-  defp handle_rpc(conn, config, id, "tasks/get", %{"id" => task_id}) do
-    case :ets.lookup(config.table, task_id) do
-      [{^task_id, task}] -> json_rpc_result(conn, id, task)
-      [] -> json_rpc_error(conn, id, -32001, "Task not found")
-    end
-  end
-
-  defp handle_rpc(conn, config, id, "tasks/cancel", %{"id" => task_id}) do
-    case :ets.lookup(config.table, task_id) do
-      [{^task_id, task}] ->
-        canceled = put_in(task, ["status", "state"], "canceled")
-        :ets.insert(config.table, {task_id, canceled})
-        json_rpc_result(conn, id, canceled)
-
-      [] ->
-        json_rpc_error(conn, id, -32001, "Task not found")
-    end
-  end
-
-  defp handle_rpc(conn, _config, id, method, _params) do
-    json_rpc_error(conn, id, -32601, "Method not found: #{method}")
-  end
-
-  # -- Helpers --
-
-  defp extract_message_text(%{"message" => %{"parts" => parts}}) do
-    Enum.find_value(parts, "hello", fn
-      %{"type" => "text", "text" => t} -> t
-      %{"text" => t} -> t
-      _ -> nil
-    end)
-  end
-
-  defp extract_message_text(%{"message" => msg}) when is_binary(msg), do: msg
-  defp extract_message_text(_), do: "hello"
-
-  defp json_rpc_result(conn, id, result) do
-    json_response(conn, 200, %{"jsonrpc" => "2.0", "id" => id, "result" => result})
-  end
-
-  defp json_rpc_error(conn, id, code, message) do
-    json_response(conn, 200, %{
-      "jsonrpc" => "2.0",
-      "id" => id,
-      "error" => %{"code" => code, "message" => message}
-    })
-  end
-
-  defp json_response(conn, status, body) do
-    conn
-    |> Plug.Conn.put_resp_content_type("application/json")
-    |> Plug.Conn.send_resp(status, Jason.encode!(body))
-  end
-
-  defp generate_task_id do
-    "task-" <> (:crypto.strong_rand_bytes(12) |> Base.url_encode64(padding: false))
+    {:ok, a2a_messages, a2a_artifacts}
   end
 end
