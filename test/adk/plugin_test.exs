@@ -54,8 +54,13 @@ defmodule ADK.PluginTest do
   end
 
   setup do
-    {:ok, _} = Registry.start_link()
-    on_exit(fn -> if Process.whereis(Registry), do: Agent.stop(Registry) end)
+    # Registry is started by ADK.Application; just clear it between tests
+    if Process.whereis(Registry) do
+      Registry.clear()
+    else
+      {:ok, _} = Registry.start_link()
+      on_exit(fn -> if Process.whereis(Registry), do: Agent.stop(Registry) end)
+    end
     :ok
   end
 

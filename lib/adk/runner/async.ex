@@ -1,25 +1,24 @@
 defmodule ADK.Runner.Async do
   @moduledoc """
-  Runs an agent asynchronously in a separate process, sending events
-  back to the caller as `{:adk_event, event}` messages.
+  Runs an agent asynchronously under `ADK.RunnerSupervisor` (Task.Supervisor),
+  sending events back to the caller as `{:adk_event, event}` messages.
 
-  This is a pure BEAM module — no Phoenix dependency required.
+  All async runs are supervised — if a runner crashes, it won't bring down
+  the caller, and the supervisor tracks active tasks.
 
   ## Example
 
       {:ok, pid} = ADK.Runner.Async.run(runner, "user1", "sess1", "Hello!")
-      # Receive events in your process:
       receive do
         {:adk_event, event} -> IO.inspect(event)
       end
-      # When done, you'll get:
       receive do
         {:adk_done, events} -> IO.puts("Got \#{length(events)} events")
       end
   """
 
   @doc """
-  Run an agent asynchronously. Returns `{:ok, pid}`.
+  Run an agent asynchronously under `ADK.RunnerSupervisor`.
 
   Events are sent to `opts[:reply_to]` (default: `self()`):
   - `{:adk_event, event}` for each event
@@ -31,9 +30,10 @@ defmodule ADK.Runner.Async do
   def run(%ADK.Runner{} = runner, user_id, session_id, message, opts \\ []) do
     reply_to = Keyword.get(opts, :reply_to, self())
     runner_opts = Keyword.get(opts, :runner_opts, [])
+    supervisor = Keyword.get(opts, :supervisor, ADK.RunnerSupervisor)
 
-    pid =
-      spawn_link(fn ->
+    {:ok, pid} =
+      Task.Supervisor.start_child(supervisor, fn ->
         try do
           events = ADK.Runner.run(runner, user_id, session_id, message, runner_opts)
 
@@ -52,16 +52,18 @@ defmodule ADK.Runner.Async do
   end
 
   @doc """
-  Like `run/5` but uses `Task` for better supervision integration.
-  Returns a `Task` struct.
+  Like `run/5` but returns a `Task` struct for awaiting the result.
+
+  Uses `Task.Supervisor.async_nolink/2` so the caller isn't linked to the task.
   """
   @spec run_task(ADK.Runner.t(), String.t(), String.t(), map() | String.t(), keyword()) ::
           Task.t()
   def run_task(%ADK.Runner{} = runner, user_id, session_id, message, opts \\ []) do
     reply_to = Keyword.get(opts, :reply_to, self())
     runner_opts = Keyword.get(opts, :runner_opts, [])
+    supervisor = Keyword.get(opts, :supervisor, ADK.RunnerSupervisor)
 
-    Task.async(fn ->
+    Task.Supervisor.async_nolink(supervisor, fn ->
       events = ADK.Runner.run(runner, user_id, session_id, message, runner_opts)
 
       Enum.each(events, fn event ->

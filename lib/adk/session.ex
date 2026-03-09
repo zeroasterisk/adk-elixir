@@ -20,7 +20,7 @@ defmodule ADK.Session do
   Call `save/1` to persist the current state, or configure `auto_save: true`
   to auto-save on process termination.
   """
-  use GenServer
+  use GenServer, restart: :temporary
 
   defstruct [:id, :app_name, :user_id, state: %{}, events: []]
 
