@@ -19,7 +19,8 @@ defmodule ADK.RunConfig do
     streaming_mode: :none,
     max_llm_calls: nil,
     output_format: "text",
-    speech_config: nil
+    speech_config: nil,
+    generate_config: %{}
   ]
 
   @type streaming_mode :: :none | :sse | :live
@@ -27,7 +28,8 @@ defmodule ADK.RunConfig do
           streaming_mode: streaming_mode(),
           max_llm_calls: pos_integer() | nil,
           output_format: String.t(),
-          speech_config: map() | nil
+          speech_config: map() | nil,
+          generate_config: map()
         }
 
   @valid_streaming_modes [:none, :sse, :live]

@@ -192,7 +192,10 @@ defmodule ADK.Agent.LlmAgent do
       tools: Enum.map(all_tools, &ADK.Tool.declaration/1)
     }
 
-    case agent.generate_config do
+    # Merge generate_config: agent defaults + run_config overrides
+    merged_config = merge_generate_config(agent.generate_config, ctx)
+
+    case merged_config do
       config when is_map(config) and map_size(config) > 0 ->
         Map.put(request, :generate_config, config)
 
@@ -200,6 +203,16 @@ defmodule ADK.Agent.LlmAgent do
         request
     end
   end
+
+  defp merge_generate_config(agent_config, %{run_config: %ADK.RunConfig{generate_config: rc}})
+       when is_map(rc) and map_size(rc) > 0 do
+    case agent_config do
+      config when is_map(config) -> Map.merge(config, rc)
+      _ -> rc
+    end
+  end
+
+  defp merge_generate_config(agent_config, _ctx), do: agent_config || %{}
 
   @doc """
   Compile the full system instruction by merging global + agent instruction
