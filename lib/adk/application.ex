@@ -9,6 +9,7 @@ defmodule ADK.Application do
       ├── ADK.Plugin.Registry        — Agent storing global plugins
       ├── ADK.Auth.InMemoryStore     — Agent for credential storage (dev/test)
       ├── ADK.Artifact.InMemory      — Agent for artifact storage (dev/test)
+      ├── ADK.Memory.InMemory        — ETS-backed memory store (dev/test)
       ├── ADK.Session.Store.InMemory — ETS-backed session persistence
       ├── ADK.SessionSupervisor      — DynamicSupervisor for session GenServers
       ├── ADK.RunnerSupervisor       — Task.Supervisor for async agent executions
@@ -51,6 +52,11 @@ defmodule ADK.Application do
         # Artifact store (optional, for dev/test)
         if(start_child?(:start_artifact_store, true),
           do: {ADK.Artifact.InMemory, name: ADK.Artifact.InMemory}
+        ),
+
+        # ETS-backed memory store (optional, for dev/test)
+        if(start_child?(:start_memory_store, true),
+          do: {ADK.Memory.InMemory, name: ADK.Memory.InMemory}
         ),
 
         # ETS-backed session store

@@ -27,6 +27,7 @@ defmodule ADK.Context do
     :run_config,
     :artifact_service,
     :credential_service,
+    :memory_store,
     :app_name,
     :user_id,
     temp_state: %{},

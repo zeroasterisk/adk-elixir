@@ -3,13 +3,14 @@ defmodule ADK.Runner do
   Orchestrates agent execution — creates sessions, runs agents, collects events.
   """
 
-  defstruct [:app_name, :agent, :session_store, :artifact_service]
+  defstruct [:app_name, :agent, :session_store, :artifact_service, :memory_store]
 
   @type t :: %__MODULE__{
           app_name: String.t(),
           agent: ADK.Agent.t(),
           session_store: {module(), keyword()} | nil,
-          artifact_service: {module(), keyword()} | nil
+          artifact_service: {module(), keyword()} | nil,
+          memory_store: {module(), keyword()} | nil
         }
 
   @doc """
@@ -21,6 +22,7 @@ defmodule ADK.Runner do
     * `:agent` - the agent to run (required)
     * `:session_store` - optional `{Module, opts}` tuple for session persistence
     * `:artifact_service` - optional `{Module, opts}` tuple for artifact storage
+    * `:memory_store` - optional `{Module, opts}` tuple for long-term memory
 
   ## Examples
 
@@ -35,7 +37,8 @@ defmodule ADK.Runner do
       app_name: Keyword.fetch!(opts, :app_name),
       agent: Keyword.fetch!(opts, :agent),
       session_store: Keyword.get(opts, :session_store),
-      artifact_service: Keyword.get(opts, :artifact_service)
+      artifact_service: Keyword.get(opts, :artifact_service),
+      memory_store: Keyword.get(opts, :memory_store)
     }
   end
 
@@ -103,6 +106,7 @@ defmodule ADK.Runner do
       policies: policies,
       run_config: run_config,
       artifact_service: if(artifact_mod, do: {artifact_mod, artifact_opts}),
+      memory_store: runner.memory_store,
       app_name: runner.app_name,
       user_id: user_id
     }
