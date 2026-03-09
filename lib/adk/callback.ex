@@ -69,6 +69,17 @@ defmodule ADK.Callback do
   @doc "Called after a tool executes. Receives the result and callback context; returns (possibly transformed) result."
   @callback after_tool(ADK.Tool.result(), callback_ctx()) :: ADK.Tool.result()
 
+  @doc """
+  Called when a tool returns an error.
+
+  Return one of:
+  - `{:retry, callback_ctx}` — retry the tool call
+  - `{:fallback, {:ok, result}}` — use a fallback result
+  - `{:error, reason}` — propagate the error
+  """
+  @callback on_tool_error({:error, term()}, callback_ctx()) ::
+              {:retry, callback_ctx()} | {:fallback, {:ok, term()}} | {:error, term()}
+
   @optional_callbacks [
     before_agent: 1,
     after_agent: 2,
@@ -76,7 +87,8 @@ defmodule ADK.Callback do
     after_model: 2,
     on_model_error: 2,
     before_tool: 1,
-    after_tool: 2
+    after_tool: 2,
+    on_tool_error: 2
   ]
 
   @doc """
@@ -107,6 +119,26 @@ defmodule ADK.Callback do
     Enum.reduce_while(callbacks, error, fn mod, err ->
       if function_exported?(mod, :on_model_error, 2) do
         case apply(mod, :on_model_error, [err, callback_ctx]) do
+          {:retry, _} = result -> {:halt, result}
+          {:fallback, _} = result -> {:halt, result}
+          {:error, _} = new_err -> {:cont, new_err}
+        end
+      else
+        {:cont, err}
+      end
+    end)
+  end
+
+  @doc """
+  Run on_tool_error callbacks. Returns `{:retry, callback_ctx}`, `{:fallback, {:ok, result}}`,
+  or `{:error, reason}`. First callback to return non-error wins.
+  """
+  @spec run_on_tool_error([module()], {:error, term()}, callback_ctx()) ::
+          {:retry, callback_ctx()} | {:fallback, {:ok, term()}} | {:error, term()}
+  def run_on_tool_error(callbacks, error, callback_ctx) do
+    Enum.reduce_while(callbacks, error, fn mod, err ->
+      if function_exported?(mod, :on_tool_error, 2) do
+        case apply(mod, :on_tool_error, [err, callback_ctx]) do
           {:retry, _} = result -> {:halt, result}
           {:fallback, _} = result -> {:halt, result}
           {:error, _} = new_err -> {:cont, new_err}

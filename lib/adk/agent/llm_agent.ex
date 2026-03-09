@@ -14,10 +14,12 @@ defmodule ADK.Agent.LlmAgent do
     :global_instruction,
     :output_key,
     :context_compressor,
+    :output_schema,
     description: "",
     tools: [],
     sub_agents: [],
-    max_iterations: 10
+    max_iterations: 10,
+    generate_config: %{}
   ]
 
   @type t :: %__MODULE__{
@@ -27,10 +29,12 @@ defmodule ADK.Agent.LlmAgent do
           global_instruction: String.t() | nil,
           output_key: atom() | String.t() | nil,
           context_compressor: keyword() | nil,
+          output_schema: map() | nil,
           description: String.t(),
           tools: [map()],
           sub_agents: [ADK.Agent.t()],
-          max_iterations: pos_integer()
+          max_iterations: pos_integer(),
+          generate_config: map()
         }
 
   @doc """
@@ -153,7 +157,17 @@ defmodule ADK.Agent.LlmAgent do
         end
 
       {:error, reason} ->
-        [ADK.Event.error(reason, %{invocation_id: ctx.invocation_id, author: agent.name})]
+        case ADK.Callback.run_on_error(ctx.callbacks, {:error, reason}, cb_ctx) do
+          {:retry, _retry_ctx} ->
+            do_run(ctx, agent, iteration + 1)
+
+          {:fallback, {:ok, response}} ->
+            event = event_from_response(response, ctx, agent)
+            [event]
+
+          _ ->
+            [ADK.Event.error(reason, %{invocation_id: ctx.invocation_id, author: agent.name})]
+        end
     end
   end
 
@@ -171,12 +185,20 @@ defmodule ADK.Agent.LlmAgent do
 
     messages = ADK.Context.Compressor.maybe_compress(messages, compressor_opts)
 
-    %{
+    request = %{
       model: agent.model,
       instruction: instruction,
       messages: messages,
       tools: Enum.map(all_tools, &ADK.Tool.declaration/1)
     }
+
+    case agent.generate_config do
+      config when is_map(config) and map_size(config) > 0 ->
+        Map.put(request, :generate_config, config)
+
+      _ ->
+        request
+    end
   end
 
   @doc """
@@ -333,6 +355,24 @@ defmodule ADK.Agent.LlmAgent do
                   end
               end
             end)
+
+          tool_result =
+            case tool_result do
+              {:error, _} = err ->
+                case ADK.Callback.run_on_tool_error(ctx.callbacks, err, cb_ctx) do
+                  {:retry, retry_ctx} ->
+                    ADK.Tool.FunctionTool.run(tool, tool_ctx, retry_ctx.tool_args)
+
+                  {:fallback, {:ok, _} = fallback} ->
+                    fallback
+
+                  {:error, _} = propagated ->
+                    propagated
+                end
+
+              other ->
+                other
+            end
 
           case tool_result do
             {:transfer_to_agent, target_name} ->
