@@ -30,17 +30,25 @@ defmodule ADK.LLM.Gemini do
   def generate(model, request) do
     model = if model in [nil, ""], do: @default_model, else: model
 
-    case api_key() do
-      {:ok, key} -> do_generate(model, key, request)
+    case auth() do
+      {:api_key, key} -> do_generate(model, {:api_key, key}, request)
+      {:bearer, token} -> do_generate(model, {:bearer, token}, request)
       {:error, _} = err -> err
     end
   end
 
-  defp do_generate(model, api_key, request) do
+  defp do_generate(model, auth, request) do
     url = "#{@base_url}/#{model}:generateContent"
     body = build_request_body(request)
 
-    req_options = [url: url, params: [key: api_key], json: body]
+    req_options = [url: url, json: body]
+
+    req_options =
+      case auth do
+        {:api_key, key} -> req_options ++ [params: [key: key]]
+        {:bearer, token} -> req_options ++ [headers: [{"authorization", "Bearer #{token}"}]]
+      end
+
     req_options = req_options ++ req_test_options()
 
     case Req.post(Req.new(req_options)) do
@@ -175,16 +183,30 @@ defmodule ADK.LLM.Gemini do
 
   defp parse_response_part(other), do: other
 
-  defp api_key do
+  defp auth do
     case Application.get_env(:adk, :gemini_api_key) do
       nil ->
         case System.get_env("GEMINI_API_KEY") do
-          nil -> {:error, :missing_api_key}
-          key -> {:ok, key}
+          nil ->
+            case Application.get_env(:adk, :gemini_bearer_token) do
+              nil ->
+                case System.get_env("GEMINI_BEARER_TOKEN") do
+                  nil -> {:error, :missing_api_key}
+                  token -> {:bearer, token}
+                end
+
+              token ->
+                {:bearer, token}
+            end
+
+          key ->
+            {:api_key, key}
         end
 
       key ->
-        {:ok, key}
+        {:api_key, key}
     end
   end
+
+  # api_key/0 removed — use auth/0 instead
 end

@@ -13,18 +13,46 @@ defmodule ADK.Integration.GeminiApiTest do
 
   @moduletag :integration
 
-  @model "gemini-2.0-flash-lite"
+  @model "gemini-2.5-flash"
 
   setup do
     # Use real Gemini backend for integration tests
-    prev = Application.get_env(:adk, :llm_backend)
-    Application.put_env(:adk, :llm_backend, ADK.LLM.Gemini)
-    on_exit(fn -> Application.put_env(:adk, :llm_backend, prev) end)
+    prev_backend = Application.get_env(:adk, :llm_backend)
+    prev_key = Application.get_env(:adk, :gemini_api_key)
+    prev_token = Application.get_env(:adk, :gemini_bearer_token)
 
-    case System.get_env("GEMINI_API_KEY") do
-      nil -> {:error, "GEMINI_API_KEY not set"}
-      _key -> :ok
-    end
+    Application.put_env(:adk, :llm_backend, ADK.LLM.Gemini)
+
+    # Support both API key and service account bearer token
+    has_auth =
+      cond do
+        System.get_env("GEMINI_API_KEY") != nil ->
+          true
+
+        System.get_env("GEMINI_BEARER_TOKEN") != nil ->
+          true
+
+        System.get_env("GOOGLE_APPLICATION_CREDENTIALS") != nil ->
+          # Auto-generate bearer token from service account
+          {token, 0} =
+            System.cmd("python3", ["test/integration/get_bearer_token.py"],
+              env: [{"GOOGLE_APPLICATION_CREDENTIALS", System.get_env("GOOGLE_APPLICATION_CREDENTIALS")}]
+            )
+
+          Application.put_env(:adk, :gemini_bearer_token, String.trim(token))
+          true
+
+        true ->
+          false
+      end
+
+    on_exit(fn ->
+      Application.put_env(:adk, :llm_backend, prev_backend)
+      if prev_key, do: Application.put_env(:adk, :gemini_api_key, prev_key), else: Application.delete_env(:adk, :gemini_api_key)
+      if prev_token, do: Application.put_env(:adk, :gemini_bearer_token, prev_token), else: Application.delete_env(:adk, :gemini_bearer_token)
+    end)
+
+    if has_auth, do: :ok, else: {:error, "No GEMINI_API_KEY, GEMINI_BEARER_TOKEN, or GOOGLE_APPLICATION_CREDENTIALS set"}
   end
 
   describe "single-turn" do

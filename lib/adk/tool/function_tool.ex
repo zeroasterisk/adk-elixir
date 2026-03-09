@@ -41,6 +41,7 @@ defmodule ADK.Tool.FunctionTool do
     case apply_func(func, ctx, args) do
       {:ok, _} = ok -> ok
       {:error, _} = err -> err
+      {:transfer_to_agent, _} = transfer -> transfer
       other -> {:ok, other}
     end
   end
