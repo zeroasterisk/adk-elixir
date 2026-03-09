@@ -59,8 +59,11 @@ defmodule ADK.Session do
   @spec lookup(String.t(), String.t(), String.t()) :: {:ok, pid()} | :error
   def lookup(app_name, user_id, session_id) do
     case Registry.lookup(ADK.SessionRegistry, {app_name, user_id, session_id}) do
-      [{pid, _}] -> {:ok, pid}
-      [] -> :error
+      [{pid, _}] ->
+        if Process.alive?(pid), do: {:ok, pid}, else: :error
+
+      [] ->
+        :error
     end
   end
 
