@@ -43,7 +43,12 @@ defmodule ADK.Context.Compressor do
   def maybe_compress(messages, []), do: messages
 
   def maybe_compress(messages, opts) when is_list(opts) do
-    {strategy, strategy_opts} = Keyword.fetch!(opts, :strategy)
+    {strategy, strategy_opts} =
+      case Keyword.fetch!(opts, :strategy) do
+        {mod, sopts} when is_atom(mod) -> {mod, sopts}
+        mod when is_atom(mod) -> {mod, []}
+      end
+
     threshold = Keyword.get(opts, :threshold, 50)
 
     if length(messages) > threshold do
