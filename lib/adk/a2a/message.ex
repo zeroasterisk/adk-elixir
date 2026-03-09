@@ -2,8 +2,8 @@ defmodule ADK.A2A.Message do
   @moduledoc """
   Converts between ADK Events and A2A protocol messages.
 
-  A2A messages have the shape:
-    %{"role" => "user" | "agent", "parts" => [%{"type" => "text", "text" => "..."}]}
+  Bridges ADK's event system to the `A2A.Message` type from the
+  [a2a](https://github.com/zeroasterisk/a2a-elixir) package.
   """
 
   @doc "Convert an ADK Event to an A2A message map."
@@ -30,6 +30,13 @@ defmodule ADK.A2A.Message do
     msg
     |> Map.new(fn {k, v} -> {to_string(k), v} end)
     |> to_event()
+  end
+
+  @doc "Convert an ADK Event to an `A2A.Message` struct."
+  @spec to_a2a_message(ADK.Event.t()) :: A2A.Message.t()
+  def to_a2a_message(%ADK.Event{} = event) do
+    map = from_event(event)
+    A2A.Message.from_map(map)
   end
 
   defp event_to_parts(%ADK.Event{content: %{parts: parts}}) when is_list(parts) do

@@ -30,6 +30,7 @@ defmodule ADK.MixProject do
   defp deps do
     [
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:a2a, github: "zeroasterisk/a2a-elixir"},
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
       {:plug, "~> 1.14", optional: true},
