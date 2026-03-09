@@ -54,6 +54,7 @@ defmodule ADK.MixProject do
         "guides/getting-started.md",
         "guides/concepts.md",
         "guides/mix-adk-new.md",
+        "guides/evaluations.md",
         "CHANGELOG.md"
       ],
       groups_for_modules: [
@@ -62,7 +63,8 @@ defmodule ADK.MixProject do
         "Tools": [ADK.Tool.FunctionTool, ADK.Tool.Declarative],
         "State & Sessions": [ADK.Session, ADK.Session.Store, ADK.Session.Store.InMemory, ADK.Session.Store.JsonFile, ADK.Session.Store.Ecto, ADK.State.Delta, ADK.EventActions],
         "LLM": [ADK.LLM, ADK.LLM.Mock, ADK.LLM.Gemini, ADK.LLM.OpenAI],
-        "Runner": [ADK.Runner]
+        "Runner": [ADK.Runner],
+        "Eval": [ADK.Eval, ADK.Eval.Case, ADK.Eval.Scorer, ADK.Eval.Result, ADK.Eval.Report, ADK.Eval.Scorer.ExactMatch, ADK.Eval.Scorer.Contains, ADK.Eval.Scorer.ToolUsed, ADK.Eval.Scorer.ResponseLength]
       ],
       groups_for_extras: [
         Guides: ~r/guides\/.*/
