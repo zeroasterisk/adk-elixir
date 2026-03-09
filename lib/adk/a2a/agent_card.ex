@@ -55,28 +55,16 @@ defmodule ADK.A2A.AgentCard do
   defp build_skills(_), do: []
 
   defp tool_to_skill(%{name: name, description: desc}) do
-    %A2A.AgentCard.Skill{
-      id: to_string(name),
-      name: to_string(name),
-      description: desc || ""
-    }
+    %{id: to_string(name), name: to_string(name), description: desc || ""}
   end
 
   defp tool_to_skill(%ADK.Tool.FunctionTool{name: name, description: desc}) do
-    %A2A.AgentCard.Skill{
-      id: to_string(name),
-      name: to_string(name),
-      description: desc || ""
-    }
+    %{id: to_string(name), name: to_string(name), description: desc || ""}
   end
 
   defp tool_to_skill(mod) when is_atom(mod) do
-    %A2A.AgentCard.Skill{
-      id: mod.name(),
-      name: mod.name(),
-      description: mod.description()
-    }
+    %{id: mod.name(), name: mod.name(), description: mod.description()}
   end
 
-  defp tool_to_skill(_), do: %A2A.AgentCard.Skill{id: "unknown", name: "unknown", description: ""}
+  defp tool_to_skill(_), do: %{id: "unknown", name: "unknown", description: ""}
 end
