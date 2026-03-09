@@ -406,7 +406,7 @@ defmodule ADK.Agent.LlmAgent do
                       result
 
                     {:cont, cb_ctx} ->
-                      result = ADK.Tool.FunctionTool.run(tool, tool_ctx, cb_ctx.tool_args)
+                      result = run_tool(tool, tool_ctx, cb_ctx.tool_args)
                       ADK.Callback.run_after(ctx.callbacks, :after_tool, result, cb_ctx)
                   end
               end
@@ -417,7 +417,7 @@ defmodule ADK.Agent.LlmAgent do
               {:error, _} = err ->
                 case ADK.Callback.run_on_tool_error(ctx.callbacks, err, cb_ctx) do
                   {:retry, retry_ctx} ->
-                    ADK.Tool.FunctionTool.run(tool, tool_ctx, retry_ctx.tool_args)
+                    run_tool(tool, tool_ctx, retry_ctx.tool_args)
 
                   {:fallback, {:ok, _} = fallback} ->
                     fallback
@@ -443,6 +443,10 @@ defmodule ADK.Agent.LlmAgent do
       end
     end)
   end
+
+  defp run_tool(%ADK.Tool.ModuleTool{} = tool, ctx, args), do: ADK.Tool.ModuleTool.run(tool, ctx, args)
+  defp run_tool(%ADK.Tool.FunctionTool{} = tool, ctx, args), do: ADK.Tool.FunctionTool.run(tool, ctx, args)
+  defp run_tool(tool, ctx, args), do: ADK.Tool.FunctionTool.run(tool, ctx, args)
 
   defp maybe_save_output(event, ctx, %{output_key: key}) when not is_nil(key) do
     text = ADK.Event.text(event)
