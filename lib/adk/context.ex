@@ -11,7 +11,11 @@ defmodule ADK.Context do
           ended: boolean(),
           callbacks: [module()],
           policies: [module()],
-          run_config: ADK.RunConfig.t() | nil
+          run_config: ADK.RunConfig.t() | nil,
+          artifact_service: module() | nil,
+          credential_service: module() | nil,
+          app_name: String.t() | nil,
+          user_id: String.t() | nil
         }
 
   defstruct [
@@ -21,6 +25,10 @@ defmodule ADK.Context do
     :branch,
     :user_content,
     :run_config,
+    :artifact_service,
+    :credential_service,
+    :app_name,
+    :user_id,
     temp_state: %{},
     ended: false,
     callbacks: [],

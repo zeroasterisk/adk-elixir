@@ -3,11 +3,15 @@ defmodule ADK.EventActions do
 
   @type t :: %__MODULE__{
           state_delta: map(),
+          artifact_delta: map(),
+          requested_auth_configs: map(),
           transfer_to_agent: String.t() | nil,
           escalate: boolean()
         }
 
   defstruct state_delta: %{},
+            artifact_delta: %{},
+            requested_auth_configs: %{},
             transfer_to_agent: nil,
             escalate: false
 end

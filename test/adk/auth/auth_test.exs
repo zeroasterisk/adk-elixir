@@ -130,12 +130,16 @@ defmodule ADK.Auth.ToolContextIntegrationTest do
 
   setup do
     {:ok, store} = InMemoryStore.start_link()
-    %{store: store}
+
+    # Create a wrapper module that passes the store pid to InMemoryStore
+    wrapper = create_credential_wrapper(store)
+
+    %{store: store, credential_service: wrapper}
   end
 
-  test "request_credential retrieves from store via tool context", %{store: store} do
+  test "load_credential retrieves from store via tool context", %{credential_service: service} do
     cred = Credential.api_key("sk-tool")
-    :ok = InMemoryStore.put("my_tool", cred, server: store)
+    :ok = service.put("my_tool", cred, [])
 
     tool = ADK.Tool.FunctionTool.new(:my_tool,
       description: "A tool",
@@ -143,48 +147,39 @@ defmodule ADK.Auth.ToolContextIntegrationTest do
       parameters: %{}
     )
 
-    ctx = %ADK.Context{invocation_id: "inv-1", session_pid: nil, agent: nil}
-    tool_ctx = %ADK.ToolContext{
-      context: ctx,
-      function_call_id: "fc-1",
-      tool_name: "my_tool",
-      tool_def: tool,
-      credential_store: store
+    ctx = %ADK.Context{
+      invocation_id: "inv-1",
+      session_pid: nil,
+      agent: nil,
+      credential_service: service
     }
+    tool_ctx = ADK.ToolContext.new(ctx, "fc-1", tool)
 
-    assert {:ok, ^cred} = ADK.ToolContext.request_credential(tool_ctx)
+    assert {:ok, ^cred} = ADK.ToolContext.load_credential(tool_ctx, "my_tool")
   end
 
-  test "request_credential uses auth_config credential_name", %{store: store} do
+  test "save_credential and load_credential roundtrip", %{credential_service: service} do
     cred = Credential.oauth2("tok-123")
-    :ok = InMemoryStore.put("custom_name", cred, server: store)
 
-    auth_config = ADK.Auth.Config.new(
-      credential_type: :oauth2,
-      credential_name: "custom_name"
-    )
-
-    tool = %ADK.Tool.FunctionTool{
-      name: "my_tool",
+    tool = ADK.Tool.FunctionTool.new(:my_tool,
       description: "A tool",
       func: fn _ctx, _args -> {:ok, "done"} end,
-      parameters: %{},
-      auth_config: auth_config
-    }
+      parameters: %{}
+    )
 
-    ctx = %ADK.Context{invocation_id: "inv-1", session_pid: nil, agent: nil}
-    tool_ctx = %ADK.ToolContext{
-      context: ctx,
-      function_call_id: "fc-1",
-      tool_name: "my_tool",
-      tool_def: tool,
-      credential_store: store
+    ctx = %ADK.Context{
+      invocation_id: "inv-1",
+      session_pid: nil,
+      agent: nil,
+      credential_service: service
     }
+    tool_ctx = ADK.ToolContext.new(ctx, "fc-1", tool)
 
-    assert {:ok, ^cred} = ADK.ToolContext.request_credential(tool_ctx)
+    assert :ok = ADK.ToolContext.save_credential(tool_ctx, "custom_name", cred)
+    assert {:ok, ^cred} = ADK.ToolContext.load_credential(tool_ctx, "custom_name")
   end
 
-  test "request_credential returns error without store" do
+  test "request_credential records auth config in actions" do
     tool = ADK.Tool.FunctionTool.new(:test_tool,
       description: "Test",
       func: fn _ctx, _args -> {:ok, "ok"} end,
@@ -194,6 +189,45 @@ defmodule ADK.Auth.ToolContextIntegrationTest do
     ctx = %ADK.Context{invocation_id: "inv-1", session_pid: nil, agent: nil}
     tool_ctx = ADK.ToolContext.new(ctx, "fc-1", tool)
 
-    assert {:error, :no_credential_store} = ADK.ToolContext.request_credential(tool_ctx)
+    auth_config = ADK.Auth.Config.new(credential_type: :oauth2, scopes: ["read"])
+    assert {:ok, updated_tc} = ADK.ToolContext.request_credential(tool_ctx, auth_config)
+    assert Map.has_key?(ADK.ToolContext.actions(updated_tc).requested_auth_configs, "fc-1")
+  end
+
+  test "load_credential returns error without service" do
+    tool = ADK.Tool.FunctionTool.new(:test_tool,
+      description: "Test",
+      func: fn _ctx, _args -> {:ok, "ok"} end,
+      parameters: %{}
+    )
+
+    ctx = %ADK.Context{invocation_id: "inv-1", session_pid: nil, agent: nil}
+    tool_ctx = ADK.ToolContext.new(ctx, "fc-1", tool)
+
+    assert {:error, :no_credential_service} = ADK.ToolContext.load_credential(tool_ctx, "api_key")
+  end
+
+  defp create_credential_wrapper(store_pid) do
+    mod_name = :"ADK.Test.CredentialWrapper_#{System.unique_integer([:positive])}"
+
+    Module.create(
+      mod_name,
+      quote do
+        @behaviour ADK.Auth.CredentialStore
+        @store_pid unquote(store_pid)
+
+        @impl true
+        def get(name, _opts), do: ADK.Auth.InMemoryStore.get(name, server: @store_pid)
+
+        @impl true
+        def put(name, cred, _opts), do: ADK.Auth.InMemoryStore.put(name, cred, server: @store_pid)
+
+        @impl true
+        def delete(name, _opts), do: ADK.Auth.InMemoryStore.delete(name, server: @store_pid)
+      end,
+      Macro.Env.location(__ENV__)
+    )
+
+    mod_name
   end
 end
