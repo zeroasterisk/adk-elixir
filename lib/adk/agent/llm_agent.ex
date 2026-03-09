@@ -13,6 +13,7 @@ defmodule ADK.Agent.LlmAgent do
     :instruction,
     :global_instruction,
     :output_key,
+    :context_compressor,
     description: "",
     tools: [],
     sub_agents: [],
@@ -25,6 +26,7 @@ defmodule ADK.Agent.LlmAgent do
           instruction: String.t(),
           global_instruction: String.t() | nil,
           output_key: atom() | String.t() | nil,
+          context_compressor: keyword() | nil,
           description: String.t(),
           tools: [map()],
           sub_agents: [ADK.Agent.t()],
@@ -159,6 +161,15 @@ defmodule ADK.Agent.LlmAgent do
     messages = build_messages(ctx)
     all_tools = effective_tools(agent)
     instruction = compile_instruction(ctx, agent)
+
+    # Apply context compression if configured
+    compressor_opts =
+      case agent.context_compressor do
+        nil -> nil
+        opts -> Keyword.put_new(opts, :context, %{model: agent.model})
+      end
+
+    messages = ADK.Context.Compressor.maybe_compress(messages, compressor_opts)
 
     %{
       model: agent.model,

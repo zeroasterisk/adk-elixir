@@ -8,3 +8,5 @@ erl_crash.dump
 *.beam
 /tmp/
 .elixir_ls/
+examples/*/_build/
+examples/*/deps/
