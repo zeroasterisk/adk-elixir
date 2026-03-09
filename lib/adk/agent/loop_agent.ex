@@ -1,7 +1,7 @@
 defmodule ADK.Agent.LoopAgent do
   @moduledoc """
-  Runs sub-agents in a loop until a maximum number of iterations is reached
-  or an agent signals escalation via `EventActions.escalate`.
+  Runs sub-agents in a loop until a maximum number of iterations is reached,
+  an exit_condition returns true, or an agent signals escalation via `EventActions.escalate`.
 
   ## Examples
 
@@ -10,16 +10,27 @@ defmodule ADK.Agent.LoopAgent do
         sub_agents: [checker, fixer],
         max_iterations: 5
       )
+
+      # With exit condition
+      agent = ADK.Agent.LoopAgent.new(
+        name: "until_done",
+        sub_agents: [worker],
+        max_iterations: 20,
+        exit_condition: fn ctx -> ADK.Context.get_temp(ctx, :done) == true end
+      )
   """
 
   @enforce_keys [:name]
-  defstruct [:name, description: "Runs agents in a loop", sub_agents: [], max_iterations: 10]
+  defstruct [:name, :exit_condition, description: "Runs agents in a loop", sub_agents: [], max_iterations: 10]
+
+  @type exit_condition :: (ADK.Context.t() -> boolean()) | nil
 
   @type t :: %__MODULE__{
           name: String.t(),
           description: String.t(),
           sub_agents: [ADK.Agent.t()],
-          max_iterations: pos_integer()
+          max_iterations: pos_integer(),
+          exit_condition: exit_condition()
         }
 
   @doc """
@@ -52,33 +63,45 @@ defmodule ADK.Agent.LoopAgent do
     def sub_agents(agent), do: agent.sub_agents
 
     def run(agent, ctx) do
-      ADK.Agent.LoopAgent.do_loop(ctx, agent.sub_agents, agent.max_iterations, 0, [])
+      ADK.Agent.LoopAgent.do_loop(ctx, agent, 0, [])
     end
   end
 
   @doc false
-  def do_loop(_ctx, _sub_agents, max, iteration, acc) when iteration >= max, do: acc
+  def do_loop(_ctx, %{max_iterations: max}, iteration, acc) when iteration >= max, do: acc
 
-  def do_loop(ctx, sub_agents, max, iteration, acc) do
-    {events, escalated?} =
-      Enum.reduce_while(sub_agents, {[], false}, fn agent_spec, {evts, _} ->
-        child_ctx = ADK.Context.for_child(ctx, agent_spec)
+  def do_loop(ctx, %{sub_agents: sub_agents, exit_condition: exit_condition} = agent, iteration, acc) do
+    {events, escalated?, updated_ctx} =
+      Enum.reduce_while(sub_agents, {[], false, ctx}, fn agent_spec, {evts, _, cur_ctx} ->
+        child_ctx = ADK.Context.for_child(cur_ctx, agent_spec)
         new_events = ADK.Agent.run(agent_spec, child_ctx)
 
+        # Merge any temp_state updates from child back to parent
+        merged_ctx = merge_child_state(cur_ctx, child_ctx)
+
         if Enum.any?(new_events, &escalated?/1) do
-          {:halt, {evts ++ new_events, true}}
+          {:halt, {evts ++ new_events, true, merged_ctx}}
         else
-          {:cont, {evts ++ new_events, false}}
+          {:cont, {evts ++ new_events, false, merged_ctx}}
         end
       end)
 
     new_acc = acc ++ events
 
-    if escalated? do
-      new_acc
-    else
-      do_loop(ctx, sub_agents, max, iteration + 1, new_acc)
+    cond do
+      escalated? ->
+        new_acc
+
+      is_function(exit_condition, 1) and exit_condition.(updated_ctx) ->
+        new_acc
+
+      true ->
+        do_loop(updated_ctx, agent, iteration + 1, new_acc)
     end
+  end
+
+  defp merge_child_state(parent_ctx, child_ctx) do
+    %{parent_ctx | temp_state: Map.merge(parent_ctx.temp_state, child_ctx.temp_state)}
   end
 
   defp escalated?(%{actions: %{escalate: true}}), do: true

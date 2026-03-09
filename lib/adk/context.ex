@@ -10,7 +10,8 @@ defmodule ADK.Context do
           temp_state: map(),
           ended: boolean(),
           callbacks: [module()],
-          policies: [module()]
+          policies: [module()],
+          run_config: ADK.RunConfig.t() | nil
         }
 
   defstruct [
@@ -19,6 +20,7 @@ defmodule ADK.Context do
     :agent,
     :branch,
     :user_content,
+    :run_config,
     temp_state: %{},
     ended: false,
     callbacks: [],

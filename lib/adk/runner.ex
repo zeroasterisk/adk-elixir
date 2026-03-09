@@ -57,6 +57,7 @@ defmodule ADK.Runner do
 
     callbacks = Keyword.get(opts, :callbacks, [])
     policies = Keyword.get(opts, :policies, [])
+    run_config = Keyword.get(opts, :run_config)
 
     # Build context
     ctx = %ADK.Context{
@@ -65,7 +66,8 @@ defmodule ADK.Runner do
       agent: runner.agent,
       user_content: message,
       callbacks: callbacks,
-      policies: policies
+      policies: policies,
+      run_config: run_config
     }
 
     # Gather global plugins
