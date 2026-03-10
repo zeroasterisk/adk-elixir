@@ -13,6 +13,7 @@ defmodule ADK.Application do
       ├── ADK.Session.Store.InMemory — ETS-backed session persistence
       ├── ADK.SessionSupervisor      — DynamicSupervisor for session GenServers
       ├── ADK.RunnerSupervisor       — Task.Supervisor for async agent executions
+      ├── ADK.Telemetry.SpanStore    — ETS-backed debug span storage
       └── ADK.LLM.CircuitBreaker     — Circuit breaker for LLM calls
 
   Uses `rest_for_one` because sessions depend on the Registry being alive.
@@ -75,6 +76,9 @@ defmodule ADK.Application do
          max_restarts: 20,
          max_seconds: 10},
 
+        # ETS-backed debug span storage
+        ADK.Telemetry.SpanStore,
+
         # Circuit breaker for LLM calls (optional)
         if(start_child?(:start_circuit_breaker, true),
           do:
@@ -88,7 +92,12 @@ defmodule ADK.Application do
       |> Enum.reject(&is_nil/1)
 
     opts = [strategy: :rest_for_one, name: ADK.Supervisor]
-    Supervisor.start_link(children, opts)
+    result = Supervisor.start_link(children, opts)
+
+    # Attach debug telemetry handler after supervision tree is up
+    ADK.Telemetry.DebugHandler.attach()
+
+    result
   end
 
   defp start_child?(key, default) do

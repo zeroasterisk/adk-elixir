@@ -17,6 +17,8 @@ defmodule ADK.Phoenix.WebRouter do
     * `POST /run` — Run agent synchronously
     * `GET /health` — Health check
     * `GET /version` — Version info
+    * `GET /debug/trace/:event_id` — Get span attributes for a specific event
+    * `GET /debug/trace/session/:session_id` — Get all spans for a session
 
   ## Usage
 
@@ -220,6 +222,20 @@ defmodule ADK.Phoenix.WebRouter do
     else
       {:error, :not_found} ->
         json(conn, 404, %{detail: "App not found: #{req["app_name"]}"})
+    end
+  end
+
+  # --- Debug/Trace Endpoints ---
+
+  get "/debug/trace/session/:session_id" do
+    spans = ADK.Telemetry.SpanStore.get_session_spans(session_id)
+    json(conn, 200, spans)
+  end
+
+  get "/debug/trace/:event_id" do
+    case ADK.Telemetry.SpanStore.get_event_span(event_id) do
+      {:ok, attrs} -> json(conn, 200, attrs)
+      :not_found -> json(conn, 404, %{detail: "Trace not found"})
     end
   end
 

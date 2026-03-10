@@ -175,7 +175,7 @@ defmodule ADK.MixProject do
           ADK.Eval.Scorer.ToolUsed,
           ADK.Eval.Scorer.ResponseLength
         ],
-        "Telemetry": [ADK.Telemetry],
+        "Telemetry": [ADK.Telemetry, ADK.Telemetry.SpanStore, ADK.Telemetry.DebugHandler],
         "Mix Tasks": [Mix.Tasks.Adk.New, Mix.Tasks.Adk.Gen.Migration],
         "Internal": [ADK.Application, ADK.Callback, ADK.InstructionCompiler]
       ],
