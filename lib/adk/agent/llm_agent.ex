@@ -446,6 +446,7 @@ defmodule ADK.Agent.LlmAgent do
 
   defp run_tool(%ADK.Tool.ModuleTool{} = tool, ctx, args), do: ADK.Tool.ModuleTool.run(tool, ctx, args)
   defp run_tool(%ADK.Tool.FunctionTool{} = tool, ctx, args), do: ADK.Tool.FunctionTool.run(tool, ctx, args)
+  defp run_tool(%ADK.Tool.LongRunningTool{} = tool, ctx, args), do: ADK.Tool.LongRunningTool.run(tool, ctx, args)
   defp run_tool(tool, ctx, args), do: ADK.Tool.FunctionTool.run(tool, ctx, args)
 
   defp maybe_save_output(event, ctx, %{output_key: key}) when not is_nil(key) do
