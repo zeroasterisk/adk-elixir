@@ -48,6 +48,8 @@ defmodule ADK.Phoenix.ChatLiveTest do
 
   describe "init_chat/2" do
     test "initializes socket assigns" do
+      # Ensure module is loaded before checking exports
+      Code.ensure_loaded(ADK.Phoenix.ChatLive)
       # We can't easily test LiveView socket without a full endpoint,
       # but we can verify the module compiles and exports correctly
       assert function_exported?(ADK.Phoenix.ChatLive, :init_chat, 2)
