@@ -54,6 +54,7 @@ defmodule ADK.MixProject do
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
       {:plug, "~> 1.14", optional: true},
+      {:bandit, "~> 1.5", optional: true},
       {:ecto, "~> 3.10", optional: true},
       {:ecto_sql, "~> 3.10", optional: true},
       {:ecto_sqlite3, "~> 0.17", only: :test},
@@ -78,6 +79,7 @@ defmodule ADK.MixProject do
         "guides/phoenix-integration.md",
         "guides/supervision.md",
         "guides/oban-integration.md",
+        "guides/dev-server.md",
         "guides/adk-web-compatibility.md",
         "CHANGELOG.md"
       ],
@@ -179,7 +181,7 @@ defmodule ADK.MixProject do
           ADK.Eval.Scorer.ResponseLength
         ],
         "Telemetry": [ADK.Telemetry, ADK.Telemetry.SpanStore, ADK.Telemetry.DebugHandler],
-        "Mix Tasks": [Mix.Tasks.Adk.New, Mix.Tasks.Adk.Gen.Migration],
+        "Mix Tasks": [Mix.Tasks.Adk.New, Mix.Tasks.Adk.Gen.Migration, Mix.Tasks.Adk.Server],
         "Internal": [ADK.Application, ADK.Callback, ADK.InstructionCompiler]
       ],
       groups_for_extras: [
