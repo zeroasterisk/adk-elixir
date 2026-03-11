@@ -1,7 +1,7 @@
 # ADK — Agent Development Kit for Elixir
 
 [![Hex.pm](https://img.shields.io/hexpm/v/adk.svg)](https://hex.pm/packages/adk)
-[![Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/adk)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://zeroasterisk.github.io/adk-elixir/)
 [![CI](https://github.com/zeroasterisk/adk-elixir/actions/workflows/ci.yml/badge.svg)](https://github.com/zeroasterisk/adk-elixir/actions/workflows/ci.yml)
 [![License](https://img.shields.io/hexpm/l/adk.svg)](https://github.com/zeroasterisk/adk-elixir/blob/main/LICENSE)
 
@@ -19,6 +19,22 @@ Python's ADK is great, but Elixir's runtime was *built* for this:
 | **Streaming** | Async generators | Native `Stream` + Phoenix PubSub |
 | **State** | Shared dicts, locks | Process isolation — no locks, no mutexes, no race conditions |
 | **Distribution** | Custom networking | Built-in clustering — agents span nodes transparently |
+
+## 📚 Documentation
+
+**[Full docs →](https://zeroasterisk.github.io/adk-elixir/)**
+
+- [Getting Started](https://zeroasterisk.github.io/adk-elixir/getting-started.html)
+- [Core Concepts](https://zeroasterisk.github.io/adk-elixir/concepts.html)
+- [mix adk.new — Project Generator](https://zeroasterisk.github.io/adk-elixir/mix-adk-new.html)
+- [Phoenix Integration](https://zeroasterisk.github.io/adk-elixir/phoenix-integration.html)
+- [Supervision & OTP](https://zeroasterisk.github.io/adk-elixir/supervision.html)
+- [Dev Server](https://zeroasterisk.github.io/adk-elixir/dev-server.html)
+- [Evaluations](https://zeroasterisk.github.io/adk-elixir/evaluations.html)
+- [Oban Integration](https://zeroasterisk.github.io/adk-elixir/oban-integration.html)
+- [ADK Web Compatibility](https://zeroasterisk.github.io/adk-elixir/adk-web-compatibility.html)
+- [Deployment](https://zeroasterisk.github.io/adk-elixir/deployment.html)
+- [Benchmarks — Elixir vs Python](https://zeroasterisk.github.io/adk-elixir/benchmarks.html)
 
 ## Installation
 
