@@ -96,7 +96,9 @@ defmodule ADK.MixProject do
           ADK.Tool.ModuleTool,
           ADK.Tool.TransferTool,
           ADK.Tool.TransferToAgent,
-          ADK.Tool.SearchMemoryTool
+          ADK.Tool.SearchMemoryTool,
+          ADK.Tool.GoogleSearch,
+          ADK.Tool.BuiltInCodeExecution
         ],
         "LLM Backends": [
           ADK.LLM,

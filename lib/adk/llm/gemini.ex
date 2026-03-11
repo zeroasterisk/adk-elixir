@@ -95,9 +95,34 @@ defmodule ADK.LLM.Gemini do
 
     body =
       case Map.get(request, :tools) do
-        nil -> body
-        [] -> body
-        tools -> Map.put(body, :tools, [%{function_declarations: format_tools(tools)}])
+        nil ->
+          body
+
+        [] ->
+          body
+
+        tools ->
+          {builtins, fn_tools} = Enum.split_with(tools, &Map.has_key?(&1, :__builtin__))
+
+          tool_entries =
+            if fn_tools == [] do
+              []
+            else
+              [%{function_declarations: format_tools(fn_tools)}]
+            end
+
+          tool_entries =
+            Enum.reduce(builtins, tool_entries, fn
+              %{__builtin__: :google_search}, acc -> acc ++ [%{google_search: %{}}]
+              %{__builtin__: :code_execution}, acc -> acc ++ [%{code_execution: %{}}]
+              _, acc -> acc
+            end)
+
+          if tool_entries == [] do
+            body
+          else
+            Map.put(body, :tools, tool_entries)
+          end
       end
 
     # Apply generate_config as generationConfig
@@ -179,6 +204,19 @@ defmodule ADK.LLM.Gemini do
 
   defp parse_response_part(%{"functionCall" => %{"name" => name, "args" => args}}) do
     %{function_call: %{name: name, args: args}}
+  end
+
+  # Code execution response parts
+  defp parse_response_part(%{"executableCode" => %{"language" => lang, "code" => code}}) do
+    %{executable_code: %{language: lang, code: code}}
+  end
+
+  defp parse_response_part(%{"codeExecutionResult" => %{"outcome" => outcome, "output" => output}}) do
+    %{code_execution_result: %{outcome: outcome, output: output}}
+  end
+
+  defp parse_response_part(%{"codeExecutionResult" => %{"outcome" => outcome}}) do
+    %{code_execution_result: %{outcome: outcome, output: ""}}
   end
 
   defp parse_response_part(other), do: other

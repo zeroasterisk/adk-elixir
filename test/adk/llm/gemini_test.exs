@@ -171,6 +171,93 @@ defmodule ADK.LLM.GeminiTest do
     end
   end
 
+  describe "generate/2 - built-in tools" do
+    test "google_search tool is sent as native capability, not function_declarations" do
+      Req.Test.stub(Gemini, fn conn ->
+        {:ok, body, _conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        # Should NOT have function_declarations
+        tools = decoded["tools"] || []
+        refute Enum.any?(tools, &Map.has_key?(&1, "functionDeclarations"))
+
+        # Should have google_search capability
+        assert Enum.any?(tools, &Map.has_key?(&1, "google_search"))
+
+        Req.Test.json(conn, %{
+          "candidates" => [
+            %{"content" => %{"role" => "model", "parts" => [%{"text" => "results"}]}}
+          ]
+        })
+      end)
+
+      google_search = ADK.Tool.GoogleSearch.new()
+      decl = ADK.Tool.declaration(google_search)
+
+      assert {:ok, _} =
+               Gemini.generate("gemini-2.0-flash", %{
+                 messages: [%{role: :user, parts: [%{text: "search for elixir"}]}],
+                 tools: [decl]
+               })
+    end
+
+    test "code_execution tool is sent as native capability" do
+      Req.Test.stub(Gemini, fn conn ->
+        {:ok, body, _conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        tools = decoded["tools"] || []
+        assert Enum.any?(tools, &Map.has_key?(&1, "code_execution"))
+
+        Req.Test.json(conn, %{
+          "candidates" => [
+            %{"content" => %{"role" => "model", "parts" => [%{"text" => "done"}]}}
+          ]
+        })
+      end)
+
+      code_exec = ADK.Tool.BuiltInCodeExecution.new()
+      decl = ADK.Tool.declaration(code_exec)
+
+      assert {:ok, _} =
+               Gemini.generate("gemini-2.0-flash", %{
+                 messages: [%{role: :user, parts: [%{text: "run some python"}]}],
+                 tools: [decl]
+               })
+    end
+
+    test "code execution response parts are parsed correctly" do
+      Req.Test.stub(Gemini, fn conn ->
+        Req.Test.json(conn, %{
+          "candidates" => [
+            %{
+              "content" => %{
+                "role" => "model",
+                "parts" => [
+                  %{"executableCode" => %{"language" => "PYTHON", "code" => "print(42)"}},
+                  %{"codeExecutionResult" => %{"outcome" => "OUTCOME_OK", "output" => "42\n"}}
+                ]
+              }
+            }
+          ]
+        })
+      end)
+
+      code_exec = ADK.Tool.BuiltInCodeExecution.new()
+      decl = ADK.Tool.declaration(code_exec)
+
+      assert {:ok, response} =
+               Gemini.generate("gemini-2.0-flash", %{
+                 messages: [%{role: :user, parts: [%{text: "compute 6*7"}]}],
+                 tools: [decl]
+               })
+
+      parts = response.content.parts
+      assert Enum.any?(parts, &match?(%{executable_code: _}, &1))
+      assert Enum.any?(parts, &match?(%{code_execution_result: _}, &1))
+    end
+  end
+
   describe "generate/2 - default model" do
     test "uses default model when nil" do
       Req.Test.stub(Gemini, fn conn ->
