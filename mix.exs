@@ -81,6 +81,8 @@ defmodule ADK.MixProject do
         "guides/oban-integration.md",
         "guides/dev-server.md",
         "guides/adk-web-compatibility.md",
+        "guides/deployment.md",
+        "guides/benchmarks.md",
         "CHANGELOG.md"
       ],
       groups_for_modules: [
