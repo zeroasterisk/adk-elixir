@@ -1,13 +1,28 @@
 defmodule Claw.Application do
-  @moduledoc false
+  @moduledoc """
+  Claw OTP Application.
+
+  The ADK supervision tree (started by the `:adk` application) already provides:
+  - `ADK.Artifact.InMemory` — artifact storage
+  - `ADK.Memory.InMemory` — cross-session memory store
+  - `ADK.Session.Store.InMemory` — session persistence
+
+  Claw only needs to start:
+  - Phoenix.PubSub (for LiveView)
+  - Claw.Endpoint (HTTP server)
+
+  The ADK services are referenced by their module names in `Claw.Agents.runner/0`.
+  """
+
   use Application
 
   @impl true
   def start(_type, _args) do
     children = [
-      # PubSub for LiveView
+      # PubSub for LiveView broadcasts
       {Phoenix.PubSub, name: Claw.PubSub},
-      # Phoenix endpoint
+
+      # Phoenix endpoint (HTTP + WebSocket)
       Claw.Endpoint
     ]
 
