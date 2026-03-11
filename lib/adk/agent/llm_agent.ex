@@ -17,6 +17,7 @@ defmodule ADK.Agent.LlmAgent do
     :output_schema,
     description: "",
     tools: [],
+    skills: [],
     sub_agents: [],
     max_iterations: 10,
     generate_config: %{}
@@ -32,6 +33,7 @@ defmodule ADK.Agent.LlmAgent do
           output_schema: map() | nil,
           description: String.t(),
           tools: [map()],
+          skills: [ADK.Skill.t()],
           sub_agents: [ADK.Agent.t()],
           max_iterations: pos_integer(),
           generate_config: map()
@@ -49,7 +51,18 @@ defmodule ADK.Agent.LlmAgent do
       true
   """
   @spec new(keyword()) :: t()
-  def new(opts), do: struct!(__MODULE__, opts)
+  def new(opts) do
+    skills = Keyword.get(opts, :skills, [])
+
+    opts =
+      if skills == [] do
+        opts
+      else
+        ADK.Skill.apply_to_opts(opts, skills)
+      end
+
+    struct!(__MODULE__, opts)
+  end
 
   @doc """
   Create an LLM agent with validation.
