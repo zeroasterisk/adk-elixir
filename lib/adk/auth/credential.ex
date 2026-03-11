@@ -24,6 +24,7 @@ defmodule ADK.Auth.Credential do
           token_endpoint: String.t() | nil,
           client_id: String.t() | nil,
           client_secret: String.t() | nil,
+          auth_code: String.t() | nil,
           scopes: [String.t()],
           service_account_key: map() | nil,
           metadata: map()
@@ -37,6 +38,7 @@ defmodule ADK.Auth.Credential do
     :token_endpoint,
     :client_id,
     :client_secret,
+    :auth_code,
     :service_account_key,
     scopes: [],
     metadata: %{}
@@ -52,8 +54,13 @@ defmodule ADK.Auth.Credential do
     }
   end
 
-  @doc "Create an OAuth2 credential."
-  @spec oauth2(String.t(), keyword()) :: t()
+  @doc """
+  Create an OAuth2 credential.
+
+  Pass `access_token: nil` (or `""`) when you only have an auth code yet.
+  Use the `:auth_code` option to set the authorization code to exchange.
+  """
+  @spec oauth2(String.t() | nil, keyword()) :: t()
   def oauth2(access_token, opts \\ []) do
     %__MODULE__{
       type: :oauth2,
@@ -62,6 +69,26 @@ defmodule ADK.Auth.Credential do
       token_endpoint: Keyword.get(opts, :token_endpoint),
       client_id: Keyword.get(opts, :client_id),
       client_secret: Keyword.get(opts, :client_secret),
+      auth_code: Keyword.get(opts, :auth_code),
+      scopes: Keyword.get(opts, :scopes, []),
+      metadata: Keyword.get(opts, :metadata, %{})
+    }
+  end
+
+  @doc """
+  Create an OAuth2 credential pre-loaded with an authorization code for exchange.
+
+  Convenience constructor for the auth-code flow before tokens are obtained.
+  """
+  @spec oauth2_with_code(String.t(), String.t(), String.t(), keyword()) :: t()
+  def oauth2_with_code(client_id, client_secret, auth_code, opts \\ []) do
+    %__MODULE__{
+      type: :oauth2,
+      access_token: nil,
+      client_id: client_id,
+      client_secret: client_secret,
+      auth_code: auth_code,
+      token_endpoint: Keyword.get(opts, :token_endpoint),
       scopes: Keyword.get(opts, :scopes, []),
       metadata: Keyword.get(opts, :metadata, %{})
     }

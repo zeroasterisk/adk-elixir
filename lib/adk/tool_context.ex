@@ -176,9 +176,11 @@ defmodule ADK.ToolContext do
   end
 
   @doc """
-  Load a credential from the credential service.
+  Load a credential from the credential service (raw — no exchange/refresh).
 
   Returns `{:ok, credential}` or `:not_found` or `{:error, reason}`.
+
+  For a fully managed credential (auto-exchange + auto-refresh), see `get_credential/3`.
   """
   @spec load_credential(t(), String.t()) ::
           {:ok, ADK.Auth.Credential.t()} | :not_found | {:error, term()}
@@ -186,6 +188,61 @@ defmodule ADK.ToolContext do
     case ctx.credential_service do
       nil -> {:error, :no_credential_service}
       service -> service.get(credential_name, [])
+    end
+  end
+
+  @doc """
+  Get a ready-to-use credential, running OAuth2 exchange or refresh as needed.
+
+  This is the recommended way to obtain credentials in tool implementations.
+  It uses `ADK.Auth.CredentialManager` to orchestrate the full lifecycle:
+
+  1. Simple credentials (api_key, http_bearer) → returned immediately
+  2. Stored credential → refreshed if near-expiry, returned
+  3. Auth-code credential → exchanged for tokens, stored, returned
+  4. Client-credentials capable → exchanges automatically, returned
+  5. No stored + no way to get one → returns `:needs_auth`
+
+  When `:needs_auth` is returned, call `request_credential/2` to signal to the
+  runner that user authentication is required.
+
+  ## Example
+
+      def run(tool_context, params) do
+        case ADK.ToolContext.get_credential(tool_context, "github_token", raw_cred) do
+          {:ok, cred} ->
+            make_github_api_call(cred.access_token, params)
+
+          :needs_auth ->
+            auth_config = ADK.Auth.Config.new(
+              credential_type: :oauth2,
+              provider: "github",
+              scopes: ["repo"]
+            )
+            {:ok, tc2} = ADK.ToolContext.request_credential(tool_context, auth_config)
+            {:auth_required, tc2}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+      end
+
+  ## Options
+
+  - `:redirect_uri` — used during auth code exchange
+  - `:refresh_buffer` — seconds before expiry for proactive refresh (default: 300)
+  - `:http_opts` — extra options for token requests
+  """
+  @spec get_credential(t(), String.t(), ADK.Auth.Credential.t(), keyword()) ::
+          {:ok, ADK.Auth.Credential.t()} | :needs_auth | {:error, term()}
+  def get_credential(%__MODULE__{context: ctx}, credential_name, raw_cred, opts \\ []) do
+    case ctx.credential_service do
+      nil ->
+        {:error, :no_credential_service}
+
+      service ->
+        store_opts = [store_mod: service_module(service), server: service_server(service)] ++ opts
+        ADK.Auth.CredentialManager.get_credential(credential_name, raw_cred, store_opts)
     end
   end
 
@@ -255,6 +312,14 @@ defmodule ADK.ToolContext do
 
   defp normalize_service({mod, opts}) when is_atom(mod) and is_list(opts), do: {mod, opts}
   defp normalize_service(mod) when is_atom(mod), do: {mod, []}
+
+  # Determine the store module from a service config (atom or {mod, opts})
+  defp service_module({mod, _opts}) when is_atom(mod), do: mod
+  defp service_module(mod) when is_atom(mod), do: mod
+
+  # Determine the server PID/name from a service config
+  defp service_server({_mod, opts}), do: Keyword.get(opts, :server)
+  defp service_server(_mod), do: nil
 
   defp tool_name(%{name: n}), do: n
   defp tool_name(m) when is_atom(m), do: m.name()
