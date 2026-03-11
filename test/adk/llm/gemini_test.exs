@@ -1,5 +1,5 @@
 defmodule ADK.LLM.GeminiTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias ADK.LLM.Gemini
 

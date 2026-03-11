@@ -23,23 +23,32 @@ defmodule ADK.Integration.GeminiApiTest do
 
     Application.put_env(:adk, :llm_backend, ADK.LLM.Gemini)
 
-    # Support both API key and service account bearer token
+    # Support both API key and service account bearer token.
+    # Prefer GOOGLE_APPLICATION_CREDENTIALS (bearer token) over GEMINI_API_KEY
+    # since API keys may be invalid/expired.
     has_auth =
       cond do
-        System.get_env("GEMINI_API_KEY") != nil ->
-          true
+        System.get_env("GOOGLE_APPLICATION_CREDENTIALS") != nil ->
+          # Auto-generate bearer token from service account (most reliable)
+          case System.cmd("python3", ["test/integration/get_bearer_token.py"],
+                 env: [{"GOOGLE_APPLICATION_CREDENTIALS", System.get_env("GOOGLE_APPLICATION_CREDENTIALS")}]
+               ) do
+            {token, 0} ->
+              Application.put_env(:adk, :gemini_bearer_token, String.trim(token))
+              # Clear any potentially invalid API key so auth/0 uses bearer token
+              Application.delete_env(:adk, :gemini_api_key)
+              System.delete_env("GEMINI_API_KEY")
+              true
+
+            _ ->
+              # Fall back to API key if bearer token generation fails
+              System.get_env("GEMINI_API_KEY") != nil or System.get_env("GEMINI_BEARER_TOKEN") != nil
+          end
 
         System.get_env("GEMINI_BEARER_TOKEN") != nil ->
           true
 
-        System.get_env("GOOGLE_APPLICATION_CREDENTIALS") != nil ->
-          # Auto-generate bearer token from service account
-          {token, 0} =
-            System.cmd("python3", ["test/integration/get_bearer_token.py"],
-              env: [{"GOOGLE_APPLICATION_CREDENTIALS", System.get_env("GOOGLE_APPLICATION_CREDENTIALS")}]
-            )
-
-          Application.put_env(:adk, :gemini_bearer_token, String.trim(token))
+        System.get_env("GEMINI_API_KEY") != nil ->
           true
 
         true ->

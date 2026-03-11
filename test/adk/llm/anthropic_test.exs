@@ -1,5 +1,5 @@
 defmodule ADK.LLM.AnthropicTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias ADK.LLM.Anthropic
 

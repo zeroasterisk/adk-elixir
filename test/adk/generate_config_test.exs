@@ -1,5 +1,5 @@
 defmodule ADK.GenerateConfigTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   describe "LlmAgent generate_config" do
     test "default generate_config is empty map" do
