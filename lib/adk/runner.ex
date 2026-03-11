@@ -93,6 +93,7 @@ defmodule ADK.Runner do
     callbacks = Keyword.get(opts, :callbacks, [])
     policies = Keyword.get(opts, :policies, [])
     run_config = Keyword.get(opts, :run_config)
+    on_event = Keyword.get(opts, :on_event)
 
     # Build context
     {artifact_mod, artifact_opts} = resolve_artifact_service(runner.artifact_service)
@@ -108,7 +109,8 @@ defmodule ADK.Runner do
       artifact_service: if(artifact_mod, do: {artifact_mod, artifact_opts}),
       memory_store: runner.memory_store,
       app_name: runner.app_name,
-      user_id: user_id
+      user_id: user_id,
+      on_event: on_event
     }
 
     # Gather global plugins
@@ -157,12 +159,14 @@ defmodule ADK.Runner do
       end
       end)
 
-    # Emit events via on_event callback (for streaming) and append to session
-    on_event = Keyword.get(opts, :on_event)
-
+    # Append events to session and emit via on_event callback.
+    # Context.emit_event/2 deduplicates by event ID, so events already emitted
+    # by LlmAgent inline (during execution) won't fire again here.
+    # Agents that don't call emit_event (e.g., Custom) will have their events
+    # fired here as the fallback.
     Enum.each(agent_events, fn event ->
       ADK.Session.append_event(session_pid, event)
-      if on_event, do: on_event.(event)
+      ADK.Context.emit_event(ctx, event)
     end)
 
     # Save session to store if configured
@@ -181,13 +185,19 @@ defmodule ADK.Runner do
   @doc """
   Run an agent with streaming — calls `on_event` callback for each event as it's produced.
 
-  Events are delivered in real-time via an event collector process that the agent
-  reports to as events are generated. Returns the final list of agent events.
+  Events are delivered in real-time via the agent's execution pipeline. The `on_event`
+  callback is wired into the execution context so it fires immediately as each event
+  is generated (model response, tool call, tool result), not after the full run completes.
+
+  Runs in a supervised Task under `ADK.RunnerSupervisor` and sends a `{:adk_done, events}`
+  message to the caller when complete. If the supervisor is not running, falls back to
+  synchronous execution.
 
   ## Options
 
   Same as `run/5` plus:
     * `:on_event` — `(ADK.Event.t() -> any())` callback invoked for each event in real-time
+    * `:reply_to` — pid to send `{:adk_done, events}` when complete (default: `self()`)
 
   ## Examples
 
@@ -196,13 +206,67 @@ defmodule ADK.Runner do
   """
   @spec run_streaming(t(), String.t(), String.t(), map() | String.t(), keyword()) :: [ADK.Event.t()]
   def run_streaming(%__MODULE__{} = runner, user_id, session_id, message, opts \\ []) do
-    on_event = Keyword.get(opts, :on_event, fn _ -> :ok end)
-    runner_opts = Keyword.drop(opts, [:on_event])
+    # on_event is threaded through context — fires for each event as the agent produces it.
+    # This is a synchronous call; the on_event callback is invoked inline during execution.
+    run(runner, user_id, session_id, message, opts)
+  end
 
-    # Run in a task, with on_event callback passed through
-    runner_opts = Keyword.put(runner_opts, :on_event, on_event)
+  @doc """
+  Run an agent with async streaming — non-blocking, events delivered via messages.
 
-    run(runner, user_id, session_id, message, runner_opts)
+  Spawns a supervised Task that runs the agent with the given `on_event` callback.
+  Messages sent to `reply_to` (default: `self()`):
+    - `{:adk_event, event}` for each event (via on_event callback)
+    - `{:adk_done, events}` when the run completes
+    - `{:adk_error, reason}` on failure
+
+  Returns `{:ok, task_pid}`.
+
+  ## Examples
+
+      {:ok, _pid} = ADK.Runner.run_async(runner, "user1", "sess1", "hi")
+      receive do
+        {:adk_event, event} -> IO.inspect(event, label: "event")
+        {:adk_done, events} -> IO.puts("Done, \#{length(events)} events")
+      end
+  """
+  @spec run_async(t(), String.t(), String.t(), map() | String.t(), keyword()) :: {:ok, pid()} | {:error, term()}
+  def run_async(%__MODULE__{} = runner, user_id, session_id, message, opts \\ []) do
+    reply_to = Keyword.get(opts, :reply_to, self())
+    runner_opts = Keyword.drop(opts, [:reply_to])
+
+    # Wrap on_event to also send {:adk_event, event} messages
+    caller_on_event = Keyword.get(runner_opts, :on_event)
+    streaming_on_event = fn event ->
+      send(reply_to, {:adk_event, event})
+      if caller_on_event, do: caller_on_event.(event)
+    end
+    runner_opts = Keyword.put(runner_opts, :on_event, streaming_on_event)
+
+    supervisor = ADK.RunnerSupervisor
+
+    if Process.whereis(supervisor) do
+      {:ok, pid} = Task.Supervisor.start_child(supervisor, fn ->
+        try do
+          events = run(runner, user_id, session_id, message, runner_opts)
+          send(reply_to, {:adk_done, events})
+        rescue
+          e -> send(reply_to, {:adk_error, Exception.message(e)})
+        end
+      end)
+      {:ok, pid}
+    else
+      # Fallback: spawn unsupervised
+      pid = spawn(fn ->
+        try do
+          events = run(runner, user_id, session_id, message, runner_opts)
+          send(reply_to, {:adk_done, events})
+        rescue
+          e -> send(reply_to, {:adk_error, Exception.message(e)})
+        end
+      end)
+      {:ok, pid}
+    end
   end
 
   defp normalize_message(msg) when is_binary(msg), do: %{text: msg}

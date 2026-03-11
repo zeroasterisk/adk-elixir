@@ -131,9 +131,13 @@ defmodule ADK.Agent.LlmAgent do
         case extract_function_calls(response) do
           [] ->
             event = maybe_save_output(event, ctx, agent)
+            # Emit final response event via streaming callback
+            ADK.Context.emit_event(ctx, event)
             [event]
 
           calls ->
+            # Emit the model event (with tool calls) immediately for streaming
+            ADK.Context.emit_event(ctx, event)
             tool_results = execute_tools(ctx, agent, calls)
 
             # Check if any tool result is a transfer
@@ -154,6 +158,8 @@ defmodule ADK.Agent.LlmAgent do
                     actions: %ADK.EventActions{transfer_to_agent: target_name}
                   })
 
+                ADK.Context.emit_event(ctx, transfer_event)
+
                 if ctx.session_pid do
                   ADK.Session.append_event(ctx.session_pid, event)
                   ADK.Session.append_event(ctx.session_pid, transfer_event)
@@ -168,6 +174,7 @@ defmodule ADK.Agent.LlmAgent do
                     "Unknown agent: #{target_name}",
                     %{invocation_id: ctx.invocation_id, author: agent.name}
                   )
+                  ADK.Context.emit_event(ctx, error_event)
                   [event, transfer_event, error_event]
                 end
 
@@ -188,6 +195,8 @@ defmodule ADK.Agent.LlmAgent do
                     content: %{role: :user, parts: response_parts}
                   })
 
+                ADK.Context.emit_event(ctx, response_event)
+
                 if ctx.session_pid do
                   ADK.Session.append_event(ctx.session_pid, event)
                   ADK.Session.append_event(ctx.session_pid, response_event)
@@ -204,10 +213,13 @@ defmodule ADK.Agent.LlmAgent do
 
           {:fallback, {:ok, response}} ->
             event = event_from_response(response, ctx, agent)
+            ADK.Context.emit_event(ctx, event)
             [event]
 
           _ ->
-            [ADK.Event.error(reason, %{invocation_id: ctx.invocation_id, author: agent.name})]
+            error_event = ADK.Event.error(reason, %{invocation_id: ctx.invocation_id, author: agent.name})
+            ADK.Context.emit_event(ctx, error_event)
+            [error_event]
         end
     end
   end

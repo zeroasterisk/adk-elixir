@@ -26,6 +26,7 @@ defmodule Claw.ChatLive do
       |> assign(:messages, [])
       |> assign(:loading, false)
       |> assign(:input_value, "")
+      |> assign(:streaming_msg_id, nil)
 
     {:ok, socket}
   end
@@ -43,35 +44,28 @@ defmodule Claw.ChatLive do
       text: msg
     }
 
-    socket = socket
-      |> update(:messages, &(&1 ++ [user_msg]))
+    # Create a placeholder for the streaming agent response
+    stream_id = "msg-#{System.unique_integer([:positive])}"
+    stream_placeholder = %{
+      id: stream_id,
+      role: "agent",
+      author: "claw",
+      text: "",
+      streaming: true
+    }
+
+    socket =
+      socket
+      |> update(:messages, &(&1 ++ [user_msg, stream_placeholder]))
       |> assign(:loading, true)
+      |> assign(:streaming_msg_id, stream_id)
       |> assign(:input_value, "")
 
-    # Run the agent and collect responses
-    events = ADK.Runner.run(runner, "user", socket.assigns.session_id, %{text: msg},
-      run_config: run_config)
-
-    agent_msgs =
-      events
-      |> Enum.filter(&(&1.content != nil and not &1.partial))
-      |> Enum.flat_map(fn event ->
-        text = extract_text(event.content)
-        if text && String.trim(text) != "" do
-          [%{
-            id: "msg-#{System.unique_integer([:positive])}",
-            role: "agent",
-            author: event.author || "claw",
-            text: text
-          }]
-        else
-          []
-        end
-      end)
-
-    socket = socket
-      |> update(:messages, &(&1 ++ agent_msgs))
-      |> assign(:loading, false)
+    # Run the agent asynchronously — events arrive as {:adk_event, event} messages
+    ADK.Runner.run_async(runner, "user", socket.assigns.session_id, %{text: msg},
+      reply_to: self(),
+      run_config: run_config
+    )
 
     {:noreply, socket}
   end
@@ -87,6 +81,75 @@ defmodule Claw.ChatLive do
   def handle_event("set_temperature", %{"temperature" => temp_str}, socket) do
     temp = String.to_float(temp_str)
     {:noreply, assign(socket, :temperature, temp)}
+  end
+
+  @impl true
+  def handle_info({:adk_event, event}, socket) do
+    # An event arrived from the streaming runner — update the streaming placeholder
+    text = extract_text(event.content)
+    stream_id = socket.assigns.streaming_msg_id
+
+    if text && String.trim(text) != "" && stream_id && !event.partial do
+      socket =
+        update(socket, :messages, fn msgs ->
+          Enum.map(msgs, fn
+            %{id: ^stream_id} = m ->
+              # Append text to streaming bubble
+              existing = m[:text] || ""
+              separator = if existing == "", do: "", else: "\n"
+              %{m | text: existing <> separator <> text, author: event.author || "claw"}
+
+            m ->
+              m
+          end)
+        end)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:adk_done, _events}, socket) do
+    # Streaming complete — finalize the placeholder bubble
+    stream_id = socket.assigns.streaming_msg_id
+
+    socket =
+      socket
+      |> assign(:loading, false)
+      |> assign(:streaming_msg_id, nil)
+      |> update(:messages, fn msgs ->
+        Enum.map(msgs, fn
+          %{id: ^stream_id} = m -> Map.delete(m, :streaming)
+          m -> m
+        end)
+      end)
+
+    {:noreply, socket}
+  end
+
+  def handle_info({:adk_error, reason}, socket) do
+    stream_id = socket.assigns.streaming_msg_id
+
+    error_msg = %{
+      id: "msg-#{System.unique_integer([:positive])}",
+      role: "error",
+      author: "system",
+      text: "Error: #{inspect(reason)}"
+    }
+
+    socket =
+      socket
+      |> assign(:loading, false)
+      |> assign(:streaming_msg_id, nil)
+      |> update(:messages, fn msgs ->
+        # Remove the empty streaming placeholder
+        msgs
+        |> Enum.reject(&(&1[:id] == stream_id && (&1[:text] || "") == ""))
+        |> Kernel.++([error_msg])
+      end)
+
+    {:noreply, socket}
   end
 
   @impl true

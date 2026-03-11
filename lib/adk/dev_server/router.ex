@@ -59,7 +59,7 @@ defmodule ADK.DevServer.Router do
     json(conn, 200, info)
   end
 
-  # ── API: chat ─────────────────────────────────────────────────────────────────
+  # ── API: chat (synchronous) ───────────────────────────────────────────────────
 
   post "/api/chat" do
     case conn.body_params do
@@ -80,6 +80,72 @@ defmodule ADK.DevServer.Router do
           {:error, reason} ->
             json(conn, 500, %{error: inspect(reason)})
         end
+
+      _ ->
+        json(conn, 400, %{error: "Missing or empty 'message' field"})
+    end
+  end
+
+  # ── API: chat/stream (SSE streaming) ─────────────────────────────────────────
+
+  post "/api/chat/stream" do
+    case conn.body_params do
+      %{"message" => message} when is_binary(message) and message != "" ->
+        agent_key = conn.private[:adk_agent]
+        model = conn.private[:adk_model]
+        session_id = conn.body_params["session_id"] || "dev-#{:rand.uniform(999_999)}"
+        user_id = conn.body_params["user_id"] || "dev-user"
+
+        conn =
+          conn
+          |> put_resp_content_type("text/event-stream")
+          |> put_resp_header("cache-control", "no-cache")
+          |> put_resp_header("connection", "keep-alive")
+          |> put_resp_header("x-accel-buffering", "no")
+          |> send_chunked(200)
+
+        # Thread conn state through lambdas so chunks accumulate correctly
+        # in both real HTTP adapters and Plug.Test (resp_body accumulation).
+        {:ok, conn_ref} = Agent.start_link(fn -> conn end)
+
+        send_chunk = fn data ->
+          current = Agent.get(conn_ref, & &1)
+          case chunk(current, "data: #{Jason.encode!(data)}\n\n") do
+            {:ok, updated} -> Agent.update(conn_ref, fn _ -> updated end)
+            _ -> :ok
+          end
+        end
+
+        # Send session_id as first event so client can track it
+        send_chunk.(%{type: "session", session_id: session_id})
+
+        try do
+          agent = resolve_agent_struct(agent_key, model)
+          runner = ADK.Runner.new(app_name: "dev", agent: agent)
+
+          ADK.Runner.run_streaming(
+            runner, user_id, session_id, message,
+            stop_session: false,
+            on_event: fn event ->
+              send_chunk.(%{
+                type: "event",
+                author: event.author,
+                event_type: event.type,
+                content: format_content(event.content),
+                partial: event.partial || false
+              })
+            end
+          )
+
+          send_chunk.(%{type: "done"})
+        rescue
+          e ->
+            send_chunk.(%{type: "error", error: Exception.message(e)})
+        end
+
+        final_conn = Agent.get(conn_ref, & &1)
+        Agent.stop(conn_ref)
+        final_conn
 
       _ ->
         json(conn, 400, %{error: "Missing or empty 'message' field"})
@@ -110,37 +176,39 @@ defmodule ADK.DevServer.Router do
 
   # ── Private helpers ──────────────────────────────────────────────────────────
 
-  defp run_agent(:demo, model, message, session_id, user_id) do
-    # Demo agent: simple echo/reflection using ADK.Agent.LlmAgent
-    agent =
-      ADK.Agent.LlmAgent.new(
-        name: "dev_agent",
-        model: model,
-        instruction: "You are a helpful development assistant. Be concise and clear."
-      )
+  defp resolve_agent_struct(:demo, model) do
+    ADK.Agent.LlmAgent.new(
+      name: "dev_agent",
+      model: model,
+      instruction: "You are a helpful development assistant. Be concise and clear."
+    )
+  end
 
+  defp resolve_agent_struct(agent_module, model) when is_atom(agent_module) do
+    if function_exported?(agent_module, :__struct__, 0) do
+      struct(agent_module)
+    else
+      cond do
+        function_exported?(agent_module, :agent, 0) -> agent_module.agent()
+        function_exported?(agent_module, :new, 0) -> agent_module.new()
+        true ->
+          ADK.Agent.LlmAgent.new(
+            name: Macro.underscore(inspect(agent_module)),
+            model: model,
+            instruction: "You are a helpful assistant."
+          )
+      end
+    end
+  end
+
+  defp run_agent(:demo, model, message, session_id, user_id) do
+    agent = resolve_agent_struct(:demo, model)
     do_run(agent, "dev", user_id, session_id, message)
   end
 
   defp run_agent(agent_module, model, message, session_id, user_id)
        when is_atom(agent_module) do
-    agent =
-      if function_exported?(agent_module, :__struct__, 0) do
-        struct(agent_module)
-      else
-        # Try calling agent_module.new/0 or agent_module.agent/0
-        cond do
-          function_exported?(agent_module, :agent, 0) -> agent_module.agent()
-          function_exported?(agent_module, :new, 0) -> agent_module.new()
-          true ->
-            ADK.Agent.LlmAgent.new(
-              name: Macro.underscore(inspect(agent_module)),
-              model: model,
-              instruction: "You are a helpful assistant."
-            )
-        end
-      end
-
+    agent = resolve_agent_struct(agent_module, model)
     do_run(agent, "dev", user_id, session_id, message)
   end
 
@@ -255,6 +323,8 @@ defmodule ADK.DevServer.Router do
         #send-btn:disabled { background: #2d3148; color: #64748b; cursor: not-allowed; }
         .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #3b4fd8; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .cursor { animation: blink 1s step-end infinite; color: #7c83fd; }
+        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
         pre { white-space: pre-wrap; font-family: monospace; font-size: 0.85rem; }
         .session-id { font-size: 0.7rem; color: #475569; margin-top: 4px; }
       </style>
@@ -281,53 +351,35 @@ defmodule ADK.DevServer.Router do
         const btn = document.getElementById('send-btn');
         let sessionId = 'dev-' + Math.random().toString(36).slice(2, 10);
 
-        function addMsg(text, role, extra) {
+        function escHtml(str) {
+          return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        function extractText(content) {
+          if (!content) return '';
+          if (Array.isArray(content)) {
+            return content.filter(p => p.text).map(p => p.text).join('');
+          }
+          return typeof content === 'string' ? content : '';
+        }
+
+        function isTool(content) {
+          if (!Array.isArray(content)) return false;
+          return content.some(p => p.function_call || p.function_response);
+        }
+
+        function addMsg(role) {
           const el = document.createElement('div');
           el.className = 'msg ' + role;
-
-          if (role === 'agent' && extra && extra.events && extra.events.length > 0) {
-            const toolEvents = extra.events.filter(e =>
-              e.content && Array.isArray(e.content) &&
-              e.content.some(p => p.function_call || p.function_response)
-            );
-            if (toolEvents.length > 0) {
-              el.innerHTML = '<pre>' + escHtml(text || '(no text response)') + '</pre>';
-              const evDiv = document.createElement('div');
-              evDiv.className = 'events';
-              toolEvents.forEach(ev => {
-                if (Array.isArray(ev.content)) {
-                  ev.content.forEach(part => {
-                    if (part.function_call) {
-                      evDiv.innerHTML += '<div class="event">🔧 <span class="tool">Tool call:</span> ' + escHtml(part.function_call.name) + '</div>';
-                    }
-                    if (part.function_response) {
-                      evDiv.innerHTML += '<div class="event">✅ <span class="tool">Tool result:</span> ' + escHtml(part.function_response.name) + '</div>';
-                    }
-                  });
-                }
-              });
-              el.appendChild(evDiv);
-            } else {
-              el.innerHTML = '<pre>' + escHtml(text || '(no text response)') + '</pre>';
-            }
-          } else {
-            el.innerHTML = '<pre>' + escHtml(text || '(no text response)') + '</pre>';
-          }
-
-          if (extra && extra.session_id) {
-            const sid = document.createElement('div');
-            sid.className = 'session-id';
-            sid.textContent = 'session: ' + extra.session_id;
-            el.appendChild(sid);
-          }
-
           chat.appendChild(el);
           chat.scrollTop = chat.scrollHeight;
           return el;
         }
 
-        function escHtml(str) {
-          return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        function addSystemMsg(text) {
+          const el = addMsg('system');
+          el.textContent = text;
+          return el;
         }
 
         async function send() {
@@ -336,39 +388,101 @@ defmodule ADK.DevServer.Router do
 
           input.value = '';
           input.style.height = 'auto';
-          addMsg(text, 'user');
+
+          // User bubble
+          const userEl = addMsg('user');
+          userEl.innerHTML = '<pre>' + escHtml(text) + '</pre>';
 
           btn.disabled = true;
           btn.innerHTML = '<span class="spinner"></span>Thinking...';
 
-          // Placeholder while loading
-          const placeholder = document.createElement('div');
-          placeholder.className = 'msg agent';
-          placeholder.innerHTML = '<span class="spinner"></span><em>Agent is thinking...</em>';
-          chat.appendChild(placeholder);
+          // Agent streaming bubble
+          const agentEl = addMsg('agent');
+          const textEl = document.createElement('pre');
+          const cursor = document.createElement('span');
+          cursor.className = 'cursor';
+          cursor.textContent = '▋';
+          agentEl.appendChild(textEl);
+          agentEl.appendChild(cursor);
           chat.scrollTop = chat.scrollHeight;
 
+          let agentText = '';
+          let hasToolCalls = false;
+          let eventsDiv = null;
+
           try {
-            const res = await fetch('/api/chat', {
+            const res = await fetch('/api/chat/stream', {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
               body: JSON.stringify({message: text, session_id: sessionId})
             });
-            const data = await res.json();
-            placeholder.remove();
-            if (res.ok) {
-              sessionId = data.session_id || sessionId;
-              addMsg(data.response, 'agent', data);
-            } else {
-              addMsg('Error: ' + (data.error || 'Unknown error'), 'error');
+
+            if (!res.ok) {
+              agentEl.className = 'msg error';
+              textEl.textContent = 'HTTP error: ' + res.status;
+              cursor.remove();
+              return;
+            }
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+              const {done, value} = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value, {stream: true});
+              const lines = buffer.split('\\n');
+              buffer = lines.pop(); // keep incomplete line
+
+              for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                let msg;
+                try { msg = JSON.parse(line.slice(6)); } catch { continue; }
+
+                if (msg.type === 'session') {
+                  sessionId = msg.session_id || sessionId;
+                } else if (msg.type === 'event') {
+                  const evText = extractText(msg.content);
+                  if (evText && !msg.partial) {
+                    agentText += (agentText ? '\\n' : '') + evText;
+                    textEl.textContent = agentText;
+                    chat.scrollTop = chat.scrollHeight;
+                  }
+                  if (isTool(msg.content)) {
+                    if (!eventsDiv) {
+                      eventsDiv = document.createElement('div');
+                      eventsDiv.className = 'events';
+                      agentEl.appendChild(eventsDiv);
+                    }
+                    (Array.isArray(msg.content) ? msg.content : []).forEach(part => {
+                      if (part.function_call) {
+                        eventsDiv.innerHTML += '<div class="event">🔧 <span class="tool">Tool call:</span> ' + escHtml(part.function_call.name) + '</div>';
+                      }
+                      if (part.function_response) {
+                        eventsDiv.innerHTML += '<div class="event">✅ <span class="tool">Tool result:</span> ' + escHtml(part.function_response.name) + '</div>';
+                      }
+                    });
+                    hasToolCalls = true;
+                  }
+                } else if (msg.type === 'done') {
+                  if (!agentText) textEl.textContent = '(no text response)';
+                } else if (msg.type === 'error') {
+                  agentEl.className = 'msg error';
+                  textEl.textContent = 'Error: ' + msg.error;
+                }
+              }
             }
           } catch (err) {
-            placeholder.remove();
-            addMsg('Network error: ' + err.message, 'error');
+            agentEl.className = 'msg error';
+            textEl.textContent = 'Network error: ' + err.message;
           } finally {
+            cursor.remove();
             btn.disabled = false;
             btn.textContent = 'Send';
             input.focus();
+            chat.scrollTop = chat.scrollHeight;
           }
         }
 

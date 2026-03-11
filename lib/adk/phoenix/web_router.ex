@@ -271,8 +271,11 @@ defmodule ADK.Phoenix.WebRouter do
       |> put_resp_header("x-accel-buffering", "no")
       |> send_chunked(200)
 
-    # Stream events in real-time using Runner.run_streaming
-    # on_event runs in the caller (this) process, so conn is accessible directly
+    # Thread conn state through the on_event lambda so chunks accumulate
+    # correctly in both real HTTP adapters (socket writes) and Plug.Test
+    # (resp_body accumulation via returned conn).
+    {:ok, conn_ref} = Agent.start_link(fn -> conn end)
+
     try do
       ADK.Runner.run_streaming(
         runner,
@@ -281,17 +284,27 @@ defmodule ADK.Phoenix.WebRouter do
         message,
         stop_session: false,
         on_event: fn event ->
+          current_conn = Agent.get(conn_ref, & &1)
           sse_data = Jason.encode!(event_to_python_format(event))
-          chunk(conn, "data: #{sse_data}\n\n")
+          case chunk(current_conn, "data: #{sse_data}\n\n") do
+            {:ok, updated_conn} -> Agent.update(conn_ref, fn _ -> updated_conn end)
+            _ -> :ok
+          end
         end
       )
     rescue
       e ->
+        current_conn = Agent.get(conn_ref, & &1)
         error_json = Jason.encode!(%{error: Exception.message(e)})
-        chunk(conn, "data: #{error_json}\n\n")
+        case chunk(current_conn, "data: #{error_json}\n\n") do
+          {:ok, updated_conn} -> Agent.update(conn_ref, fn _ -> updated_conn end)
+          _ -> :ok
+        end
     end
 
-    conn
+    final_conn = Agent.get(conn_ref, & &1)
+    Agent.stop(conn_ref)
+    final_conn
   end
 
   defp extract_message(nil), do: ""
