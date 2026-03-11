@@ -244,4 +244,4 @@ ADK.Runner
 
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE).
+Apache-2.0 — see [LICENSE](https://github.com/zeroasterisk/adk-elixir/blob/main/LICENSE).

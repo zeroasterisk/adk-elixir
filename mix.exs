@@ -78,6 +78,7 @@ defmodule ADK.MixProject do
         "guides/phoenix-integration.md",
         "guides/supervision.md",
         "guides/oban-integration.md",
+        "guides/adk-web-compatibility.md",
         "CHANGELOG.md"
       ],
       groups_for_modules: [

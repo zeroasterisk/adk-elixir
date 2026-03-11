@@ -28,7 +28,7 @@ if Code.ensure_loaded?(Ecto) do
         ensure_repo(repo, args)
         path = Ecto.Migrator.migrations_path(repo)
 
-        source_path =
+        _source_path =
           :adk
           |> Application.app_dir("priv/templates/adk.gen.migration/migration.exs.eex")
 

@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ADK.Tool.ModuleTool` — module-based tools
 - `ADK.Tool.TransferTool` / `ADK.Tool.TransferToAgent` — agent-to-agent transfers
 - `ADK.Tool.SearchMemoryTool` — search agent memory
+- `ADK.Tool.LongRunningTool` — async tools with progress updates via supervised BEAM processes
 
 #### LLM Backends
 - `ADK.LLM` behaviour
@@ -49,6 +50,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ADK.Session.Store.JsonFile` — file-based persistence
 - `ADK.Session.Store.Ecto` — database-backed store
 - `ADK.State.Delta` — immutable state diffing
+- `ADK.RunConfig` — per-run configuration (streaming mode, max LLM calls, output config)
+
+#### Auth
+- `ADK.Auth.Config` — auth configuration struct
+- `ADK.Auth.Credential` — credential management
+- `ADK.Auth.CredentialStore` behaviour
+- `ADK.Auth.InMemoryStore` — in-memory credential storage
+- OAuth2 support via `ADK.Auth.OAuth2`
 
 #### Memory
 - `ADK.Memory.Store` behaviour
@@ -84,9 +93,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ADK.MCP.Client` — Model Context Protocol client
 - `ADK.MCP.ToolAdapter` — adapt MCP tools to ADK tools
 
+#### Eval Framework
+- `ADK.Eval` — test harness for agent evaluation
+- `ADK.Eval.Case` — structured test cases
+- `ADK.Eval.Result` / `ADK.Eval.Report` — results and reports
+- `ADK.Eval.Scorer` behaviour with built-in scorers: `ExactMatch`, `Contains`, `ToolUsed`, `ResponseLength`
+
 #### Observability
 - `ADK.Telemetry` — `:telemetry` event emissions
+- `ADK.Telemetry.SpanStore` — span tracking for traces
+- `ADK.Telemetry.DebugHandler` — debug logging handler
 - Optional OpenTelemetry integration
+
+#### Supervision
+- Production-ready OTP supervision tree
+- `ADK.Application` — supervised application with session registry and store pool
+- Graceful crash recovery with restart strategies
 
 #### Mix Tasks
 - `mix adk.new` — project generator
