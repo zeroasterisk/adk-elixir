@@ -35,9 +35,25 @@ defmodule ADK.A2A.Message do
   @doc "Convert an ADK Event to an `A2A.Message` struct."
   @spec to_a2a_message(ADK.Event.t()) :: A2A.Message.t()
   def to_a2a_message(%ADK.Event{} = event) do
-    map = from_event(event)
-    A2A.Message.from_map(map)
+    role = if event.author == "user", do: :user, else: :agent
+    parts = event_to_a2a_parts(event)
+
+    case role do
+      :user -> A2A.Message.new_user(parts)
+      :agent -> A2A.Message.new_agent(parts)
+    end
   end
+
+  defp event_to_a2a_parts(%ADK.Event{content: %{parts: parts}}) when is_list(parts) do
+    Enum.map(parts, fn
+      %{text: text} -> A2A.Part.Text.new(text)
+      %{"text" => text} -> A2A.Part.Text.new(text)
+      other when is_map(other) -> A2A.Part.Data.new(other)
+      other -> A2A.Part.Text.new(inspect(other))
+    end)
+  end
+
+  defp event_to_a2a_parts(_), do: []
 
   defp event_to_parts(%ADK.Event{content: %{parts: parts}}) when is_list(parts) do
     Enum.map(parts, &content_to_part/1)

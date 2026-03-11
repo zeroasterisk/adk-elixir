@@ -44,8 +44,9 @@ defmodule ADK.A2A.AgentCardTest do
 
   test "includes provider when given" do
     agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help", tools: [])
-    card = AgentCard.from_agent(agent, url: "http://x", provider: %{"name" => "Acme"})
+    card = AgentCard.from_agent(agent, url: "http://x", provider: %{organization: "Acme", url: "http://acme.com"})
 
-    assert card["provider"] == %{"name" => "Acme"}
+    assert card["provider"]["organization"] == "Acme"
+    assert card["provider"]["url"] == "http://acme.com"
   end
 end

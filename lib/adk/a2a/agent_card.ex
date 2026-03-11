@@ -28,9 +28,13 @@ defmodule ADK.A2A.AgentCard do
   def from_agent(agent, opts \\ []) do
     url = Keyword.fetch!(opts, :url)
 
-    to_a2a_card(agent, opts)
-    |> A2A.AgentCard.to_map()
-    |> Map.put("url", url)
+    card = to_a2a_card(agent, opts)
+    encode_opts = [
+      url: url,
+      capabilities: %{"stateTransitionHistory" => true},
+      provider: opts[:provider]
+    ]
+    A2A.JSON.encode_agent_card(card, encode_opts)
   end
 
   @doc """
@@ -38,14 +42,14 @@ defmodule ADK.A2A.AgentCard do
   """
   @spec to_a2a_card(ADK.Agent.t(), keyword()) :: A2A.AgentCard.t()
   def to_a2a_card(agent, opts \\ []) do
-    A2A.AgentCard.new(
+    %A2A.AgentCard{
       name: ADK.Agent.name(agent),
       url: Keyword.get(opts, :url, "http://localhost:4000"),
-      description: ADK.Agent.description(agent),
+      description: ADK.Agent.description(agent) || "",
       version: Keyword.get(opts, :version, "1.0.0"),
       provider: opts[:provider],
       skills: build_skills(agent)
-    )
+    }
   end
 
   defp build_skills(%ADK.Agent.LlmAgent{tools: tools}) when is_list(tools) and tools != [] do
@@ -55,16 +59,16 @@ defmodule ADK.A2A.AgentCard do
   defp build_skills(_), do: []
 
   defp tool_to_skill(%{name: name, description: desc}) do
-    %{id: to_string(name), name: to_string(name), description: desc || ""}
+    %{id: to_string(name), name: to_string(name), description: desc || "", tags: []}
   end
 
   defp tool_to_skill(%ADK.Tool.FunctionTool{name: name, description: desc}) do
-    %{id: to_string(name), name: to_string(name), description: desc || ""}
+    %{id: to_string(name), name: to_string(name), description: desc || "", tags: []}
   end
 
   defp tool_to_skill(mod) when is_atom(mod) do
-    %{id: mod.name(), name: mod.name(), description: mod.description()}
+    %{id: mod.name(), name: mod.name(), description: mod.description(), tags: []}
   end
 
-  defp tool_to_skill(_), do: %{id: "unknown", name: "unknown", description: ""}
+  defp tool_to_skill(_), do: %{id: "unknown", name: "unknown", description: "", tags: []}
 end

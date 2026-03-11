@@ -1,0 +1,67 @@
+defmodule <%= @module_name %>.Tools do
+  @moduledoc """
+  Tools available to the `<%= @module_name %>` agent.
+  """
+
+  @doc "A greeting tool that returns a pirate-style greeting."
+  def greeting_tool do
+    ADK.Tool.FunctionTool.new(:greet,
+      description: "Greet someone with a pirate-style greeting. Use this when asked to greet someone.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "name" => %{"type" => "string", "description" => "The name of the person to greet"}
+        },
+        "required" => ["name"]
+      },
+      func: fn _ctx, args ->
+        name = args["name"] || "stranger"
+        {:ok, "Ahoy, #{name}! Welcome aboard, ye scurvy dog! 🏴‍☠️"}
+      end
+    )
+  end
+
+  @doc "A calculator tool for basic arithmetic."
+  def calculator_tool do
+    ADK.Tool.FunctionTool.new(:calculate,
+      description: "Perform basic arithmetic. Supports +, -, *, /.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "expression" => %{"type" => "string", "description" => "Math expression like '2 + 3'"}
+        },
+        "required" => ["expression"]
+      },
+      func: fn _ctx, args ->
+        expr = args["expression"] || ""
+
+        case parse_expression(expr) do
+          {:ok, result} -> {:ok, "The answer be #{result}, matey!"}
+          :error -> {:ok, "Arrr, I can't make sense of '#{expr}'!"}
+        end
+      end
+    )
+  end
+
+  defp parse_expression(expr) do
+    case Regex.run(~r/^\s*(-?\d+(?:\.\d+)?)\s*([+\-*\/])\s*(-?\d+(?:\.\d+)?)\s*$/, expr) do
+      [_, a, op, b] ->
+        {a, _} = Float.parse(a)
+        {b, _} = Float.parse(b)
+
+        result =
+          case op do
+            "+" -> a + b
+            "-" -> a - b
+            "*" -> a * b
+            "/" when b != 0 -> a / b
+            "/" -> :error
+          end
+
+        if result == :error, do: :error, else: {:ok, result}
+
+      _ ->
+        :error
+    end
+  end
+end

@@ -9,15 +9,17 @@ defmodule ADK.A2A.Client do
   @doc "Fetch the Agent Card from a remote A2A server."
   @spec get_agent_card(String.t()) :: {:ok, map()} | {:error, term()}
   def get_agent_card(base_url) do
-    case A2A.Client.get_agent_card(base_url) do
-      {:ok, %A2A.AgentCard{} = card} -> {:ok, A2A.AgentCard.to_map(card)}
+    case A2A.Client.discover(base_url) do
+      {:ok, %A2A.AgentCard{} = card} -> {:ok, A2A.JSON.encode_agent_card(card)}
       error -> error
     end
   end
 
-  @doc "Send a task to a remote A2A agent."
+  @doc "Send a task (message) to a remote A2A agent."
   @spec send_task(String.t(), String.t(), keyword()) :: {:ok, map()} | {:error, term()}
-  defdelegate send_task(base_url, message, opts \\ []), to: A2A.Client
+  def send_task(base_url, message, opts \\ []) do
+    A2A.Client.send_message(base_url, message, opts)
+  end
 
   @doc "Get a task's status and history from a remote A2A agent."
   @spec get_task(String.t(), String.t()) :: {:ok, map()} | {:error, term()}

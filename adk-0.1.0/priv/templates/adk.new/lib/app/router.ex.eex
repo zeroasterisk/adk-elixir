@@ -1,0 +1,33 @@
+defmodule <%= @module_name %>.Router do
+  @moduledoc """
+  Web router for the `<%= @module_name %>` agent.
+
+  Exposes the ADK Web endpoints (compatible with the adk-web React frontend).
+
+  ## Usage
+
+      # Start in iex:
+      <%= @module_name %>.Router.start(port: 8080)
+
+      # Or add to your supervision tree:
+      {Bandit, plug: <%= @module_name %>.Router.plug(), port: 8080}
+  """
+
+  @doc "Returns the Plug to pass to Bandit."
+  def plug(opts \\ []) do
+    agent_map = %{"<%= @app_name %>" => <%= @module_name %>.Agent.build(opts)}
+
+    {ADK.Phoenix.WebRouter,
+     agent_loader: agent_map,
+     session_store: {ADK.Session.Store.InMemory, []}}
+  end
+
+  @doc "Start the web server on the given port (default 8080)."
+  def start(opts \\ []) do
+    port = Keyword.get(opts, :port, 8080)
+
+    IO.puts("Starting <%= @module_name %> web server on http://localhost:#{port}")
+
+    Bandit.start_link(plug: plug(opts), port: port)
+  end
+end
