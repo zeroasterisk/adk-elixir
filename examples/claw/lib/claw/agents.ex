@@ -15,9 +15,11 @@ defmodule Claw.Agents do
   - **LongRunningTool** — research tool with progress updates
   - **Memory** — agent remembers context from previous sessions (in-memory store)
   - **RunConfig** — callers can pass temperature/max_tokens at runtime
+  - **HITL** — Human-in-the-loop approval before sensitive tool calls
   """
 
   alias ADK.Agent.LlmAgent
+  alias ADK.Policy.HumanApproval
   alias ADK.RunConfig
 
   @model "gemini-2.0-flash-lite"
@@ -131,6 +133,35 @@ defmodule Claw.Agents do
       Use the read_file tool to examine source files when asked.
       """,
       tools: [Claw.Tools.shell_command(), Claw.Tools.read_file()]
+    )
+  end
+
+  @doc """
+  Build a `ADK.Policy.HumanApproval` policy for CLI usage.
+
+  Intercepts sensitive tools (`shell_command`, `delete_file`) and prompts
+  the user via stdin before execution. Pass this as a policy to `ADK.Runner.run/5`:
+
+      policy = Claw.Agents.hitl_policy()
+      events = ADK.Runner.run(runner, user_id, session_id, message, policies: [policy])
+
+  ## Server mode
+
+  For LiveView or async approval, use `:server` mode and start the approval server:
+
+      {:ok, server} = ADK.Tool.Approval.start_link(name: ClawApprovals)
+      policy = Claw.Agents.hitl_policy(mode: :server, server: ClawApprovals)
+
+      # In another process / LiveView:
+      [%{id: req_id}] = ADK.Tool.Approval.list_pending(ClawApprovals)
+      ADK.Tool.Approval.approve(ClawApprovals, req_id)
+  """
+  def hitl_policy(opts \\ []) do
+    HumanApproval.new(
+      Keyword.merge(
+        [sensitive_tools: Claw.Tools.sensitive_tool_names(), mode: :cli],
+        opts
+      )
     )
   end
 

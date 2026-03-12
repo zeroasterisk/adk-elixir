@@ -52,19 +52,38 @@ defmodule ADK.Policy do
 
   @doc """
   Run `authorize_tool` across a list of policies. First deny wins.
+
+  Supports both module-based policies (atoms implementing the `ADK.Policy` behaviour)
+  and struct-based policies (e.g., `%ADK.Policy.HumanApproval{}`). Struct policies
+  must implement a `check/4` function for per-instance configuration.
   """
-  @spec check_tool_authorization([module()], map(), map(), ADK.Context.t()) :: tool_decision()
+  @spec check_tool_authorization([module() | struct()], map(), map(), ADK.Context.t()) ::
+          tool_decision()
   def check_tool_authorization(policies, tool, args, ctx) do
-    Enum.reduce_while(policies, :allow, fn mod, :allow ->
-      if function_exported?(mod, :authorize_tool, 3) do
-        case mod.authorize_tool(tool, args, ctx) do
-          :allow -> {:cont, :allow}
-          {:deny, _} = deny -> {:halt, deny}
-        end
-      else
-        {:cont, :allow}
+    Enum.reduce_while(policies, :allow, fn policy, :allow ->
+      case resolve_policy_decision(policy, tool, args, ctx) do
+        :allow -> {:cont, :allow}
+        {:deny, _} = deny -> {:halt, deny}
       end
     end)
+  end
+
+  # Struct-based policy — dispatch to check/4 if available
+  defp resolve_policy_decision(%mod{} = policy, tool, args, ctx) do
+    if function_exported?(mod, :check, 4) do
+      mod.check(policy, tool, args, ctx)
+    else
+      :allow
+    end
+  end
+
+  # Module-based policy — call authorize_tool/3
+  defp resolve_policy_decision(mod, tool, args, ctx) when is_atom(mod) do
+    if function_exported?(mod, :authorize_tool, 3) do
+      mod.authorize_tool(tool, args, ctx)
+    else
+      :allow
+    end
   end
 
   @doc """

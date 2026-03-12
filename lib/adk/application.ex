@@ -14,6 +14,7 @@ defmodule ADK.Application do
       ├── ADK.SessionSupervisor      — DynamicSupervisor for session GenServers
       ├── ADK.RunnerSupervisor       — Task.Supervisor for async agent executions
       ├── ADK.Telemetry.SpanStore    — ETS-backed debug span storage
+      ├── ADK.Tool.Approval          — GenServer for HITL tool approval (optional)
       └── ADK.LLM.CircuitBreaker     — Circuit breaker for LLM calls
 
   Uses `rest_for_one` because sessions depend on the Registry being alive.
@@ -27,6 +28,7 @@ defmodule ADK.Application do
         start_credential_store: true,   # default true
         start_artifact_store: true,     # default true
         start_circuit_breaker: true,    # default true
+        start_approval_server: false,   # default false — enable for HITL in server mode
         circuit_breaker: [              # CircuitBreaker options
           failure_threshold: 5,
           reset_timeout_ms: 60_000
@@ -78,6 +80,11 @@ defmodule ADK.Application do
 
         # ETS-backed debug span storage
         ADK.Telemetry.SpanStore,
+
+        # Approval server for HITL tool confirmation (optional)
+        if(start_child?(:start_approval_server, false),
+          do: {ADK.Tool.Approval, name: ADK.Tool.Approval}
+        ),
 
         # Circuit breaker for LLM calls (optional)
         if(start_child?(:start_circuit_breaker, true),

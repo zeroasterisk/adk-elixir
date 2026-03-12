@@ -7,7 +7,7 @@ defmodule ClawTest do
       assert agent.name == "router"
       assert agent.model == "gemini-2.0-flash-lite"
       # Updated: now includes save_note, list_notes, call_mock_api, research
-      assert length(agent.tools) == 7
+      assert length(agent.tools) == 8
       assert length(agent.sub_agents) == 2
     end
 

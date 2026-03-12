@@ -19,10 +19,13 @@ defmodule Claw.Tools do
     [datetime(), read_file(), shell_command()]
   end
 
-  @doc "All showcase tools (including artifacts, auth, long-running)."
+  @doc "All showcase tools (including artifacts, auth, long-running, HITL)."
   def all do
-    [datetime(), read_file(), shell_command(), save_note(), list_notes(), call_mock_api(), research()]
+    [datetime(), read_file(), shell_command(), save_note(), list_notes(), call_mock_api(), research(), delete_file()]
   end
+
+  @doc "Tools that require human-in-the-loop approval before execution."
+  def sensitive_tool_names, do: ["shell_command", "delete_file"]
 
   # ---------------------------------------------------------------------------
   # Basic Tools (existing)
@@ -354,6 +357,46 @@ defmodule Claw.Tools do
         """
 
         {:ok, String.trim(summary)}
+      end
+    )
+  end
+
+  # ---------------------------------------------------------------------------
+  # HITL Demo Tool (sensitive — requires human approval)
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Destructive file deletion tool — demonstrates Human-in-the-loop (HITL) approval.
+
+  When used with `ADK.Policy.HumanApproval`, this tool requires explicit user
+  confirmation before the agent is allowed to execute it. The runner pauses
+  and waits for a `y/n` prompt (CLI mode) or external approval (server mode).
+  """
+  def delete_file do
+    FunctionTool.new(:delete_file,
+      description: """
+      Delete a file from disk. This is a DESTRUCTIVE and IRREVERSIBLE operation.
+      Requires human approval before execution (HITL demo).
+      """,
+      parameters: %{
+        type: "object",
+        properties: %{
+          path: %{type: "string", description: "File path to delete (relative to project root)"}
+        },
+        required: ["path"]
+      },
+      func: fn _ctx, %{"path" => path} ->
+        safe_path = Path.expand(path, File.cwd!())
+
+        if String.starts_with?(safe_path, File.cwd!()) do
+          case File.rm(safe_path) do
+            :ok -> {:ok, "Deleted: #{path}"}
+            {:error, :enoent} -> {:error, "File not found: #{path}"}
+            {:error, reason} -> {:error, "Cannot delete '#{path}': #{reason}"}
+          end
+        else
+          {:error, "Access denied: path outside project directory"}
+        end
       end
     )
   end
