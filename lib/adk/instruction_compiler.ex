@@ -9,6 +9,23 @@ defmodule ADK.InstructionCompiler do
   - Transfer instructions (listing available sub-agents)
 
   This mirrors Python ADK's `BaseLlmFlow._compile_system_instruction()`.
+
+  ## InstructionProvider
+
+  Both the `instruction` and `global_instruction` fields on `ADK.Agent.LlmAgent`
+  support dynamic providers in addition to static strings:
+
+  - `String.t()` — static instruction (existing behaviour, unchanged)
+  - `(ADK.Context.t() -> String.t())` — 1-arity anonymous function called at runtime
+  - `{module, atom}` — MFA with 1 arg (context appended): `module.atom(ctx)`
+  - `{module, atom, extra_args}` — MFA with extra args (context prepended): `module.atom(ctx, extra_args...)`
+
+  The provider is called once per invocation, just before template-variable
+  substitution, so the returned string still supports `{variable}` interpolation.
+
+  If a provider returns a non-binary value, it is coerced via `to_string/1`.
+  If the provider raises, the error is logged and an empty string is used so
+  the agent can still respond.
   """
 
   @doc """
@@ -19,7 +36,7 @@ defmodule ADK.InstructionCompiler do
   @spec compile(map(), ADK.Context.t()) :: String.t()
   def compile(agent, ctx) do
     [
-      global_instruction(agent),
+      global_instruction(agent, ctx),
       identity_instruction(agent),
       agent_instruction(agent, ctx),
       output_schema_instruction(agent),
@@ -64,8 +81,26 @@ defmodule ADK.InstructionCompiler do
 
   # --- Private helpers ---
 
-  defp global_instruction(agent) do
-    Map.get(agent, :global_instruction, nil)
+  defp global_instruction(agent, ctx) do
+    # global_instruction supports static strings AND dynamic providers
+    case Map.get(agent, :global_instruction, nil) do
+      nil ->
+        nil
+
+      provider when is_binary(provider) ->
+        state = get_session_state(ctx)
+        substitute_vars(provider, state)
+
+      provider ->
+        resolved = resolve_provider(provider, ctx)
+
+        if is_binary(resolved) do
+          state = get_session_state(ctx)
+          substitute_vars(resolved, state)
+        else
+          resolved
+        end
+    end
   end
 
   defp identity_instruction(agent) do
@@ -93,9 +128,69 @@ defmodule ADK.InstructionCompiler do
         state = get_session_state(ctx)
         substitute_vars(instruction, state)
 
-      instruction when is_function(instruction, 1) ->
-        instruction.(ctx)
+      provider ->
+        # Dynamic provider: resolve then apply template vars
+        resolved = resolve_provider(provider, ctx)
+
+        if is_binary(resolved) do
+          state = get_session_state(ctx)
+          substitute_vars(resolved, state)
+        else
+          resolved
+        end
     end
+  end
+
+  @doc """
+  Resolve an instruction provider to a string.
+
+  Handles:
+  - `String.t()` — returned as-is
+  - `(ctx -> String.t())` — called with the context (may be nil for global)
+  - `{module, atom}` — called as `module.atom(ctx)`
+  - `{module, atom, extra_args}` — called as `module.atom(ctx, extra_args...)`
+
+  Non-binary return values are coerced via `to_string/1`. Errors are caught
+  and an empty string is returned (with a warning logged).
+  """
+  @spec resolve_provider(term(), ADK.Context.t() | nil) :: String.t() | nil
+  def resolve_provider(nil, _ctx), do: nil
+
+  def resolve_provider(instruction, _ctx) when is_binary(instruction), do: instruction
+
+  def resolve_provider(fun, ctx) when is_function(fun, 1) do
+    safe_call(fn -> fun.(ctx) end)
+  end
+
+  def resolve_provider({mod, fun_name}, ctx)
+      when is_atom(mod) and is_atom(fun_name) do
+    safe_call(fn -> apply(mod, fun_name, [ctx]) end)
+  end
+
+  def resolve_provider({mod, fun_name, extra_args}, ctx)
+      when is_atom(mod) and is_atom(fun_name) and is_list(extra_args) do
+    safe_call(fn -> apply(mod, fun_name, [ctx | extra_args]) end)
+  end
+
+  def resolve_provider(other, _ctx) do
+    require Logger
+    Logger.warning("ADK.InstructionCompiler: unexpected instruction provider type: #{inspect(other)}")
+    nil
+  end
+
+  defp safe_call(fun) do
+    result = fun.()
+
+    if is_binary(result) do
+      result
+    else
+      to_string(result)
+    end
+  rescue
+    e ->
+      require Logger
+      Logger.warning("ADK.InstructionCompiler: instruction provider raised: #{Exception.message(e)}")
+      ""
   end
 
   defp output_schema_instruction(agent) do

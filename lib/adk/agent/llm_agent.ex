@@ -23,11 +23,24 @@ defmodule ADK.Agent.LlmAgent do
     generate_config: %{}
   ]
 
+  @typedoc """
+  An instruction provider can be:
+  - `String.t()` — static instruction string (existing, unchanged)
+  - `(ADK.Context.t() -> String.t())` — 1-arity function called at runtime with the context
+  - `{module, atom}` — MFA called as `module.atom(ctx)`
+  - `{module, atom, [extra_args]}` — MFA called as `module.atom(ctx, extra_args...)`
+  """
+  @type instruction_provider ::
+          String.t()
+          | (ADK.Context.t() -> String.t())
+          | {module(), atom()}
+          | {module(), atom(), list()}
+
   @type t :: %__MODULE__{
           name: String.t(),
           model: String.t(),
-          instruction: String.t(),
-          global_instruction: String.t() | nil,
+          instruction: instruction_provider(),
+          global_instruction: instruction_provider() | nil,
           output_key: atom() | String.t() | nil,
           context_compressor: keyword() | nil,
           output_schema: map() | nil,
