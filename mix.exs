@@ -72,6 +72,7 @@ defmodule ADK.MixProject do
       main: "readme",
       extras: [
         "README.md",
+        "docs/intentional-differences.md",
         "guides/getting-started.md",
         "guides/concepts.md",
         "guides/mix-adk-new.md",
