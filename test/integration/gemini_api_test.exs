@@ -6,8 +6,8 @@ defmodule ADK.Integration.GeminiApiTest do
 
       GEMINI_API_KEY=your-key mix test test/integration/ --include integration
 
-  These tests are excluded by default. They use `gemini-flash-lite-latest`
-  to minimize cost.
+  These tests are excluded by default. They use `gemini-flash-latest`
+  to keep model references evergreen.
   """
   use ExUnit.Case, async: false
 
