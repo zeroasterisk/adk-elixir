@@ -249,10 +249,14 @@ defmodule ADK.Agent.LlmAgent do
               true ->
                 response_parts =
                   Enum.map(tool_results, fn tr ->
+                    raw_response = tr[:result] || tr[:error] || ""
+                    # Gemini API requires function_response.response to be a dict/object.
+                    # Wrap non-map values as %{"result" => value} to match Python ADK behavior.
+                    wrapped_response = wrap_tool_response(raw_response)
                     %{function_response: %{
                       name: tr.name,
                       id: tr[:id],
-                      response: tr[:result] || tr[:error] || ""
+                      response: wrapped_response
                     }}
                   end)
 
@@ -326,7 +330,18 @@ defmodule ADK.Agent.LlmAgent do
     }
 
     # Merge generate_config: agent defaults + run_config overrides
-    merged_config = merge_generate_config(agent.generate_config, ctx)
+    # When output_schema is set, auto-configure response_mime_type and response_schema
+    # to enforce structured output at the API level (mirrors Python ADK behavior)
+    base_config =
+      case agent.output_schema do
+        nil -> agent.generate_config
+        schema when is_map(schema) ->
+          (agent.generate_config || %{})
+          |> Map.put_new(:response_mime_type, "application/json")
+          |> Map.put_new(:response_schema, schema)
+      end
+
+    merged_config = merge_generate_config(base_config, ctx)
 
     request =
       case merged_config do
@@ -656,6 +671,12 @@ defmodule ADK.Agent.LlmAgent do
   defp run_tool(%ADK.Tool.GoogleSearch{}, ctx, args), do: ADK.Tool.GoogleSearch.run(ctx, args)
   defp run_tool(%ADK.Tool.BuiltInCodeExecution{}, ctx, args), do: ADK.Tool.BuiltInCodeExecution.run(ctx, args)
   defp run_tool(tool, ctx, args), do: ADK.Tool.FunctionTool.run(tool, ctx, args)
+
+  # Wrap tool results in a dict for the Gemini API.
+  # The API requires function_response.response to be a JSON object, not a raw string.
+  # This mirrors Python ADK's behavior: `if not isinstance(result, dict): result = {"result": result}`
+  defp wrap_tool_response(response) when is_map(response), do: response
+  defp wrap_tool_response(response), do: %{"result" => response}
 
   defp maybe_save_output(event, ctx, %{output_key: key}) when not is_nil(key) do
     text = ADK.Event.text(event)

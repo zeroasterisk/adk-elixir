@@ -143,6 +143,16 @@ defmodule ADK.LLM.Gemini do
           if gen_config == %{}, do: body, else: Map.put(body, :generationConfig, gen_config)
       end
 
+    # Apply safety settings if provided in generate_config
+    body =
+      case Map.get(request, :generate_config) do
+        %{safety_settings: settings} when is_list(settings) and settings != [] ->
+          Map.put(body, :safetySettings, settings)
+
+        _ ->
+          body
+      end
+
     body
   end
 
