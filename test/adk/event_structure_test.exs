@@ -1,104 +1,163 @@
 defmodule ADK.EventStructureTest do
+  @moduledoc """
+  Tests demonstrating how to work with the Gemini Content/Part structure in events.
+
+  When your agent makes tool calls or receives tool results, they live inside
+  `event.content.parts` as Gemini-style `function_call` and `function_response`
+  parts. These tests show how to extract, inspect, and work with them.
+  """
   use ExUnit.Case, async: true
 
   alias ADK.Event
 
-  describe "function_calls/1" do
-    test "extracts function calls from content parts" do
-      event = Event.new(%{
-        author: "agent",
-        content: %{parts: [
-          %{function_call: %{name: "search", args: %{q: "hello"}}},
-          %{text: "thinking..."},
-          %{function_call: %{name: "fetch", args: %{url: "http://example.com"}}}
-        ]}
-      })
+  describe "extracting tool calls from agent events" do
+    test "when my agent decides to call a tool, I can extract the call details" do
+      # Simulate an LLM response where the agent wants to search and fetch
+      event =
+        Event.new(%{
+          author: "research_agent",
+          content: %{
+            parts: [
+              %{function_call: %{name: "web_search", args: %{query: "Elixir ADK examples"}}},
+              %{text: "Let me search for that..."},
+              %{function_call: %{name: "fetch_url", args: %{url: "https://hex.pm/packages/adk"}}}
+            ]
+          }
+        })
 
       calls = Event.function_calls(event)
+
       assert length(calls) == 2
-      assert Enum.at(calls, 0).name == "search"
-      assert Enum.at(calls, 1).name == "fetch"
+      assert Enum.at(calls, 0).name == "web_search"
+      assert Enum.at(calls, 0).args == %{query: "Elixir ADK examples"}
+      assert Enum.at(calls, 1).name == "fetch_url"
     end
 
-    test "returns empty list when no function calls" do
-      event = Event.new(%{author: "agent", content: %{parts: [%{text: "hi"}]}})
+    test "a plain text response has no tool calls" do
+      event =
+        Event.new(%{
+          author: "chat_agent",
+          content: %{parts: [%{text: "I don't need any tools for this."}]}
+        })
+
       assert Event.function_calls(event) == []
     end
 
-    test "returns empty list when content is nil" do
+    test "an event with nil content has no tool calls" do
       event = Event.new(%{author: "agent", content: nil})
       assert Event.function_calls(event) == []
     end
   end
 
-  describe "function_responses/1" do
-    test "extracts function responses from content parts" do
-      event = Event.new(%{
-        author: "agent",
-        content: %{parts: [
-          %{function_response: %{name: "search", response: %{results: ["a", "b"]}}}
-        ]}
-      })
+  describe "extracting tool results from events" do
+    test "after a tool runs, I can extract its result from the response event" do
+      event =
+        Event.new(%{
+          author: "tool_executor",
+          content: %{
+            parts: [
+              %{
+                function_response: %{
+                  name: "web_search",
+                  response: %{results: ["result 1", "result 2", "result 3"]}
+                }
+              }
+            ]
+          }
+        })
 
       responses = Event.function_responses(event)
       assert length(responses) == 1
-      assert hd(responses).name == "search"
+      assert hd(responses).name == "web_search"
+      assert hd(responses).response.results == ["result 1", "result 2", "result 3"]
     end
 
-    test "returns empty list when no function responses" do
+    test "a text-only event has no tool results" do
       event = Event.new(%{author: "agent", content: %{parts: [%{text: "hi"}]}})
       assert Event.function_responses(event) == []
     end
   end
 
-  describe "has_function_calls?/1 and has_function_responses?/1" do
-    test "detects function calls" do
-      event = Event.new(%{
-        author: "agent",
-        content: %{parts: [%{function_call: %{name: "foo", args: %{}}}]}
-      })
+  describe "checking if an event involves tool use" do
+    test "quickly check if the agent wants to call a tool" do
+      tool_call_event =
+        Event.new(%{
+          author: "agent",
+          content: %{
+            parts: [%{function_call: %{name: "get_weather", args: %{city: "Louisville"}}}]
+          }
+        })
 
-      assert Event.has_function_calls?(event)
-      refute Event.has_function_responses?(event)
+      assert Event.has_function_calls?(tool_call_event)
+      refute Event.has_function_responses?(tool_call_event)
     end
 
-    test "detects function responses" do
-      event = Event.new(%{
-        author: "agent",
-        content: %{parts: [%{function_response: %{name: "foo", response: %{}}}]}
-      })
+    test "quickly check if an event contains a tool result" do
+      tool_result_event =
+        Event.new(%{
+          author: "tool",
+          content: %{
+            parts: [
+              %{function_response: %{name: "get_weather", response: %{temp: 72, unit: "F"}}}
+            ]
+          }
+        })
 
-      refute Event.has_function_calls?(event)
-      assert Event.has_function_responses?(event)
+      refute Event.has_function_calls?(tool_result_event)
+      assert Event.has_function_responses?(tool_result_event)
     end
   end
 
-  describe "no top-level function_calls/function_responses fields" do
-    test "Event struct does not have function_calls field" do
+  describe "Gemini Content/Part structure" do
+    test "tool calls live in content.parts, not as top-level event fields" do
+      # ADK follows Gemini's Content/Part structure — function_calls and
+      # function_responses are NOT top-level fields on the Event struct
       refute Map.has_key?(%Event{}, :function_calls)
-    end
-
-    test "Event struct does not have function_responses field" do
       refute Map.has_key?(%Event{}, :function_responses)
     end
-  end
 
-  describe "to_map/from_map roundtrip" do
-    test "roundtrips event with function calls in content.parts" do
-      event = Event.new(%{
-        author: "agent",
-        content: %{parts: [
-          %{function_call: %{name: "search", args: %{q: "test"}}}
-        ]}
-      })
+    test "an event with tool calls is not considered a final response" do
+      event =
+        Event.new(%{
+          author: "agent",
+          content: %{
+            parts: [%{function_call: %{name: "lookup_order", args: %{order_id: "ORD-4521"}}}]
+          }
+        })
 
-      roundtripped = event |> Event.to_map() |> Event.from_map()
-      assert Event.function_calls(roundtripped) == Event.function_calls(event)
+      refute Event.final_response?(event),
+             "the agent still needs to process the tool result before responding"
     end
 
-    test "from_map migrates legacy function_calls into content.parts" do
+    test "after tool processing, the agent's text reply IS a final response" do
+      event =
+        Event.new(%{
+          author: "support_agent",
+          content: %{parts: [%{text: "Order ORD-4521 shipped on March 10th."}]}
+        })
+
+      assert Event.final_response?(event)
+    end
+  end
+
+  describe "roundtripping events with tool calls through serialization" do
+    test "tool calls survive a to_map/from_map roundtrip" do
+      original =
+        Event.new(%{
+          author: "agent",
+          content: %{
+            parts: [%{function_call: %{name: "calculate", args: %{expression: "2 + 2"}}}]
+          }
+        })
+
+      roundtripped = original |> Event.to_map() |> Event.from_map()
+      assert Event.function_calls(roundtripped) == Event.function_calls(original)
+    end
+
+    test "legacy events with top-level function_calls are migrated into content.parts" do
+      # Old format had function_calls as a top-level field — from_map migrates them
       legacy_map = %{
-        "id" => "test-1",
+        "id" => "legacy-evt-1",
         "author" => "agent",
         "content" => nil,
         "function_calls" => [%{name: "search", args: %{q: "test"}}],
@@ -110,36 +169,16 @@ defmodule ADK.EventStructureTest do
       assert hd(Event.function_calls(event)).name == "search"
     end
 
-    test "from_map migrates legacy function_responses into content.parts" do
+    test "legacy function_responses are merged into existing content.parts" do
       legacy_map = %{
-        "id" => "test-2",
+        "id" => "legacy-evt-2",
         "author" => "agent",
-        "content" => %{"parts" => [%{"text" => "existing"}]},
-        "function_responses" => [%{name: "search", response: %{result: "ok"}}]
+        "content" => %{"parts" => [%{"text" => "processing..."}]},
+        "function_responses" => [%{name: "search", response: %{result: "found it"}}]
       }
 
       event = Event.from_map(legacy_map)
       assert length(Event.function_responses(event)) == 1
-    end
-  end
-
-  describe "final_response?" do
-    test "event with function calls is not final" do
-      event = Event.new(%{
-        author: "agent",
-        content: %{parts: [%{function_call: %{name: "foo", args: %{}}}]}
-      })
-
-      refute Event.final_response?(event)
-    end
-
-    test "event with only text is final" do
-      event = Event.new(%{
-        author: "agent",
-        content: %{parts: [%{text: "done"}]}
-      })
-
-      assert Event.final_response?(event)
     end
   end
 end
