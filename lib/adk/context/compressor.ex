@@ -12,7 +12,7 @@ defmodule ADK.Context.Compressor do
 
       agent = LlmAgent.new(
         name: "bot",
-        model: "gemini-2.0-flash",
+        model: "gemini-flash-latest",
         instruction: "Help",
         context_compressor: {ADK.Context.Compressor.Truncate, max_messages: 20}
       )

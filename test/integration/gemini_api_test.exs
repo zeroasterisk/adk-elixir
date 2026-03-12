@@ -6,14 +6,14 @@ defmodule ADK.Integration.GeminiApiTest do
 
       GEMINI_API_KEY=your-key mix test test/integration/ --include integration
 
-  These tests are excluded by default. They use `gemini-2.0-flash-lite`
+  These tests are excluded by default. They use `gemini-flash-lite-latest`
   to minimize cost.
   """
   use ExUnit.Case, async: false
 
   @moduletag :integration
 
-  @model "gemini-2.5-flash"
+  @model "gemini-flash-latest"
 
   setup do
     # Use real Gemini backend for integration tests

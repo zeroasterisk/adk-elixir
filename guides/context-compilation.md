@@ -10,7 +10,7 @@ When you define an agent:
 ```elixir
 agent = ADK.Agent.LlmAgent.new(
   name: "weather_bot",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "You help users with weather. The user is in {location}.",
   tools: [WeatherTool],
   sub_agents: [DetailAgent]
@@ -89,7 +89,7 @@ Instructions support `{key}` placeholders resolved from session state:
 ```elixir
 agent = ADK.Agent.LlmAgent.new(
   name: "greeter",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "Greet the user. Their name is {user_name} and they speak {language}."
 )
 
@@ -117,7 +117,7 @@ Both `instruction` and `global_instruction` accept dynamic providers:
 # Anonymous function
 agent = ADK.Agent.LlmAgent.new(
   name: "bot",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: fn ctx ->
     time = DateTime.utc_now() |> DateTime.to_string()
     "You are a bot. Current time: #{time}."
@@ -127,14 +127,14 @@ agent = ADK.Agent.LlmAgent.new(
 # MFA tuple
 agent = ADK.Agent.LlmAgent.new(
   name: "bot",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: {MyApp.Instructions, :build_instruction}
 )
 
 # MFA with extra args
 agent = ADK.Agent.LlmAgent.new(
   name: "bot",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: {MyApp.Instructions, :build_instruction, ["formal"]}
 )
 ```
@@ -180,7 +180,7 @@ If `context_compressor` is configured, messages are compressed before sending:
 ```elixir
 agent = ADK.Agent.LlmAgent.new(
   name: "bot",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "Help the user.",
   context_compressor: [
     strategy: ADK.Context.Compressor.TokenBudget,
@@ -247,19 +247,19 @@ For a router agent with two sub-agents:
 ```elixir
 router = ADK.Agent.LlmAgent.new(
   name: "router",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "Route requests to the right specialist.",
   sub_agents: [
     ADK.Agent.LlmAgent.new(
       name: "weather",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       instruction: "You handle weather queries.",
       description: "Handles weather-related questions",
       tools: [WeatherTool]
     ),
     ADK.Agent.LlmAgent.new(
       name: "news",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       instruction: "You handle news queries.",
       description: "Handles news-related questions",
       tools: [NewsTool]
@@ -294,7 +294,7 @@ To see what the LLM actually receives, inspect the compiled request:
 # In your agent's before_model callback:
 agent = ADK.Agent.LlmAgent.new(
   name: "debug_bot",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "Help the user. User is {user_name}."
 )
 

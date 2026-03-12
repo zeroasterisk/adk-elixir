@@ -159,7 +159,7 @@ defmodule ADK.GenerateConfigTest do
       Application.put_env(:adk, :gemini_api_key, "test-key")
       Application.put_env(:adk, :gemini_test_plug, true)
 
-      assert {:ok, _} = ADK.LLM.Gemini.generate("gemini-2.0-flash", request)
+      assert {:ok, _} = ADK.LLM.Gemini.generate("gemini-flash-latest", request)
     after
       Application.delete_env(:adk, :gemini_test_plug)
     end

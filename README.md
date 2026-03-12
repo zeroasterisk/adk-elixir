@@ -53,7 +53,7 @@ end
 ```elixir
 # Create an agent
 agent = ADK.new("assistant",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "You are a helpful assistant."
 )
 
@@ -85,7 +85,7 @@ The core agent — sends messages to an LLM, handles tool calls, returns events:
 
 ```elixir
 agent = ADK.new("researcher",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "You research topics thoroughly.",
   tools: [&MyTools.search/1, &MyTools.summarize/1]
 )

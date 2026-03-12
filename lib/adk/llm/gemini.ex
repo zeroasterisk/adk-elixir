@@ -15,7 +15,7 @@ defmodule ADK.LLM.Gemini do
       config :adk, :llm_backend, ADK.LLM.Gemini
 
       # Or call directly
-      ADK.LLM.Gemini.generate("gemini-2.0-flash", %{
+      ADK.LLM.Gemini.generate("gemini-flash-latest", %{
         instruction: "You are helpful.",
         messages: [%{role: :user, parts: [%{text: "Hello"}]}]
       })
@@ -24,7 +24,7 @@ defmodule ADK.LLM.Gemini do
   @behaviour ADK.LLM
 
   @base_url "https://generativelanguage.googleapis.com/v1beta/models"
-  @default_model "gemini-2.0-flash"
+  @default_model "gemini-flash-latest"
 
   @impl true
   def generate(model, request) do

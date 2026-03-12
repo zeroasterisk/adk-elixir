@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Adk.ServerTest do
 
   alias ADK.DevServer.Router
 
-  @default_opts [agent: :demo, model: "gemini-2.0-flash", port: 4001]
+  @default_opts [agent: :demo, model: "gemini-flash-latest", port: 4001]
 
   describe "Mix.Tasks.Adk.Server module" do
     test "task module exists and is loadable" do
@@ -55,7 +55,7 @@ defmodule Mix.Tasks.Adk.ServerTest do
         conn(:get, "/")
         |> Router.call(opts)
 
-      assert conn.resp_body =~ "gemini-2.0-flash"
+      assert conn.resp_body =~ "gemini-flash-latest"
     end
 
     test "GET /api/agent returns 200 JSON for demo agent", %{conn_opts: opts} do
@@ -66,11 +66,11 @@ defmodule Mix.Tasks.Adk.ServerTest do
       assert conn.status == 200
       body = Jason.decode!(conn.resp_body)
       assert body["name"] == "ADK Demo Agent"
-      assert body["model"] == "gemini-2.0-flash"
+      assert body["model"] == "gemini-flash-latest"
     end
 
     test "GET /api/agent returns module name for a real module", _ do
-      opts = Router.init(agent: ADK.Agent.LlmAgent, model: "gemini-2.0-flash", port: 4001)
+      opts = Router.init(agent: ADK.Agent.LlmAgent, model: "gemini-flash-latest", port: 4001)
 
       conn =
         conn(:get, "/api/agent")

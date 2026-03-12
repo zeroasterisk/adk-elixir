@@ -11,7 +11,7 @@ alias ADK.Eval.{Case, Scorer}
 # 1. Define your agent
 agent = ADK.Agent.LlmAgent.new(
   name: "my_agent",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "You are a helpful assistant."
 )
 

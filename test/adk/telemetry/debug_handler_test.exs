@@ -46,7 +46,7 @@ defmodule ADK.Telemetry.DebugHandlerTest do
     end
 
     test "llm stop event is captured" do
-      metadata = %{model: "gemini-2.0-flash", agent_name: "llm_agent", session_id: "sess-debug-3"}
+      metadata = %{model: "gemini-flash-latest", agent_name: "llm_agent", session_id: "sess-debug-3"}
       measurements = %{duration: 100_000_000, monotonic_time: System.monotonic_time(:nanosecond)}
 
       :telemetry.execute([:adk, :llm, :stop], measurements, metadata)
@@ -54,7 +54,7 @@ defmodule ADK.Telemetry.DebugHandlerTest do
       spans = SpanStore.get_session_spans("sess-debug-3")
       assert length(spans) == 1
       assert hd(spans).name == "adk.llm.stop"
-      assert hd(spans).attributes["model"] == "gemini-2.0-flash"
+      assert hd(spans).attributes["model"] == "gemini-flash-latest"
     end
 
     test "event without session_id only stores by event_id" do

@@ -19,10 +19,10 @@ defmodule ADK.LLM do
 
   ## Examples
 
-      ADK.LLM.generate("gemini-2.0-flash", %{messages: msgs})
-      ADK.LLM.generate("gemini-2.0-flash", %{messages: msgs}, retry: [max_retries: 5])
-      ADK.LLM.generate("gemini-2.0-flash", %{messages: msgs}, retry: false)
-      ADK.LLM.generate("gemini-2.0-flash", %{messages: msgs}, circuit_breaker: :llm_breaker)
+      ADK.LLM.generate("gemini-flash-latest", %{messages: msgs})
+      ADK.LLM.generate("gemini-flash-latest", %{messages: msgs}, retry: [max_retries: 5])
+      ADK.LLM.generate("gemini-flash-latest", %{messages: msgs}, retry: false)
+      ADK.LLM.generate("gemini-flash-latest", %{messages: msgs}, circuit_breaker: :llm_breaker)
   """
   @spec generate(String.t(), map(), keyword()) :: {:ok, response()} | {:error, term()}
   def generate(model, request, opts \\ []) do

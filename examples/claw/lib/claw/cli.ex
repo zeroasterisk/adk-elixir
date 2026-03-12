@@ -33,7 +33,7 @@ defmodule Claw.CLI do
     runner = Claw.Agents.runner()
 
     IO.puts("\n🦀 Claw — ADK Elixir Chat Agent")
-    IO.puts("   Model: gemini-2.0-flash-lite | Temp: #{temperature}#{if max_tokens, do: " | Max tokens: #{max_tokens}", else: ""}")
+    IO.puts("   Model: gemini-flash-lite-latest | Temp: #{temperature}#{if max_tokens, do: " | Max tokens: #{max_tokens}", else: ""}")
     IO.puts("   Features: artifacts, memory, auth, long-running tools, sub-agents")
     IO.puts("   Type your message and press Enter. Ctrl+C to quit.\n")
     IO.puts("   Try: 'save a note called hello with content Hello World'")

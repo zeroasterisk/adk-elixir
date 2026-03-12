@@ -46,7 +46,7 @@ CodeExecutionAgent.interactive()
 Set `ADK_MODEL` to override the default model:
 
 ```bash
-ADK_MODEL=gemini-2.0-flash iex -S mix
+ADK_MODEL=gemini-flash-latest iex -S mix
 ```
 
 ## Files

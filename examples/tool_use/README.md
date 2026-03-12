@@ -29,7 +29,7 @@ Set your API key:
 ```bash
 export GOOGLE_API_KEY=your-key-here
 # or
-export ADK_MODEL=gemini-2.0-flash
+export ADK_MODEL=gemini-flash-latest
 ```
 
 ## Usage

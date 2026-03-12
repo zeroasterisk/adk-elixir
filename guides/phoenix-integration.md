@@ -34,7 +34,7 @@ Define your agent somewhere in your app:
 defmodule MyApp.Agents do
   def assistant do
     ADK.new("assistant",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       instruction: "You are a helpful assistant."
     )
   end

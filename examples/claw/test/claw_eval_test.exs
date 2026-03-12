@@ -40,7 +40,7 @@ defmodule Claw.EvalTest do
   defp build_eval_runner do
     agent = ADK.Agent.LlmAgent.new(
       name: "claw_eval",
-      model: "gemini-2.0-flash-lite",
+      model: "gemini-flash-lite-latest",
       description: "Claw eval agent",
       instruction: "You are Claw, a helpful AI assistant.",
       tools: Claw.Tools.basic_tools()

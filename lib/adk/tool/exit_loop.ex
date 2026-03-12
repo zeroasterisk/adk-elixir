@@ -15,7 +15,7 @@ defmodule ADK.Tool.ExitLoop do
 
       agent = ADK.Agent.LlmAgent.new(
         name: "worker",
-        model: "gemini-2.0-flash",
+        model: "gemini-flash-latest",
         instruction: "Do the task. When finished, call exit_loop.",
         tools: [ADK.Tool.ExitLoop.tool()]
       )

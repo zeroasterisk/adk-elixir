@@ -50,7 +50,7 @@ RagAgent.interactive()
 ## Configuration
 
 ```bash
-ADK_MODEL=gemini-2.0-flash iex -S mix
+ADK_MODEL=gemini-flash-latest iex -S mix
 ```
 
 ## Files

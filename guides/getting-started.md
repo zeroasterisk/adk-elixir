@@ -24,7 +24,7 @@ Create a simple agent that responds to messages:
 
 ```elixir
 agent = ADK.new("greeter",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "You are a friendly greeter. Keep responses short and warm."
 )
 
@@ -49,7 +49,7 @@ defmodule MyTools do
 end
 
 agent = ADK.new("assistant",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "You help users with time and weather questions.",
   tools: [&MyTools.get_time/1, &MyTools.get_weather/1]
 )

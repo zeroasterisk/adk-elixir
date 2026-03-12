@@ -380,7 +380,7 @@ defmodule Bench.MemoryFootprint do
           state = %{
             history: [%{role: "user", content: "hello"}, %{role: "model", content: "hi"}],
             tools: [:calculator, :search, :weather],
-            config: %{model: "gemini-2.0-flash", temperature: 0.7},
+            config: %{model: "gemini-flash-latest", temperature: 0.7},
             session_id: :crypto.strong_rand_bytes(16) |> Base.encode16()
           }
           receive do: (:stop -> :ok)

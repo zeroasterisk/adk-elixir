@@ -35,7 +35,7 @@ defmodule ADK.Skill do
       # Use with LlmAgent
       agent = ADK.Agent.LlmAgent.new(
         name: "bot",
-        model: "gemini-2.0-flash",
+        model: "gemini-flash-latest",
         instruction: "You are helpful.",
         skills: [skill]
       )

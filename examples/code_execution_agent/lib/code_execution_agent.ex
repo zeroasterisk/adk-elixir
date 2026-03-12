@@ -103,6 +103,6 @@ defmodule CodeExecutionAgent do
   end
 
   defp model do
-    System.get_env("ADK_MODEL", "gemini-2.0-flash")
+    System.get_env("ADK_MODEL", "gemini-flash-latest")
   end
 end

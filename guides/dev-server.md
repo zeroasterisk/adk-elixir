@@ -18,7 +18,7 @@ Open [http://localhost:4000](http://localhost:4000) in your browser to chat with
 |---|---|---|
 | `--port` | `4000` | HTTP port to listen on |
 | `--agent` | *(demo)* | Agent module name (e.g. `MyApp.MyAgent`) |
-| `--model` | `gemini-2.0-flash` | LLM model to use |
+| `--model` | `gemini-flash-latest` | LLM model to use |
 
 ## Examples
 
@@ -49,7 +49,7 @@ Returns agent info as JSON:
 {
   "name": "MyApp.Agent",
   "module": "Elixir.MyApp.Agent",
-  "model": "gemini-2.0-flash"
+  "model": "gemini-flash-latest"
 }
 ```
 
@@ -103,7 +103,7 @@ defmodule MyApp.MyAgent do
   def agent do
     %ADK.Agent.LlmAgent{
       name: "my_agent",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       instruction: "You are a helpful assistant.",
       tools: [MyApp.Tools.WeatherTool]
     }

@@ -218,7 +218,7 @@ Set model and API key via environment variables:
 
 ```bash
 gcloud run services update claw-agent \
-  --set-env-vars "GOOGLE_API_KEY=your-gemini-api-key,ADK_MODEL=gemini-2.0-flash"
+  --set-env-vars "GOOGLE_API_KEY=your-gemini-api-key,ADK_MODEL=gemini-flash-latest"
 ```
 
 Then read them in `config/runtime.exs`:
@@ -227,7 +227,7 @@ Then read them in `config/runtime.exs`:
 # config/runtime.exs
 if config_env() == :prod do
   config :adk, :default_model,
-    System.get_env("ADK_MODEL", "gemini-2.0-flash")
+    System.get_env("ADK_MODEL", "gemini-flash-latest")
 
   # Gemini API key (used by ADK.LLM.Gemini)
   config :adk, :google_api_key,
@@ -429,7 +429,7 @@ echo "erlang_version=27.2" >> elixir_buildpack.config
 gigalixir config:set SECRET_KEY_BASE=$(mix phx.gen.secret)
 gigalixir config:set GOOGLE_API_KEY=your-gemini-api-key
 gigalixir config:set PHX_HOST=claw-agent.gigalixirapp.com
-gigalixir config:set ADK_MODEL=gemini-2.0-flash
+gigalixir config:set ADK_MODEL=gemini-flash-latest
 ```
 
 ### Step 4: Deploy
@@ -485,7 +485,7 @@ gigalixir run mix ecto.migrate
 | `SECRET_KEY_BASE` | Yes | — | Phoenix secret; generate with `mix phx.gen.secret` |
 | `GOOGLE_API_KEY` | Conditional | — | Gemini Developer API key |
 | `GEMINI_API_KEY` | Conditional | — | Alias for `GOOGLE_API_KEY` (some configs) |
-| `ADK_MODEL` | No | `gemini-2.0-flash` | Default LLM model name |
+| `ADK_MODEL` | No | `gemini-flash-latest` | Default LLM model name |
 | `GOOGLE_CLOUD_PROJECT` | Conditional | — | GCP project ID (for Vertex AI) |
 | `GOOGLE_CLOUD_REGION` | No | `us-central1` | GCP region (for Vertex AI) |
 | `POOL_SIZE` | No | `10` | Database connection pool size |
@@ -524,7 +524,7 @@ if config_env() == :prod do
   end
 
   config :adk, :default_model,
-    System.get_env("ADK_MODEL", "gemini-2.0-flash")
+    System.get_env("ADK_MODEL", "gemini-flash-latest")
 end
 ```
 

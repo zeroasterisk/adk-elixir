@@ -6,13 +6,13 @@ defmodule Mix.Tasks.Adk.New do
 
       mix adk.new my_agent
       mix adk.new my_agent --path ./projects
-      mix adk.new my_agent --model gemini-2.5-flash
+      mix adk.new my_agent --model gemini-flash-latest
       mix adk.new my_agent --no-phoenix
 
   ## Options
 
     * `--path` — Parent directory for the project (default: `.`)
-    * `--model` — Default LLM model (default: `gemini-2.0-flash`)
+    * `--model` — Default LLM model (default: `gemini-flash-latest`)
     * `--no-phoenix` — Skip Phoenix/Plug web endpoints
 
   The project name must be a valid Elixir identifier (lowercase, underscores allowed).
@@ -22,7 +22,7 @@ defmodule Mix.Tasks.Adk.New do
   use Mix.Task
 
   @switches [path: :string, model: :string, phoenix: :boolean]
-  @default_model "gemini-2.0-flash"
+  @default_model "gemini-flash-latest"
 
   @impl true
   def run(args) do

@@ -17,7 +17,7 @@ defmodule ADK.Context.Compressor.Summarize do
   ## Examples
 
       {:ok, compressed} = Summarize.compress(messages, [keep_recent: 5],
-        %{model: "gemini-2.0-flash"})
+        %{model: "gemini-flash-latest"})
   """
 
   @behaviour ADK.Context.Compressor

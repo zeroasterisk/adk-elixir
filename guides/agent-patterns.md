@@ -1047,7 +1047,7 @@ without writing custom tool wrappers.
 # Use them like any other tools
 agent = ADK.Agent.LlmAgent.new(
   name: "file_assistant",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: """
   You can read and write files. Use the available tools to help
   the user manage their files.
@@ -1079,7 +1079,7 @@ structured analysis) without relying on ReflectRetry validation.
 ```elixir
 agent = ADK.Agent.LlmAgent.new(
   name: "data_extractor",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: """
   Extract structured information from the user's text.
   Return a JSON object matching the required schema.
@@ -1131,7 +1131,7 @@ or external data.
 # Function-based instruction
 agent = ADK.Agent.LlmAgent.new(
   name: "adaptive_assistant",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: fn ctx ->
     user_name = ADK.Context.get_state(ctx, "user_name") || "friend"
     hour = DateTime.utc_now().hour
@@ -1153,7 +1153,7 @@ agent = ADK.Agent.LlmAgent.new(
 # MFA tuple — for compile-time safety and hot code reloading
 agent = ADK.Agent.LlmAgent.new(
   name: "configurable_agent",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: {MyApp.Instructions, :build, ["assistant"]}
 )
 
@@ -1224,7 +1224,7 @@ defmodule MyApp.Agents.Summarizer do
   def agent do
     ADK.Agent.LlmAgent.new(
       name: "summarizer",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       instruction: "Summarize the given content concisely.",
       tools: [read_doc_tool()]
     )

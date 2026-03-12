@@ -12,7 +12,7 @@ defmodule ADK.Tool.BuiltInCodeExecution do
 
       agent = ADK.Agent.LlmAgent.new(
         name: "coder",
-        model: "gemini-2.0-flash",
+        model: "gemini-flash-latest",
         instruction: "Solve math problems by writing and running Python code.",
         tools: [ADK.Tool.BuiltInCodeExecution.new()]
       )

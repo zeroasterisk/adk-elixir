@@ -13,7 +13,7 @@ defmodule ADK.Tool.GoogleSearch do
 
       agent = ADK.Agent.LlmAgent.new(
         name: "researcher",
-        model: "gemini-2.0-flash",
+        model: "gemini-flash-latest",
         instruction: "Answer questions with up-to-date information.",
         tools: [ADK.Tool.GoogleSearch.new()]
       )

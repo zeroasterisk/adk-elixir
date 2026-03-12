@@ -22,7 +22,7 @@ defmodule Claw.Agents do
   alias ADK.Policy.HumanApproval
   alias ADK.RunConfig
 
-  @model "gemini-2.0-flash-lite"
+  @model "gemini-flash-lite-latest"
 
   @doc """
   The top-level router agent.

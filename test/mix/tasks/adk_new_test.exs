@@ -95,10 +95,10 @@ defmodule Mix.Tasks.Adk.NewTest do
 
       agent = File.read!(Path.join(project, "lib/my_agent/agent.ex"))
       assert agent =~ "MyAgent.Agent"
-      assert agent =~ "gemini-2.0-flash"
+      assert agent =~ "gemini-flash-latest"
 
       config = File.read!(Path.join(project, "config/config.exs"))
-      assert config =~ "gemini-2.0-flash"
+      assert config =~ "gemini-flash-latest"
     end
 
     test "creates project with --no-phoenix" do

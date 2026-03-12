@@ -44,7 +44,7 @@ if Code.ensure_loaded?(Oban) do
           def agent do
             ADK.Agent.LlmAgent.new(
               name: "helper",
-              model: "gemini-2.0-flash",
+              model: "gemini-flash-latest",
               instruction: "You are a helpful assistant."
             )
           end
@@ -57,7 +57,7 @@ if Code.ensure_loaded?(Oban) do
           agent_config: %{
             "type" => "llm",
             "name" => "helper",
-            "model" => "gemini-2.0-flash",
+            "model" => "gemini-flash-latest",
             "instruction" => "Be helpful"
           },
           user_id: "user1",

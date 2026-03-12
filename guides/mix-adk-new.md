@@ -27,7 +27,7 @@ mix adk.new NAME [--path DIR] [--model MODEL] [--no-phoenix]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--path` | `.` | Parent directory for the project |
-| `--model` | `gemini-2.0-flash` | Default LLM model |
+| `--model` | `gemini-flash-latest` | Default LLM model |
 | `--no-phoenix` | (included) | Skip web router and Bandit dependency |
 
 ### Examples

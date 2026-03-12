@@ -178,5 +178,5 @@ IO.puts(ADK.Eval.Report.format(report))
 
 ## Model
 
-Uses `gemini-2.0-flash-lite` — cheapest available Gemini model, great for demos.
+Uses `gemini-flash-lite-latest` — cheapest available Gemini model, great for demos.
 Change via `@model` in `lib/claw/agents.ex`.

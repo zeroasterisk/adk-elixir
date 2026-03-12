@@ -48,7 +48,7 @@ defmodule RagAgent.Corpus do
 
             ADK.Agent.LlmAgent.new(
               name: "my_agent",
-              model: "gemini-2.0-flash",
+              model: "gemini-flash-latest",
               instruction: "You are a helpful assistant.",
               tools: [my_tool]
             )
@@ -158,7 +158,7 @@ defmodule RagAgent.Corpus do
 
             parent = ADK.Agent.LlmAgent.new(
               name: "router",
-              model: "gemini-2.0-flash",
+              model: "gemini-flash-latest",
               instruction: "Route to the right specialist.",
               sub_agents: [billing_agent, technical_agent]
             )
@@ -214,7 +214,7 @@ defmodule RagAgent.Corpus do
 
             ADK.Agent.LlmAgent.new(
               name: "resilient",
-              model: "gemini-2.0-flash",
+              model: "gemini-flash-latest",
               on_model_error: fn error, _ctx ->
                 {:retry, delay: 1000}
               end,

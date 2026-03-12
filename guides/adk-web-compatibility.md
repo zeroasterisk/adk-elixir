@@ -28,7 +28,7 @@ Create an agent loader — either a map or a module:
 agents = %{
   "my_agent" => ADK.Agent.LlmAgent.new(
     name: "assistant",
-    model: "gemini-2.0-flash",
+    model: "gemini-flash-latest",
     instruction: "You are a helpful assistant."
   )
 }
@@ -50,7 +50,7 @@ defmodule MyApp.AgentLoader do
   def load_agent("my_agent") do
     ADK.Agent.LlmAgent.new(
       name: "assistant",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       instruction: "You are a helpful assistant."
     )
   end

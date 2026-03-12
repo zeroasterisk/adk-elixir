@@ -170,7 +170,7 @@ defmodule ADK.DevServer.Router do
   def call(conn, opts) do
     conn
     |> put_private(:adk_agent, opts[:agent] || :demo)
-    |> put_private(:adk_model, opts[:model] || "gemini-2.0-flash")
+    |> put_private(:adk_model, opts[:model] || "gemini-flash-latest")
     |> super(opts)
   end
 

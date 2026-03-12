@@ -33,7 +33,7 @@ defmodule ContextCompilation do
 
     agent = ADK.Agent.LlmAgent.new(
       name: "weather_bot",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       description: "Helps users check the weather",
       instruction: "You are a helpful weather assistant. Be concise.",
       tools: [ContextCompilation.Tools.get_weather()]
@@ -51,21 +51,21 @@ defmodule ContextCompilation do
 
     weather_agent = ADK.Agent.LlmAgent.new(
       name: "weather",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       description: "Handles weather-related questions",
       instruction: "You handle weather queries. Use the get_weather tool."
     )
 
     news_agent = ADK.Agent.LlmAgent.new(
       name: "news",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       description: "Handles news and current events",
       instruction: "You handle news queries. Use the get_news tool."
     )
 
     router = ADK.Agent.LlmAgent.new(
       name: "router",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       instruction: "Route user requests to the appropriate specialist agent.",
       sub_agents: [weather_agent, news_agent]
     )
@@ -82,7 +82,7 @@ defmodule ContextCompilation do
 
     agent = ADK.Agent.LlmAgent.new(
       name: "time_aware_bot",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       instruction: fn _ctx ->
         now = DateTime.utc_now() |> Calendar.strftime("%Y-%m-%d %H:%M UTC")
         "You are a helpful assistant. Current time: #{now}. Adjust your greeting based on the time of day."
@@ -101,7 +101,7 @@ defmodule ContextCompilation do
 
     agent = ADK.Agent.LlmAgent.new(
       name: "personalized_bot",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       instruction: "You are helping {user_name} who lives in {location}. They prefer {language} responses."
     )
 
@@ -130,7 +130,7 @@ defmodule ContextCompilation do
 
     agent = ADK.Agent.LlmAgent.new(
       name: "structured_bot",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       instruction: "Extract structured data from the user's message.",
       output_schema: %{
         "type" => "object",

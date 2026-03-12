@@ -54,7 +54,7 @@ defmodule ADK.Oban.AgentWorkerTest do
           agent_config: %{
             "type" => "llm",
             "name" => "test",
-            "model" => "gemini-2.0-flash",
+            "model" => "gemini-flash-latest",
             "instruction" => "Be helpful"
           },
           user_id: "user1",

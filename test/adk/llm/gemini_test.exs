@@ -41,7 +41,7 @@ defmodule ADK.LLM.GeminiTest do
       })
 
       assert {:ok, resp} =
-               Gemini.generate("gemini-2.0-flash", %{
+               Gemini.generate("gemini-flash-latest", %{
                  instruction: "Be helpful.",
                  messages: [%{role: :user, parts: [%{text: "Hi"}]}]
                })
@@ -73,7 +73,7 @@ defmodule ADK.LLM.GeminiTest do
       })
 
       assert {:ok, resp} =
-               Gemini.generate("gemini-2.0-flash", %{
+               Gemini.generate("gemini-flash-latest", %{
                  messages: [%{role: :user, parts: [%{text: "Weather in London?"}]}],
                  tools: [
                    %{
@@ -110,7 +110,7 @@ defmodule ADK.LLM.GeminiTest do
       end)
 
       assert {:ok, _} =
-               Gemini.generate("gemini-2.0-flash", %{
+               Gemini.generate("gemini-flash-latest", %{
                  instruction: "You are a pirate.",
                  messages: [%{role: :user, parts: [%{text: "Hello"}]}]
                })
@@ -136,7 +136,7 @@ defmodule ADK.LLM.GeminiTest do
       end)
 
       assert {:ok, _} =
-               Gemini.generate("gemini-2.0-flash", %{
+               Gemini.generate("gemini-flash-latest", %{
                  messages: [%{role: :user, parts: [%{text: "test"}]}],
                  tools: [
                    %{name: "search", description: "Search the web"},
@@ -149,17 +149,17 @@ defmodule ADK.LLM.GeminiTest do
   describe "generate/2 - error handling" do
     test "returns :unauthorized on 401" do
       stub_gemini(401, %{"error" => %{"message" => "Invalid API key"}})
-      assert {:error, :unauthorized} = Gemini.generate("gemini-2.0-flash", %{messages: []})
+      assert {:error, :unauthorized} = Gemini.generate("gemini-flash-latest", %{messages: []})
     end
 
     test "returns :rate_limited on 429" do
       stub_gemini(429, %{"error" => %{"message" => "Rate limited"}})
-      assert {:error, :rate_limited} = Gemini.generate("gemini-2.0-flash", %{messages: []})
+      assert {:error, :rate_limited} = Gemini.generate("gemini-flash-latest", %{messages: []})
     end
 
     test "returns :api_error on 500" do
       stub_gemini(500, %{"error" => %{"message" => "Internal error"}})
-      assert {:error, {:api_error, 500, _}} = Gemini.generate("gemini-2.0-flash", %{messages: []})
+      assert {:error, {:api_error, 500, _}} = Gemini.generate("gemini-flash-latest", %{messages: []})
     end
 
     test "returns :missing_api_key when no key configured" do
@@ -167,7 +167,7 @@ defmodule ADK.LLM.GeminiTest do
       System.delete_env("GEMINI_API_KEY")
 
       assert {:error, :missing_api_key} =
-               Gemini.generate("gemini-2.0-flash", %{messages: []})
+               Gemini.generate("gemini-flash-latest", %{messages: []})
     end
   end
 
@@ -195,7 +195,7 @@ defmodule ADK.LLM.GeminiTest do
       decl = ADK.Tool.declaration(google_search)
 
       assert {:ok, _} =
-               Gemini.generate("gemini-2.0-flash", %{
+               Gemini.generate("gemini-flash-latest", %{
                  messages: [%{role: :user, parts: [%{text: "search for elixir"}]}],
                  tools: [decl]
                })
@@ -220,7 +220,7 @@ defmodule ADK.LLM.GeminiTest do
       decl = ADK.Tool.declaration(code_exec)
 
       assert {:ok, _} =
-               Gemini.generate("gemini-2.0-flash", %{
+               Gemini.generate("gemini-flash-latest", %{
                  messages: [%{role: :user, parts: [%{text: "run some python"}]}],
                  tools: [decl]
                })
@@ -247,7 +247,7 @@ defmodule ADK.LLM.GeminiTest do
       decl = ADK.Tool.declaration(code_exec)
 
       assert {:ok, response} =
-               Gemini.generate("gemini-2.0-flash", %{
+               Gemini.generate("gemini-flash-latest", %{
                  messages: [%{role: :user, parts: [%{text: "compute 6*7"}]}],
                  tools: [decl]
                })
@@ -261,7 +261,7 @@ defmodule ADK.LLM.GeminiTest do
   describe "generate/2 - default model" do
     test "uses default model when nil" do
       Req.Test.stub(Gemini, fn conn ->
-        assert conn.request_path =~ "gemini-2.0-flash"
+        assert conn.request_path =~ "gemini-flash-latest"
 
         Req.Test.json(conn, %{
           "candidates" => [

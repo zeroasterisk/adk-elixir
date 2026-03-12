@@ -10,13 +10,13 @@ defmodule Mix.Tasks.Adk.Server do
 
       mix adk.server
       mix adk.server --port 4000 --agent MyApp.MyAgent
-      mix adk.server --port 8080 --agent MyApp.MyAgent --model gemini-2.0-flash
+      mix adk.server --port 8080 --agent MyApp.MyAgent --model gemini-flash-latest
 
   ## Options
 
     * `--port` — HTTP port (default: `4000`)
     * `--agent` — Agent module name (default: builds a demo agent)
-    * `--model` — LLM model to use (default: `gemini-2.0-flash`)
+    * `--model` — LLM model to use (default: `gemini-flash-latest`)
 
   ## Endpoints
 
@@ -28,7 +28,7 @@ defmodule Mix.Tasks.Adk.Server do
 
       $ mix adk.server --port 4000 --agent MyApp.MyAgent
       ADK Dev Server running at http://localhost:4000
-      Agent: MyApp.MyAgent (model: gemini-2.0-flash)
+      Agent: MyApp.MyAgent (model: gemini-flash-latest)
       Press Ctrl+C to stop.
 
   """
@@ -39,7 +39,7 @@ defmodule Mix.Tasks.Adk.Server do
 
   @switches [port: :integer, agent: :string, model: :string]
   @default_port 4000
-  @default_model "gemini-2.0-flash"
+  @default_model "gemini-flash-latest"
 
   @impl true
   def run(args) do

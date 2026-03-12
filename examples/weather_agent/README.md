@@ -39,7 +39,7 @@ mix test
 
 ## Configuration
 
-Set `ADK_MODEL` environment variable to change the LLM model (default: `gemini-2.0-flash`).
+Set `ADK_MODEL` environment variable to change the LLM model (default: `gemini-flash-latest`).
 
 ```bash
 ADK_MODEL=claude-sonnet-4-20250514 iex -S mix

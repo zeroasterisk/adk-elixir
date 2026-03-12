@@ -158,7 +158,7 @@ ADK.Agent.run(agent, ctx)
 #### Python (via google-genai SDK)
 ```json
 {
-  "model": "gemini-2.0-flash",
+  "model": "gemini-flash-latest",
   "contents": [
     {"role": "user", "parts": [{"text": "Hello"}]},
     {"role": "model", "parts": [{"text": "Hi there"}]}
@@ -294,7 +294,7 @@ The `google.genai` SDK handles the translation from Python objects to the JSON w
 
 #### Elixir
 - `agent.model` is always a string
-- Fallback to `"gemini-2.0-flash"` if nil/empty
+- Fallback to `"gemini-flash-latest"` if nil/empty
 
 | # | Area | Python | Elixir | Severity | Intentional? |
 |---|------|--------|--------|----------|-------------|

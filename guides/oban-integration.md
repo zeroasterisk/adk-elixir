@@ -103,7 +103,7 @@ defmodule MyApp.Agents.Helper do
   def agent do
     ADK.Agent.LlmAgent.new(
       name: "helper",
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       instruction: "You are a helpful assistant."
     )
   end
@@ -142,7 +142,7 @@ For simple agents, skip the module and pass config directly:
   agent_config: %{
     "type" => "llm",
     "name" => "summarizer",
-    "model" => "gemini-2.0-flash",
+    "model" => "gemini-flash-latest",
     "instruction" => "Summarize the user's input concisely."
   },
   user_id: "user-123",
