@@ -86,6 +86,8 @@ defmodule ADK.MixProject do
         "guides/benchmarks.md",
         "guides/agent-patterns.md",
         "guides/context-compilation.md",
+        "guides/context-engineering.md",
+        "guides/human-in-the-loop.md",
         "CHANGELOG.md"
       ],
       groups_for_modules: [
