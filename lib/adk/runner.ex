@@ -98,10 +98,15 @@ defmodule ADK.Runner do
     # Build context
     {artifact_mod, artifact_opts} = resolve_artifact_service(runner.artifact_service)
 
+    # Sticky transfer: find the agent that should handle this turn.
+    # If a previous turn transferred to a sub-agent, subsequent messages
+    # should route to that agent (mirrors Python's _find_agent_to_run).
+    active_agent = find_active_agent(runner.agent, session_pid)
+
     ctx = %ADK.Context{
       invocation_id: invocation_id,
       session_pid: session_pid,
-      agent: runner.agent,
+      agent: active_agent,
       user_content: message,
       callbacks: callbacks,
       policies: policies,
@@ -297,5 +302,60 @@ defmodule ADK.Runner do
 
   defp generate_id do
     "inv-" <> (:crypto.strong_rand_bytes(8) |> Base.url_encode64(padding: false))
+  end
+
+  @doc """
+  Find the agent that should handle the current turn based on transfer history.
+
+  Scans session events backward for the last `transfer_to_agent` action.
+  If found, looks up that agent in the agent tree and returns it.
+  If not found or the target is a non-LLM agent (SequentialAgent, LoopAgent),
+  returns the root agent.
+
+  This mirrors Python ADK's `Runner._find_agent_to_run()`.
+  """
+  @spec find_active_agent(ADK.Agent.t(), pid() | nil) :: ADK.Agent.t()
+  def find_active_agent(root_agent, nil), do: root_agent
+
+  def find_active_agent(root_agent, session_pid) do
+    events = ADK.Session.get_events(session_pid)
+
+    # Scan backward for the last transfer_to_agent action
+    last_transfer =
+      events
+      |> Enum.reverse()
+      |> Enum.find_value(fn event ->
+        case event.actions do
+          %ADK.EventActions{transfer_to_agent: name} when is_binary(name) and name != "" ->
+            name
+
+          _ ->
+            nil
+        end
+      end)
+
+    case last_transfer do
+      nil ->
+        root_agent
+
+      target_name ->
+        # Find the agent in the tree
+        case find_agent_in_tree(root_agent, target_name) do
+          nil -> root_agent
+          agent -> agent
+        end
+    end
+  end
+
+  defp find_agent_in_tree(agent, target_name) do
+    if ADK.Agent.name(agent) == target_name do
+      agent
+    else
+      agent
+      |> ADK.Agent.sub_agents()
+      |> Enum.find_value(fn sub ->
+        find_agent_in_tree(sub, target_name)
+      end)
+    end
   end
 end

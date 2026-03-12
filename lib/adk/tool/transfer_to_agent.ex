@@ -7,16 +7,30 @@ defmodule ADK.Tool.TransferToAgent do
   it produces an event with `actions.transfer_to_agent` set, which the runner
   picks up to hand off execution to the target agent.
 
+  ## Differences from Python ADK
+
+  Python ADK creates a single `transfer_to_agent` tool with an enum constraint
+  on the `agent_name` parameter. Elixir creates one tool per target agent
+  (named `transfer_to_agent_<name>`) with the target hardcoded in the closure.
+
+  Both approaches prevent hallucinated agent names:
+  - Python: enum constraint restricts valid values
+  - Elixir: separate tools mean the LLM picks the right tool by name, no
+    parameter to hallucinate
+
+  The per-agent approach was chosen for Elixir because:
+  1. It eliminates a class of errors (wrong agent_name parameter)
+  2. Tool descriptions per-agent give the LLM better context for selection
+  3. It works naturally with Elixir's pattern matching
+
   ## How it works
 
-  1. The parent agent's tool list is augmented with one `transfer_to_agent`
-     tool per sub-agent (named `transfer_to_agent_<sub_agent_name>`)
+  1. The parent agent's tool list is augmented with one `transfer_to_agent_*`
+     tool per sub-agent
   2. When the LLM invokes the tool, it returns a transfer event
   3. The parent agent's run loop detects the transfer and delegates to the
      target sub-agent
   4. The sub-agent runs and its events are returned
-
-  This mirrors Google ADK Python's `transfer_to_agent` pattern.
   """
 
   @doc """

@@ -173,24 +173,32 @@ defmodule ADK.Session do
   end
 
   def handle_call({:append_event, event}, _from, %{session: session} = state) do
-    # Apply state delta if present
-    new_state =
-      case event.actions do
-        %{state_delta: delta} when delta != %{} ->
-          ADK.State.Delta.apply_delta(session.state, delta)
+    # Deduplicate: skip if an event with the same id already exists
+    already_exists? =
+      event.id != nil and Enum.any?(session.events, fn e -> e.id == event.id end)
 
-        _ ->
-          session.state
-      end
+    if already_exists? do
+      {:reply, :ok, state}
+    else
+      # Apply state delta if present
+      new_state =
+        case event.actions do
+          %{state_delta: delta} when delta != %{} ->
+            ADK.State.Delta.apply_delta(session.state, delta)
 
-    new_session = %{session | state: new_state, events: session.events ++ [event]}
+          _ ->
+            session.state
+        end
 
-    # Notify subscribers
-    Enum.each(state.subscribers, fn pid ->
-      send(pid, {:adk_session_event, event})
-    end)
+      new_session = %{session | state: new_state, events: session.events ++ [event]}
 
-    {:reply, :ok, %{state | session: new_session}}
+      # Notify subscribers
+      Enum.each(state.subscribers, fn pid ->
+        send(pid, {:adk_session_event, event})
+      end)
+
+      {:reply, :ok, %{state | session: new_session}}
+    end
   end
 
   def handle_call(:get_events, _from, %{session: session} = state) do
