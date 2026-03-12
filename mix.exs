@@ -83,6 +83,7 @@ defmodule ADK.MixProject do
         "guides/adk-web-compatibility.md",
         "guides/deployment.md",
         "guides/benchmarks.md",
+        "guides/context-compilation.md",
         "CHANGELOG.md"
       ],
       groups_for_modules: [
