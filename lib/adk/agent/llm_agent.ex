@@ -140,12 +140,36 @@ defmodule ADK.Agent.LlmAgent do
             ADK.Context.emit_event(ctx, event)
             tool_results = execute_tools(ctx, agent, calls)
 
-            # Check if any tool result is a transfer
+            # Check signal priority: exit_loop > transfer_to_agent > normal
+            exit_loop = Enum.find(tool_results, &Map.get(&1, :exit_loop))
             transfer = Enum.find(tool_results, &Map.get(&1, :transfer_to_agent))
 
-            case transfer do
-              %{transfer_to_agent: target_name} ->
+            cond do
+              exit_loop ->
+                # LLM called exit_loop — emit an escalation event to break out of LoopAgent
+                exit_reason = exit_loop[:result] || "Exiting loop"
+
+                escalate_event =
+                  ADK.Event.new(%{
+                    invocation_id: ctx.invocation_id,
+                    author: agent.name,
+                    content: %{parts: [%{text: exit_reason}]},
+                    actions: %ADK.EventActions{escalate: true}
+                  })
+
+                ADK.Context.emit_event(ctx, escalate_event)
+
+                if ctx.session_pid do
+                  ADK.Session.append_event(ctx.session_pid, event)
+                  ADK.Session.append_event(ctx.session_pid, escalate_event)
+                end
+
+                [event, escalate_event]
+
+              transfer ->
                 # Find the target sub-agent
+                target_name = transfer.transfer_to_agent
+
                 target = Enum.find(agent.sub_agents, fn sa ->
                   ADK.Agent.name(sa) == target_name
                 end)
@@ -178,7 +202,7 @@ defmodule ADK.Agent.LlmAgent do
                   [event, transfer_event, error_event]
                 end
 
-              nil ->
+              true ->
                 response_parts =
                   Enum.map(tool_results, fn tr ->
                     %{function_response: %{
@@ -458,6 +482,9 @@ defmodule ADK.Agent.LlmAgent do
           case tool_result do
             {:transfer_to_agent, target_name} ->
               %{id: call[:id] || "call-1", name: call.name, result: "Transferring to #{target_name}", transfer_to_agent: target_name}
+
+            {:exit_loop, reason} ->
+              %{id: call[:id] || "call-1", name: call.name, result: reason, exit_loop: true}
 
             {:ok, result} ->
               %{id: call[:id] || "call-1", name: call.name, result: result}

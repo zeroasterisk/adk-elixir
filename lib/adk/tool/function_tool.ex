@@ -65,6 +65,7 @@ defmodule ADK.Tool.FunctionTool do
       {:ok, _} = ok -> ok
       {:error, _} = err -> err
       {:transfer_to_agent, _} = transfer -> transfer
+      {:exit_loop, _} = exit -> exit
       other -> {:ok, other}
     end
   end
