@@ -271,6 +271,58 @@ defmodule ADK.Event do
     end
   end
 
+  @doc """
+  Check if an event belongs to a given branch path.
+
+  An event is "on branch" if its branch is a prefix of, or equal to, the
+  current branch. This implements Python ADK's `_is_event_belongs_to_branch`
+  logic — events from ancestors and the current agent are visible, but events
+  from sibling branches are filtered out.
+
+  Events with `nil` branch are considered universal (visible to all branches).
+
+  ## Examples
+
+      iex> ADK.Event.on_branch?(%ADK.Event{branch: nil}, "root.router")
+      true
+
+      iex> ADK.Event.on_branch?(%ADK.Event{branch: "root"}, "root.router.weather")
+      true
+
+      iex> ADK.Event.on_branch?(%ADK.Event{branch: "root.router"}, "root.router.weather")
+      true
+
+      iex> ADK.Event.on_branch?(%ADK.Event{branch: "root.router.news"}, "root.router.weather")
+      false
+
+      iex> ADK.Event.on_branch?(%ADK.Event{branch: "root.router.weather"}, "root.router.weather")
+      true
+  """
+  @spec on_branch?(t(), String.t() | nil) :: boolean()
+  def on_branch?(%__MODULE__{branch: nil}, _current_branch), do: true
+  def on_branch?(%__MODULE__{}, nil), do: true
+
+  def on_branch?(%__MODULE__{branch: event_branch}, current_branch)
+      when is_binary(event_branch) and is_binary(current_branch) do
+    event_branch == current_branch or
+      String.starts_with?(current_branch, event_branch <> ".")
+  end
+
+  @doc """
+  Check if an event is a compaction summary event.
+
+  ## Examples
+
+      iex> ADK.Event.compaction?(%ADK.Event{author: "system:compaction"})
+      true
+
+      iex> ADK.Event.compaction?(%ADK.Event{author: "user"})
+      false
+  """
+  @spec compaction?(t()) :: boolean()
+  def compaction?(%__MODULE__{author: "system:compaction"}), do: true
+  def compaction?(_), do: false
+
   defp generate_id do
     :crypto.strong_rand_bytes(12) |> Base.url_encode64(padding: false)
   end

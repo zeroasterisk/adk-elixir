@@ -35,16 +35,45 @@ defmodule ADK.InstructionCompiler do
   """
   @spec compile(map(), ADK.Context.t()) :: String.t()
   def compile(agent, ctx) do
-    [
-      global_instruction(agent, ctx),
-      identity_instruction(agent),
-      agent_instruction(agent, ctx),
-      output_schema_instruction(agent),
-      transfer_instruction(agent)
-    ]
+    {static, dynamic} = compile_split(agent, ctx)
+
+    [static, dynamic]
     |> Enum.reject(&is_nil/1)
     |> Enum.reject(&(&1 == ""))
     |> Enum.join("\n\n")
+  end
+
+  @doc """
+  Split compiled instructions into static and dynamic portions.
+
+  - **Static**: Parts that don't change between requests — global instruction,
+    identity, transfer instructions. Suitable for Gemini's context caching.
+  - **Dynamic**: Parts that change per request — agent instruction with state
+    variable substitution, output schema instruction.
+
+  Returns `{static_instruction, dynamic_instruction}` where either may be an
+  empty string (but never nil).
+  """
+  @spec compile_split(map(), ADK.Context.t()) :: {String.t(), String.t()}
+  def compile_split(agent, ctx) do
+    static_parts =
+      [
+        global_instruction(agent, ctx),
+        identity_instruction(agent),
+        transfer_instruction(agent)
+      ]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.reject(&(&1 == ""))
+
+    dynamic_parts =
+      [
+        agent_instruction(agent, ctx),
+        output_schema_instruction(agent)
+      ]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.reject(&(&1 == ""))
+
+    {Enum.join(static_parts, "\n\n"), Enum.join(dynamic_parts, "\n\n")}
   end
 
   @doc """

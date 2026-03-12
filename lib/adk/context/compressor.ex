@@ -55,11 +55,52 @@ defmodule ADK.Context.Compressor do
       context = Keyword.get(opts, :context, %{})
 
       case strategy.compress(messages, strategy_opts, context) do
-        {:ok, compressed} -> compressed
-        {:error, _reason} -> messages
+        {:ok, compressed} ->
+          # Store compaction event in session if session_pid is available
+          session_pid = Keyword.get(opts, :session_pid)
+          store_compaction_event(session_pid, messages, compressed)
+          compressed
+
+        {:error, _reason} ->
+          messages
       end
     else
       messages
+    end
+  end
+
+  @doc """
+  Create a compaction event summarizing what was compressed.
+
+  The event has author `"system:compaction"` so it can be identified
+  during session reload and content assembly.
+  """
+  @spec compaction_event(non_neg_integer(), non_neg_integer()) :: ADK.Event.t()
+  def compaction_event(original_count, compressed_count) do
+    ADK.Event.new(%{
+      author: "system:compaction",
+      content: %{
+        parts: [
+          %{
+            text:
+              "[Context compacted: #{original_count} messages compressed to #{compressed_count} messages]"
+          }
+        ]
+      }
+    })
+  end
+
+  defp store_compaction_event(nil, _original, _compressed), do: :ok
+
+  defp store_compaction_event(session_pid, original, compressed) do
+    event = compaction_event(length(original), length(compressed))
+
+    try do
+      ADK.Session.append_event(session_pid, event)
+    rescue
+      _ -> :ok
+    catch
+      :exit, _ -> :ok
     end
   end
 end

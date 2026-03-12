@@ -56,10 +56,18 @@ defmodule ADK.Context do
     %{ctx | branch: branch, temp_state: %{}}
   end
 
-  @doc "Create a child context for a sub-agent."
+  @doc """
+  Create a child context for a sub-agent.
+
+  Extends the branch path to include the child agent name, enabling
+  branch-aware content filtering. The branch uses dot-delimited paths
+  like Python ADK's invocation_id hierarchy.
+  """
   @spec for_child(t(), map()) :: t()
   def for_child(%__MODULE__{} = ctx, agent_spec) do
-    %{ctx | agent: agent_spec, temp_state: %{}}
+    child_name = ADK.Agent.name(agent_spec)
+    child_branch = if ctx.branch, do: "#{ctx.branch}.#{child_name}", else: child_name
+    %{ctx | agent: agent_spec, branch: child_branch, temp_state: %{}}
   end
 
   @doc """

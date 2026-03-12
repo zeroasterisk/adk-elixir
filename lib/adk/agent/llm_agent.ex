@@ -15,12 +15,15 @@ defmodule ADK.Agent.LlmAgent do
     :output_key,
     :context_compressor,
     :output_schema,
+    :parent_agent,
     description: "",
     tools: [],
     skills: [],
     sub_agents: [],
     max_iterations: 10,
-    generate_config: %{}
+    generate_config: %{},
+    disallow_transfer_to_parent: false,
+    disallow_transfer_to_peers: false
   ]
 
   @typedoc """
@@ -44,12 +47,15 @@ defmodule ADK.Agent.LlmAgent do
           output_key: atom() | String.t() | nil,
           context_compressor: keyword() | nil,
           output_schema: map() | nil,
+          parent_agent: ADK.Agent.t() | nil,
           description: String.t(),
           tools: [map()],
           skills: [ADK.Skill.t()],
           sub_agents: [ADK.Agent.t()],
           max_iterations: pos_integer(),
-          generate_config: map()
+          generate_config: map(),
+          disallow_transfer_to_parent: boolean(),
+          disallow_transfer_to_peers: boolean()
         }
 
   @doc """
@@ -74,7 +80,20 @@ defmodule ADK.Agent.LlmAgent do
         ADK.Skill.apply_to_opts(opts, skills)
       end
 
-    struct!(__MODULE__, opts)
+    agent = struct!(__MODULE__, opts)
+
+    # Wire up parent_agent on sub-agents for bidirectional transfer
+    if agent.sub_agents != [] do
+      updated_subs =
+        Enum.map(agent.sub_agents, fn
+          %__MODULE__{} = sub -> %{sub | parent_agent: agent}
+          other -> other
+        end)
+
+      %{agent | sub_agents: updated_subs}
+    else
+      agent
+    end
   end
 
   @doc """
@@ -176,6 +195,7 @@ defmodule ADK.Agent.LlmAgent do
                   ADK.Event.new(%{
                     invocation_id: ctx.invocation_id,
                     author: agent.name,
+                    branch: ctx.branch,
                     content: %{parts: [%{text: exit_reason}]},
                     actions: %ADK.EventActions{escalate: true}
                   })
@@ -190,10 +210,10 @@ defmodule ADK.Agent.LlmAgent do
                 [event, escalate_event]
 
               transfer ->
-                # Find the target sub-agent
+                # Find the target agent (sub-agent, parent, or peer)
                 target_name = transfer.transfer_to_agent
 
-                target = Enum.find(agent.sub_agents, fn sa ->
+                target = Enum.find(transfer_targets(agent), fn sa ->
                   ADK.Agent.name(sa) == target_name
                 end)
 
@@ -201,6 +221,7 @@ defmodule ADK.Agent.LlmAgent do
                   ADK.Event.new(%{
                     invocation_id: ctx.invocation_id,
                     author: agent.name,
+                    branch: ctx.branch,
                     content: %{parts: [%{text: "Transferring to #{target_name}"}]},
                     actions: %ADK.EventActions{transfer_to_agent: target_name}
                   })
@@ -239,6 +260,7 @@ defmodule ADK.Agent.LlmAgent do
                   ADK.Event.new(%{
                     invocation_id: ctx.invocation_id,
                     author: agent.name,
+                    branch: ctx.branch,
                     content: %{role: :user, parts: response_parts}
                   })
 
@@ -279,15 +301,26 @@ defmodule ADK.Agent.LlmAgent do
     # Apply context compression if configured
     compressor_opts =
       case agent.context_compressor do
-        nil -> nil
-        opts -> Keyword.put_new(opts, :context, %{model: agent.model})
+        nil ->
+          nil
+
+        opts ->
+          opts
+          |> Keyword.put_new(:context, %{model: agent.model})
+          |> Keyword.put_new(:session_pid, ctx.session_pid)
       end
 
     messages = ADK.Context.Compressor.maybe_compress(messages, compressor_opts)
 
+    # Split instructions for context caching support
+    {static_instruction, dynamic_instruction} =
+      ADK.InstructionCompiler.compile_split(agent, ctx)
+
     request = %{
       model: agent.model,
       instruction: instruction,
+      static_system_instruction: static_instruction,
+      dynamic_system_instruction: dynamic_instruction,
       messages: messages,
       tools: Enum.map(all_tools, &ADK.Tool.declaration/1)
     }
@@ -399,24 +432,84 @@ defmodule ADK.Agent.LlmAgent do
     end
   end
 
-  @doc false
+  @doc """
+  Compute the full tool list including auto-generated transfer tools.
+
+  Transfer targets include:
+  - Sub-agents (always, unless empty)
+  - Parent agent (unless `disallow_transfer_to_parent` is true)
+  - Peer agents (siblings under same parent, unless `disallow_transfer_to_peers` is true)
+
+  This mirrors Python ADK's bidirectional transfer support.
+  """
+  @spec effective_tools(t()) :: [map()]
   def effective_tools(agent) do
+    targets = transfer_targets(agent)
+
     transfer_tools =
-      case agent.sub_agents do
-        [] -> []
-        subs -> ADK.Tool.TransferToAgent.tools_for_sub_agents(subs)
+      if targets == [] do
+        []
+      else
+        ADK.Tool.TransferToAgent.tools_for_sub_agents(targets)
       end
 
     agent.tools ++ transfer_tools
   end
 
+  @doc """
+  Compute the list of agents this agent can transfer to.
+
+  Includes sub-agents, optionally parent and peer agents.
+  """
+  @spec transfer_targets(t()) :: [ADK.Agent.t()]
+  def transfer_targets(agent) do
+    sub_targets = agent.sub_agents || []
+
+    parent_targets =
+      if agent.parent_agent && !agent.disallow_transfer_to_parent do
+        [agent.parent_agent]
+      else
+        []
+      end
+
+    peer_targets =
+      if agent.parent_agent && !agent.disallow_transfer_to_peers do
+        parent = agent.parent_agent
+        siblings = Map.get(parent, :sub_agents, [])
+        Enum.reject(siblings, fn sa -> ADK.Agent.name(sa) == agent.name end)
+      else
+        []
+      end
+
+    sub_targets ++ parent_targets ++ peer_targets
+  end
+
   defp build_messages(ctx) do
+    current_branch = ctx.branch
+    current_agent = ADK.Agent.name(ctx.agent)
+
     history =
       if ctx.session_pid do
         ADK.Session.get_events(ctx.session_pid)
+        |> Enum.filter(&ADK.Event.on_branch?(&1, current_branch))
         |> Enum.map(fn e ->
-          role = if e.author == "user", do: :user, else: :model
-          %{role: role, parts: (e.content || %{})[:parts] || []}
+          cond do
+            # Compaction events are always user-role summaries
+            ADK.Event.compaction?(e) ->
+              %{role: :user, parts: (e.content || %{})[:parts] || []}
+
+            # User messages stay as-is
+            e.author == "user" ->
+              %{role: :user, parts: (e.content || %{})[:parts] || []}
+
+            # Messages from the current agent stay as model messages
+            e.author == current_agent ->
+              %{role: :model, parts: (e.content || %{})[:parts] || []}
+
+            # Messages from other agents are reformatted as user-role context
+            true ->
+              reformat_other_agent_message(e)
+          end
         end)
       else
         []
@@ -433,10 +526,38 @@ defmodule ADK.Agent.LlmAgent do
     history ++ user_msg
   end
 
+  # Feature 5: Other-Agent Message Reformatting
+  # Rewrites messages from other agents as "[agent_name] said: ..." in user role,
+  # mirroring Python ADK's content assembly behavior.
+  defp reformat_other_agent_message(event) do
+    agent_name = event.author || "unknown"
+    parts = (event.content || %{})[:parts] || []
+
+    reformatted_parts =
+      Enum.flat_map(parts, fn
+        %{text: text} when is_binary(text) ->
+          [%{text: "[#{agent_name}] said: #{text}"}]
+
+        %{function_call: %{name: fname, args: args}} ->
+          args_str = if is_map(args), do: Jason.encode!(args), else: inspect(args)
+          [%{text: "[#{agent_name}] called tool `#{fname}` with parameters: #{args_str}"}]
+
+        %{function_response: %{name: fname, response: resp}} ->
+          resp_str = if is_binary(resp), do: resp, else: inspect(resp)
+          [%{text: "[#{agent_name}] tool `#{fname}` returned: #{resp_str}"}]
+
+        other ->
+          [other]
+      end)
+
+    %{role: :user, parts: reformatted_parts}
+  end
+
   defp event_from_response(response, ctx, agent) do
     ADK.Event.new(%{
       invocation_id: ctx.invocation_id,
       author: agent.name,
+      branch: ctx.branch,
       content: response.content
     })
   end

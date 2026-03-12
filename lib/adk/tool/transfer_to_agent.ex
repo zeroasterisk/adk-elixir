@@ -20,16 +20,20 @@ defmodule ADK.Tool.TransferToAgent do
   """
 
   @doc """
-  Generate transfer tools for a list of sub-agents.
+  Generate transfer tools for a list of target agents.
 
-  Returns a list of `ADK.Tool.FunctionTool` structs, one per sub-agent.
+  Returns a list of `ADK.Tool.FunctionTool` structs, one per target agent.
+  Each tool's parameters include an `enum` constraint on the `agent_name`
+  field listing all valid target names, preventing the LLM from hallucinating
+  non-existent agent names.
   """
   @spec tools_for_sub_agents([ADK.Agent.t()]) :: [ADK.Tool.FunctionTool.t()]
   def tools_for_sub_agents(sub_agents) when is_list(sub_agents) do
-    Enum.map(sub_agents, &tool_for_agent/1)
+    valid_names = Enum.map(sub_agents, &ADK.Agent.name/1)
+    Enum.map(sub_agents, &tool_for_agent(&1, valid_names))
   end
 
-  defp tool_for_agent(agent) do
+  defp tool_for_agent(agent, valid_names) do
     agent_name = ADK.Agent.name(agent)
     agent_desc = ADK.Agent.description(agent)
 
@@ -45,7 +49,13 @@ defmodule ADK.Tool.TransferToAgent do
       description: description,
       parameters: %{
         type: "object",
-        properties: %{},
+        properties: %{
+          "agent_name" => %{
+            type: "string",
+            description: "Name of the agent to transfer to",
+            enum: valid_names
+          }
+        },
         required: []
       },
       func: fn _ctx, _args ->
