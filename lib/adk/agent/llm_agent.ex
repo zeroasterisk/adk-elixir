@@ -120,8 +120,18 @@ defmodule ADK.Agent.LlmAgent do
           result
 
         {:cont, cb_ctx} ->
-          result = ADK.LLM.generate(agent.model, cb_ctx.request)
-          ADK.Callback.run_after(ctx.callbacks, :after_model, result, cb_ctx)
+          # Run plugin before_model hooks (can modify request or skip model call)
+          case ADK.Plugin.run_before_model(ctx.plugins, ctx, cb_ctx.request) do
+            {:skip, response} ->
+              response
+
+            {:ok, new_request} ->
+              cb_ctx = %{cb_ctx | request: new_request}
+              result = ADK.LLM.generate(agent.model, cb_ctx.request)
+              result = ADK.Callback.run_after(ctx.callbacks, :after_model, result, cb_ctx)
+              # Run plugin after_model hooks (can transform response)
+              ADK.Plugin.run_after_model(ctx.plugins, ctx, result)
+          end
       end
 
     case llm_result do
@@ -455,8 +465,18 @@ defmodule ADK.Agent.LlmAgent do
                       result
 
                     {:cont, cb_ctx} ->
-                      result = run_tool(tool, tool_ctx, cb_ctx.tool_args)
-                      ADK.Callback.run_after(ctx.callbacks, :after_tool, result, cb_ctx)
+                      # Run plugin before_tool hooks (can modify args or skip tool)
+                      case ADK.Plugin.run_before_tool(ctx.plugins, ctx, call.name, cb_ctx.tool_args) do
+                        {:skip, result} ->
+                          result
+
+                        {:ok, new_args} ->
+                          cb_ctx = %{cb_ctx | tool_args: new_args}
+                          result = run_tool(tool, tool_ctx, cb_ctx.tool_args)
+                          result = ADK.Callback.run_after(ctx.callbacks, :after_tool, result, cb_ctx)
+                          # Run plugin after_tool hooks (can transform result)
+                          ADK.Plugin.run_after_tool(ctx.plugins, ctx, call.name, result)
+                      end
                   end
               end
             end)

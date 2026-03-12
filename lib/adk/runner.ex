@@ -129,6 +129,10 @@ defmodule ADK.Runner do
           {result, updated_plugins}
 
         {:cont, ctx, updated_plugins} ->
+          # Store updated plugin states in context so LlmAgent can call
+          # per-model/per-tool/on_event plugin hooks inline during execution.
+          ctx = %{ctx | plugins: updated_plugins}
+
           # Run input policy filters
           case ADK.Policy.run_input_filters(policies, ctx.user_content, ctx) do
             {:halt, events} ->

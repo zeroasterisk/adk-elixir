@@ -11,6 +11,7 @@ defmodule ADK.Context do
           ended: boolean(),
           callbacks: [module()],
           policies: [module()],
+          plugins: [{module(), term()}],
           run_config: ADK.RunConfig.t() | nil,
           artifact_service: {module(), keyword()} | nil,
           credential_service: module() | nil,
@@ -35,7 +36,8 @@ defmodule ADK.Context do
     temp_state: %{},
     ended: false,
     callbacks: [],
-    policies: []
+    policies: [],
+    plugins: []
   ]
 
   @doc """
@@ -72,24 +74,35 @@ defmodule ADK.Context do
   when an `on_event` callback is configured in the context.
   """
   @spec emit_event(t(), ADK.Event.t()) :: :ok
-  def emit_event(%__MODULE__{on_event: nil}, _event), do: :ok
-  def emit_event(%__MODULE__{on_event: on_event, invocation_id: inv_id}, event)
-      when is_function(on_event, 1) do
-    # Track emitted event IDs per invocation in the process dictionary.
-    # Events emitted by LlmAgent inline won't be re-fired by Runner.run fallback.
-    pdict_key = {__MODULE__, :emitted, inv_id}
-    emitted = Process.get(pdict_key, MapSet.new())
-    event_id = event.id
+  def emit_event(%__MODULE__{} = ctx, event) do
+    on_event_fn = ctx.on_event
+    plugins = ctx.plugins || []
+    inv_id = ctx.invocation_id
 
-    if is_nil(event_id) or not MapSet.member?(emitted, event_id) do
-      unless is_nil(event_id) do
-        Process.put(pdict_key, MapSet.put(emitted, event_id))
+    # Fast path: nothing to do
+    if is_nil(on_event_fn) and plugins == [] do
+      :ok
+    else
+      # Track emitted event IDs per invocation in the process dictionary.
+      # Events emitted by LlmAgent inline won't be re-fired by Runner.run fallback.
+      pdict_key = {__MODULE__, :emitted, inv_id}
+      emitted = Process.get(pdict_key, MapSet.new())
+      event_id = event.id
+
+      if is_nil(event_id) or not MapSet.member?(emitted, event_id) do
+        unless is_nil(event_id) do
+          Process.put(pdict_key, MapSet.put(emitted, event_id))
+        end
+
+        # Fire plugin on_event hooks
+        ADK.Plugin.run_on_event(plugins, ctx, event)
+
+        # Fire on_event streaming callback if set
+        if is_function(on_event_fn, 1), do: on_event_fn.(event)
       end
 
-      on_event.(event)
+      :ok
     end
-
-    :ok
   end
 
   @doc "Get a value from temp state."

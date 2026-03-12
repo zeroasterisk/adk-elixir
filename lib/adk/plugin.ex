@@ -16,6 +16,19 @@ defmodule ADK.Plugin do
   - `after_run/3` — called after Runner executes, receives `{result, context, plugin_state}`,
     returns `{result, state}`
 
+  ### Per-model and per-tool hooks (stateless)
+
+  These hooks are called inline during LLM agent execution. They do not carry
+  plugin state (use ETS or GenServer in `init/1` for statefulness across calls):
+
+  - `before_model/2` — called before each LLM call; can modify the request or skip
+    the call entirely by returning a canned response
+  - `after_model/2` — called after each LLM call; can transform the response
+  - `before_tool/3` — called before each tool execution; can modify args or skip
+    the tool call by returning a canned result
+  - `after_tool/3` — called after each tool execution; can transform the result
+  - `on_event/2` — called for each event emitted during execution; observe-only
+
   ## Example
 
       defmodule MyPlugin do
@@ -32,6 +45,34 @@ defmodule ADK.Plugin do
         @impl true
         def after_run(result, _context, state) do
           {result, state}
+        end
+
+        @impl true
+        def before_model(context, request) do
+          # Inject extra context into every model request
+          {:ok, Map.put(request, :extra, "injected")}
+        end
+
+        @impl true
+        def after_model(_context, response) do
+          response
+        end
+
+        @impl true
+        def before_tool(_context, tool_name, args) do
+          IO.puts("Calling tool: \#{tool_name}")
+          {:ok, args}
+        end
+
+        @impl true
+        def after_tool(_context, _tool_name, result) do
+          result
+        end
+
+        @impl true
+        def on_event(_context, event) do
+          IO.inspect(event, label: "event")
+          :ok
         end
       end
 
@@ -62,7 +103,59 @@ defmodule ADK.Plugin do
   @callback after_run([ADK.Event.t()], ADK.Context.t(), state()) ::
               {[ADK.Event.t()], state()}
 
-  @optional_callbacks [init: 1, before_run: 2, after_run: 3]
+  @doc """
+  Called before each LLM model call.
+
+  Return `{:ok, request}` to continue (possibly with a modified request), or
+  `{:skip, response}` to skip the model call entirely and use the given response.
+
+  The `response` in `{:skip, response}` should be `{:ok, map()}` or `{:error, term()}`.
+  """
+  @callback before_model(ADK.Context.t(), request :: map()) ::
+              {:ok, map()} | {:skip, {:ok, map()} | {:error, term()}}
+
+  @doc """
+  Called after each LLM model call.
+
+  Receives the raw LLM result and may return a transformed result.
+  """
+  @callback after_model(ADK.Context.t(), {:ok, map()} | {:error, term()}) ::
+              {:ok, map()} | {:error, term()}
+
+  @doc """
+  Called before each tool execution.
+
+  Return `{:ok, args}` to continue (possibly with modified args), or
+  `{:skip, result}` to skip the tool and return the given result directly.
+  """
+  @callback before_tool(ADK.Context.t(), tool_name :: String.t(), args :: map()) ::
+              {:ok, map()} | {:skip, ADK.Tool.result()}
+
+  @doc """
+  Called after each tool execution.
+
+  Receives the tool result and may return a transformed result.
+  """
+  @callback after_tool(ADK.Context.t(), tool_name :: String.t(), ADK.Tool.result()) ::
+              ADK.Tool.result()
+
+  @doc """
+  Called for each event emitted during execution (observe-only).
+
+  Always return `:ok`. Use this for logging, telemetry, or side effects.
+  """
+  @callback on_event(ADK.Context.t(), ADK.Event.t()) :: :ok
+
+  @optional_callbacks [
+    init: 1,
+    before_run: 2,
+    after_run: 3,
+    before_model: 2,
+    after_model: 2,
+    before_tool: 3,
+    after_tool: 3,
+    on_event: 2
+  ]
 
   @doc """
   Run before_run hooks for a list of `{module, state}` tuples.
@@ -106,6 +199,105 @@ defmodule ADK.Plugin do
         {res, acc ++ [{mod, st}]}
       end
     end)
+  end
+
+  @doc """
+  Run before_model hooks for all registered plugins.
+
+  Returns `{:ok, final_request}` if all plugins continue, or
+  `{:skip, response}` if any plugin short-circuits the model call.
+
+  Plugins that don't implement `before_model/2` are skipped.
+  """
+  @spec run_before_model([{module(), state()}], ADK.Context.t(), map()) ::
+          {:ok, map()} | {:skip, {:ok, map()} | {:error, term()}}
+  def run_before_model(plugins, ctx, request) do
+    Enum.reduce_while(plugins, {:ok, request}, fn {mod, _st}, {:ok, req} ->
+      if function_exported?(mod, :before_model, 2) do
+        case mod.before_model(ctx, req) do
+          {:ok, new_req} -> {:cont, {:ok, new_req}}
+          {:skip, response} -> {:halt, {:skip, response}}
+        end
+      else
+        {:cont, {:ok, req}}
+      end
+    end)
+  end
+
+  @doc """
+  Run after_model hooks for all registered plugins, threading the result through each.
+
+  Plugins that don't implement `after_model/2` are skipped.
+  """
+  @spec run_after_model([{module(), state()}], ADK.Context.t(), {:ok, map()} | {:error, term()}) ::
+          {:ok, map()} | {:error, term()}
+  def run_after_model(plugins, ctx, response) do
+    Enum.reduce(plugins, response, fn {mod, _st}, resp ->
+      if function_exported?(mod, :after_model, 2) do
+        mod.after_model(ctx, resp)
+      else
+        resp
+      end
+    end)
+  end
+
+  @doc """
+  Run before_tool hooks for all registered plugins.
+
+  Returns `{:ok, final_args}` if all plugins continue, or
+  `{:skip, result}` if any plugin short-circuits the tool call.
+
+  Plugins that don't implement `before_tool/3` are skipped.
+  """
+  @spec run_before_tool([{module(), state()}], ADK.Context.t(), String.t(), map()) ::
+          {:ok, map()} | {:skip, ADK.Tool.result()}
+  def run_before_tool(plugins, ctx, tool_name, args) do
+    Enum.reduce_while(plugins, {:ok, args}, fn {mod, _st}, {:ok, current_args} ->
+      if function_exported?(mod, :before_tool, 3) do
+        case mod.before_tool(ctx, tool_name, current_args) do
+          {:ok, new_args} -> {:cont, {:ok, new_args}}
+          {:skip, result} -> {:halt, {:skip, result}}
+        end
+      else
+        {:cont, {:ok, current_args}}
+      end
+    end)
+  end
+
+  @doc """
+  Run after_tool hooks for all registered plugins, threading the result through each.
+
+  Plugins that don't implement `after_tool/3` are skipped.
+  """
+  @spec run_after_tool([{module(), state()}], ADK.Context.t(), String.t(), ADK.Tool.result()) ::
+          ADK.Tool.result()
+  def run_after_tool(plugins, ctx, tool_name, result) do
+    Enum.reduce(plugins, result, fn {mod, _st}, res ->
+      if function_exported?(mod, :after_tool, 3) do
+        mod.after_tool(ctx, tool_name, res)
+      else
+        res
+      end
+    end)
+  end
+
+  @doc """
+  Run on_event hooks for all registered plugins.
+
+  All plugins that implement `on_event/2` are called. Errors are ignored.
+  Always returns `:ok`.
+
+  Plugins that don't implement `on_event/2` are skipped.
+  """
+  @spec run_on_event([{module(), state()}], ADK.Context.t(), ADK.Event.t()) :: :ok
+  def run_on_event(plugins, ctx, event) do
+    Enum.each(plugins, fn {mod, _st} ->
+      if function_exported?(mod, :on_event, 2) do
+        mod.on_event(ctx, event)
+      end
+    end)
+
+    :ok
   end
 
   @doc "Register a plugin globally. Accepts `module` or `{module, config}`."
