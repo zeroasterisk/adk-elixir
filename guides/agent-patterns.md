@@ -32,6 +32,12 @@ copy-paste Elixir code and links to working examples in this repo.
 | 17 | [Skills (Reusable Instruction Bundles)](#skills) | ⭐ | — |
 | 18 | [Context Compaction](#context-compaction) | ⭐⭐ | `examples/context_compilation/` |
 | 19 | [Eval & Testing](#eval--testing) | ⭐⭐ | `examples/claw/` |
+| 20 | [Plugins (Global Middleware)](#plugins-global-middleware) | ⭐⭐ | — |
+| 21 | [MCP Tool Integration](#mcp-tool-integration) | ⭐⭐ | — |
+| 22 | [Structured Output (output_schema)](#structured-output) | ⭐ | — |
+| 23 | [Dynamic Instructions](#dynamic-instructions) | ⭐ | — |
+| 24 | [Oban Background Jobs](#oban-background-jobs) | ⭐⭐ | — |
+| 25 | [Phoenix LiveView Integration](#phoenix-liveview-integration) | ⭐⭐ | — |
 
 ---
 
@@ -69,7 +75,7 @@ calculate = ADK.Tool.FunctionTool.new(:calculate,
 # Wire tools into an agent
 agent = ADK.Agent.LlmAgent.new(
   name: "assistant",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: """
   You are a helpful assistant. Use tools when needed.
   - Use get_weather for weather questions
@@ -102,7 +108,7 @@ A central agent routes incoming requests to specialist sub-agents via LLM-driven
 ```elixir
 weather_agent = ADK.Agent.LlmAgent.new(
   name: "weather_agent",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   description: "Handles weather queries",
   instruction: "You answer weather questions. Use the get_weather tool.",
   tools: [get_weather_tool()]
@@ -110,7 +116,7 @@ weather_agent = ADK.Agent.LlmAgent.new(
 
 math_agent = ADK.Agent.LlmAgent.new(
   name: "math_agent",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   description: "Handles math calculations",
   instruction: "You solve math problems. Use the calculate tool.",
   tools: [calculate_tool()]
@@ -118,7 +124,7 @@ math_agent = ADK.Agent.LlmAgent.new(
 
 router = ADK.Agent.LlmAgent.new(
   name: "router",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: """
   You are a router. Analyze the user's question and transfer to the
   appropriate specialist agent. Don't try to answer directly.
@@ -150,14 +156,14 @@ A `SequentialAgent` runs sub-agents in order. Each step's output is available to
 ```elixir
 researcher = ADK.Agent.LlmAgent.new(
   name: "researcher",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "Research the given topic. Output 5-7 bullet points.",
   output_key: "research"  # Saves output to state["research"]
 )
 
 writer = ADK.Agent.LlmAgent.new(
   name: "writer",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: """
   Write a blog post based on this research:
   {research}
@@ -167,7 +173,7 @@ writer = ADK.Agent.LlmAgent.new(
 
 editor = ADK.Agent.LlmAgent.new(
   name: "editor",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: """
   Edit this draft for clarity and tone:
   {draft}
@@ -200,7 +206,7 @@ A `ParallelAgent` runs sub-agents concurrently, then a downstream agent aggregat
 ```elixir
 fetch_weather = ADK.Agent.LlmAgent.new(
   name: "weather_fetcher",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "Get the weather for {city}.",
   output_key: "weather_data",
   tools: [weather_tool()]
@@ -208,7 +214,7 @@ fetch_weather = ADK.Agent.LlmAgent.new(
 
 fetch_news = ADK.Agent.LlmAgent.new(
   name: "news_fetcher",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "Find today's top news for {city}.",
   output_key: "news_data",
   tools: [news_tool()]
@@ -223,7 +229,7 @@ gatherer = ADK.Agent.ParallelAgent.new(
 # Gather: combine results
 summarizer = ADK.Agent.LlmAgent.new(
   name: "summarizer",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: """
   Combine these into a morning briefing:
   Weather: {weather_data}
@@ -255,7 +261,7 @@ A `LoopAgent` runs its sub-agents repeatedly until a condition is met or max ite
 ```elixir
 improver = ADK.Agent.LlmAgent.new(
   name: "improver",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: """
   Improve this code based on the feedback:
   Code: {code}
@@ -268,7 +274,7 @@ improver = ADK.Agent.LlmAgent.new(
 
 reviewer = ADK.Agent.LlmAgent.new(
   name: "reviewer",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: """
   Review this code: {code}
 
@@ -312,7 +318,7 @@ One agent generates, another validates. If validation fails, the generator retri
 ```elixir
 agent = ADK.Agent.LlmAgent.new(
   name: "json_responder",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "Respond with valid JSON only. No markdown, no explanation.",
   plugins: [
     {ADK.Plugin.ReflectRetry,
@@ -355,7 +361,7 @@ Multi-level agent trees where higher-level agents break down tasks and delegate 
 # Level 2: Specialists
 coder = ADK.Agent.LlmAgent.new(
   name: "coder",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   description: "Writes and explains code",
   instruction: "You write clean, idiomatic code. Explain your approach.",
   tools: [shell_tool(), read_file_tool()]
@@ -363,7 +369,7 @@ coder = ADK.Agent.LlmAgent.new(
 
 helper = ADK.Agent.LlmAgent.new(
   name: "helper",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   description: "General knowledge and utilities",
   instruction: "You help with general questions, datetime, notes.",
   tools: [datetime_tool(), save_note_tool(), list_notes_tool()]
@@ -372,7 +378,7 @@ helper = ADK.Agent.LlmAgent.new(
 # Level 1: Router
 router = ADK.Agent.LlmAgent.new(
   name: "claw",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: """
   You are Claw, an AI assistant. Route requests to the right specialist:
   - Code/programming questions → transfer to coder
@@ -670,7 +676,7 @@ runner = ADK.Runner.new(
 # Give the agent a memory search tool
 agent = ADK.Agent.LlmAgent.new(
   name: "assistant",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: """
   You are a helpful assistant with memory of past conversations.
   Use search_memory when the user asks about something from a previous chat.
@@ -819,7 +825,7 @@ remote_tool = ADK.A2A.RemoteAgentTool.new(
 
 agent = ADK.Agent.LlmAgent.new(
   name: "coordinator",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "Use expert_agent for specialized questions.",
   tools: [remote_tool]
 )
@@ -845,7 +851,7 @@ Bundle reusable instructions (and optionally tools) into a skill directory.
 # Use it with an agent — skill instructions are appended
 agent = ADK.Agent.LlmAgent.new(
   name: "reviewer",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "You are a code reviewer.",
   skills: [skill]
 )
@@ -873,7 +879,7 @@ Manage growing conversation context to keep LLM calls fast and within token limi
 # Choose a compaction strategy
 agent = ADK.Agent.LlmAgent.new(
   name: "assistant",
-  model: "gemini-2.0-flash",
+  model: "gemini-flash-latest",
   instruction: "You are a helpful assistant.",
   context_compressor: [
     strategy: ADK.Context.Compressor.TokenBudget,
@@ -941,6 +947,381 @@ end
 
 ---
 
+## Plugins (Global Middleware)
+
+Plugins are **runner-level** middleware that apply globally to all agents. Unlike
+callbacks (per-agent), plugins intercept the entire Runner pipeline plus
+per-model and per-tool hooks for every agent in the hierarchy.
+
+**When to use**: Cross-cutting concerns — logging, rate limiting, caching, metrics,
+security enforcement across all agents.
+
+```elixir
+defmodule MetricsPlugin do
+  @behaviour ADK.Plugin
+
+  @impl true
+  def init(_config) do
+    :ets.new(:adk_metrics, [:named_table, :public, :set])
+    {:ok, %{}}
+  end
+
+  @impl true
+  def before_run(context, state) do
+    :ets.update_counter(:adk_metrics, :total_runs, 1, {:total_runs, 0})
+    {:cont, context, state}
+  end
+
+  @impl true
+  def after_run(result, _context, state), do: {result, state}
+
+  # Intercept every LLM call across all agents
+  @impl true
+  def before_model(_context, request) do
+    :ets.update_counter(:adk_metrics, :llm_calls, 1, {:llm_calls, 0})
+    {:ok, request}
+  end
+
+  @impl true
+  def after_model(_context, response), do: response
+
+  # Intercept every tool call
+  @impl true
+  def before_tool(_context, _tool, args), do: {:ok, args}
+
+  @impl true
+  def after_tool(_context, _tool, result), do: result
+
+  @impl true
+  def on_event(_context, event) do
+    :ets.update_counter(:adk_metrics, :events, 1, {:events, 0})
+    :ok
+  end
+end
+
+# Register globally — applies to ALL agents under this runner
+runner = ADK.Runner.new(
+  app_name: "my_app",
+  agent: root_agent,
+  plugins: [MetricsPlugin]
+)
+```
+
+**Built-in plugins**:
+- `ADK.Plugin.Logging` — structured logging at each hook point
+- `ADK.Plugin.RateLimit` — throttle LLM calls per time window
+- `ADK.Plugin.Cache` — cache LLM responses for identical requests
+- `ADK.Plugin.ReflectRetry` — validate + retry on failure
+
+**Callbacks vs Plugins**:
+| | Callbacks | Plugins |
+|---|----------|---------|
+| Scope | Per-agent | Global (all agents) |
+| Registered on | `LlmAgent` | `Runner` |
+| State | Stateless | Carry state via `init/1` |
+| Use case | Agent-specific hooks | Cross-cutting concerns |
+
+**Python comparison**: Python ADK's `BasePlugin` is nearly identical in concept.
+ADK Elixir uses OTP-friendly state threading through init/before/after.
+
+---
+
+## MCP Tool Integration
+
+Connect to [Model Context Protocol](https://modelcontextprotocol.io/) servers
+and use their tools as native ADK tools.
+
+**When to use**: Integrating with MCP-compatible tool servers (databases, APIs, file systems)
+without writing custom tool wrappers.
+
+```elixir
+# Start an MCP client connected to a server
+{:ok, client} = ADK.MCP.Client.start_link(
+  command: "npx",
+  args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp/workspace"]
+)
+
+# Convert all MCP tools to ADK FunctionTools
+{:ok, tools} = ADK.MCP.ToolAdapter.to_adk_tools(client)
+
+# Use them like any other tools
+agent = ADK.Agent.LlmAgent.new(
+  name: "file_assistant",
+  model: "gemini-2.0-flash",
+  instruction: """
+  You can read and write files. Use the available tools to help
+  the user manage their files.
+  """,
+  tools: tools
+)
+```
+
+**How it works**:
+1. `ADK.MCP.Client` manages the JSON-RPC connection to the MCP server process
+2. `ADK.MCP.ToolAdapter.to_adk_tools/1` fetches the tool list and wraps each as a `FunctionTool`
+3. Tool calls from the LLM are transparently forwarded to the MCP server
+4. Results are returned as standard tool output
+
+**Key points**:
+- MCP tools auto-inherit their name, description, and parameter schema from the server
+- The MCP client runs as a GenServer — supervised and crash-resilient
+- You can mix MCP tools with native ADK tools in the same agent
+
+---
+
+## Structured Output
+
+Force the LLM to return responses conforming to a JSON schema using `output_schema`.
+
+**When to use**: When you need machine-parseable output (API responses, data extraction,
+structured analysis) without relying on ReflectRetry validation.
+
+```elixir
+agent = ADK.Agent.LlmAgent.new(
+  name: "data_extractor",
+  model: "gemini-2.0-flash",
+  instruction: """
+  Extract structured information from the user's text.
+  Return a JSON object matching the required schema.
+  """,
+  output_schema: %{
+    type: "object",
+    properties: %{
+      name: %{type: "string", description: "Person's full name"},
+      email: %{type: "string", description: "Email address"},
+      company: %{type: "string", description: "Company name"},
+      role: %{type: "string", description: "Job title"}
+    },
+    required: ["name", "email"]
+  }
+)
+
+# The LLM response will be valid JSON matching the schema
+runner = ADK.Runner.new(app_name: "extractor", agent: agent)
+events = ADK.Runner.run(runner, "user1", "s1",
+  "Hi, I'm Jane Smith (jane@acme.co), CTO at Acme Corp.")
+
+# Parse the structured output
+json_text = events |> Enum.map(&ADK.Event.text/1) |> Enum.join("")
+{:ok, data} = Jason.decode(json_text)
+# => %{"name" => "Jane Smith", "email" => "jane@acme.co", ...}
+```
+
+**Key points**:
+- `output_schema` is passed to the model via `generate_content_config`
+- The model is instructed to respond in JSON matching the schema
+- For Gemini models, this uses native structured output (response_mime_type: application/json)
+- Combine with `ReflectRetry` for additional validation if needed
+
+**When to use output_schema vs ReflectRetry**:
+- `output_schema` — schema enforcement at the model level (cheaper, faster)
+- `ReflectRetry` — custom validation logic (format checks, business rules)
+- Both together — belt and suspenders
+
+---
+
+## Dynamic Instructions
+
+Use functions instead of static strings for instructions that adapt at runtime.
+
+**When to use**: Instructions that depend on session state, time of day, user preferences,
+or external data.
+
+```elixir
+# Function-based instruction
+agent = ADK.Agent.LlmAgent.new(
+  name: "adaptive_assistant",
+  model: "gemini-2.0-flash",
+  instruction: fn ctx ->
+    user_name = ADK.Context.get_state(ctx, "user_name") || "friend"
+    hour = DateTime.utc_now().hour
+
+    greeting = cond do
+      hour < 12 -> "Good morning"
+      hour < 17 -> "Good afternoon"
+      true -> "Good evening"
+    end
+
+    """
+    #{greeting}, #{user_name}!
+    You are a helpful assistant. Be concise and friendly.
+    The current time is #{DateTime.utc_now() |> Calendar.strftime("%H:%M UTC")}.
+    """
+  end
+)
+
+# MFA tuple — for compile-time safety and hot code reloading
+agent = ADK.Agent.LlmAgent.new(
+  name: "configurable_agent",
+  model: "gemini-2.0-flash",
+  instruction: {MyApp.Instructions, :build, ["assistant"]}
+)
+
+# In MyApp.Instructions:
+defmodule MyApp.Instructions do
+  def build(role, ctx) do
+    user_prefs = ADK.Context.get_state(ctx, "preferences") || %{}
+    tone = Map.get(user_prefs, "tone", "professional")
+
+    """
+    You are a #{role}. Respond in a #{tone} tone.
+    User preferences: #{inspect(user_prefs)}
+    """
+  end
+end
+```
+
+**Instruction types**:
+| Type | Example | Use case |
+|------|---------|----------|
+| String | `"You are helpful."` | Static instructions |
+| Template | `"Hello {user_name}."` | State variable interpolation |
+| Function | `fn ctx -> ... end` | Dynamic runtime logic |
+| MFA tuple | `{Mod, :fun, args}` | Configurable, hot-reloadable |
+
+**Key points**:
+- Functions receive the current `ADK.Context` and must return a string
+- MFA tuples call `Mod.fun(args..., ctx)` — context is always the last argument
+- `global_instruction` on the root agent also supports all instruction types
+- Template variables use `{var}` syntax — append `?` for optional: `{maybe?}`
+
+---
+
+## Oban Background Jobs
+
+Run agents as durable background jobs with retries, scheduling, and persistence.
+
+**When to use**: Async processing, scheduled tasks, webhook handlers, email processing,
+any agent work that should survive restarts.
+
+```elixir
+# Enqueue an agent job
+ADK.Oban.AgentWorker.enqueue(
+  MyApp.Agents.Summarizer,
+  "user1",
+  "Summarize the quarterly report",
+  app_name: "my_app",
+  session_id: "report-q4",
+  queue: :agents,
+  max_attempts: 3
+)
+
+# Or use Oban directly for scheduling
+%{
+  agent_module: "MyApp.Agents.DailyDigest",
+  user_id: "user1",
+  message: "Generate today's digest",
+  app_name: "my_app"
+}
+|> ADK.Oban.AgentWorker.new(
+  queue: :agents,
+  scheduled_at: ~U[2026-03-13 08:00:00Z]
+)
+|> Oban.insert()
+
+# The agent module just needs to return an agent
+defmodule MyApp.Agents.Summarizer do
+  def agent do
+    ADK.Agent.LlmAgent.new(
+      name: "summarizer",
+      model: "gemini-2.0-flash",
+      instruction: "Summarize the given content concisely.",
+      tools: [read_doc_tool()]
+    )
+  end
+end
+```
+
+**Key points**:
+- Oban is an optional dependency — add `{:oban, "~> 2.17"}` to your deps
+- Jobs survive application restarts (backed by PostgreSQL)
+- Built-in retries with exponential backoff
+- Use Oban's `unique` option to prevent duplicate jobs
+- Results can be stored in session state or published via PubSub
+
+**Elixir-only**: Python ADK has no built-in background job support. ADK Elixir
+leverages Oban — the standard Elixir job processing library.
+
+See the [Oban Integration guide](oban-integration.md) for full setup.
+
+---
+
+## Phoenix LiveView Integration
+
+Build real-time agent chat UIs with Phoenix LiveView — streaming responses,
+tool call visualization, and HITL approval dialogs.
+
+**When to use**: Web-based agent interfaces, internal tools, customer support dashboards.
+
+```elixir
+# In your LiveView
+defmodule MyAppWeb.ChatLive do
+  use MyAppWeb, :live_view
+
+  # ADK provides a handler module for common agent interactions
+  use ADK.Phoenix.LiveHandler
+
+  def mount(_params, _session, socket) do
+    {:ok, assign(socket,
+      messages: [],
+      agent: build_agent(),
+      runner: build_runner()
+    )}
+  end
+
+  def handle_event("send_message", %{"message" => msg}, socket) do
+    # ADK.Phoenix.LiveHandler provides handle_agent_message/3
+    # which streams events back to the LiveView as they arrive
+    {:noreply, start_agent_stream(socket, msg)}
+  end
+
+  # Renders streaming responses, tool calls, and approval dialogs
+  def render(assigns) do
+    ~H\"\"\"
+    <div id="chat" phx-hook="ChatScroll">
+      <%= for msg <- @messages do %>
+        <div class={"message " <> msg.role}>
+          <%= msg.content %>
+          <%= if msg.tool_calls do %>
+            <div class="tool-calls">
+              <%= for tc <- msg.tool_calls do %>
+                <span class="tool-badge"><%= tc.name %></span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+    <form phx-submit="send_message">
+      <input name="message" placeholder="Ask something..." />
+    </form>
+    \"\"\"
+  end
+end
+```
+
+**Quick start**: Use the built-in dev server for zero-config chat UI:
+
+```bash
+mix adk.server --agent MyApp.Agents.Helper --port 4000
+```
+
+This starts a Bandit HTTP server with a dark-themed chat UI, no Phoenix project needed.
+
+**Key points**:
+- `ADK.Phoenix.LiveHandler` handles streaming, tool display, and HITL approval
+- `ADK.Phoenix.ChatLive` provides a ready-made chat component
+- Events stream in real-time via WebSocket — no polling
+- HITL approval dialogs render inline in the chat
+
+**Elixir-only**: Python ADK uses `adk web` (Mesop). ADK Elixir uses Phoenix LiveView
+for native real-time streaming — no separate frontend framework needed.
+
+See the [Phoenix Integration guide](phoenix-integration.md) and
+[Dev Server guide](dev-server.md) for details.
+
+---
+
 ## Combining Patterns
 
 Real agents combine multiple patterns. Here's the `claw` example architecture:
@@ -988,6 +1369,12 @@ Start simple (single agent + tools), add patterns as complexity grows.
 | Skills | `AgentSkill` | `ADK.Skill` | Equivalent |
 | Compaction | Token-budget only | 4 strategies | Elixir has more options |
 | Eval | pytest-based | ExUnit-based `ADK.Eval.Case` | Equivalent |
+| Plugins | `BasePlugin` on Runner | `ADK.Plugin` behaviour | Similar concept |
+| MCP | `MCPToolset` | `ADK.MCP.Client` + `ToolAdapter` | Equivalent |
+| Structured Output | `output_schema` | `output_schema` on LlmAgent | Equivalent |
+| Dynamic Instructions | `Callable[[ReadonlyContext], str]` | `fn ctx -> str` or MFA tuple | Equivalent |
+| Background Jobs | None (manual) | `ADK.Oban.AgentWorker` | Elixir-only |
+| Real-time UI | Mesop (`adk web`) | Phoenix LiveView | Elixir-only |
 
 ---
 
