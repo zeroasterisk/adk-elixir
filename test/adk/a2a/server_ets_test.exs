@@ -5,20 +5,21 @@ defmodule ADK.A2A.ServerETSTest do
     agent = ADK.Agent.LlmAgent.new(name: "test", model: "test", instruction: "test")
     runner = %ADK.Runner{app_name: "test", agent: agent}
 
+    uid = System.unique_integer([:positive])
     opts = [
       agent: agent,
       runner: runner,
-      config_table_name: :ets_test_config,
-      task_table_name: :ets_test_tasks
+      config_table_name: :"ets_test_config_#{uid}",
+      task_table_name: :"ets_test_tasks_#{uid}"
     ]
 
     config = ADK.A2A.Server.init(opts)
 
-    # The underlying A2A.Server creates a named ETS table
-    assert config.table == :ets_test_tasks
+    # The underlying A2A.Server uses the task_table_name
+    assert config.table == :"ets_test_tasks_#{uid}"
 
     # ADK stores its own named config table
-    assert config.adk_config_table == :ets_test_config
+    assert config.adk_config_table == :"ets_test_config_#{uid}"
 
     # ADK config should be retrievable
     [{:config, adk_config}] = :ets.lookup(config.adk_config_table, :config)

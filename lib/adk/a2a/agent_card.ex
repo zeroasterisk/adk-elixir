@@ -16,6 +16,7 @@ defmodule ADK.A2A.AgentCard do
     - `:url` — the agent's A2A endpoint URL (required)
     - `:version` — agent version (default "1.0.0")
     - `:provider` — provider info map
+    - `:capabilities` — optional capabilities overrides
 
   ## Examples
 
@@ -26,15 +27,9 @@ defmodule ADK.A2A.AgentCard do
   """
   @spec from_agent(ADK.Agent.t(), keyword()) :: map()
   def from_agent(agent, opts \\ []) do
-    url = Keyword.fetch!(opts, :url)
-
-    card = to_a2a_card(agent, opts)
-    encode_opts = [
-      url: url,
-      capabilities: %{"stateTransitionHistory" => true},
-      provider: opts[:provider]
-    ]
-    A2A.JSON.encode_agent_card(card, encode_opts)
+    agent
+    |> to_a2a_card(opts)
+    |> A2A.AgentCard.to_map()
   end
 
   @doc """
@@ -42,14 +37,23 @@ defmodule ADK.A2A.AgentCard do
   """
   @spec to_a2a_card(ADK.Agent.t(), keyword()) :: A2A.AgentCard.t()
   def to_a2a_card(agent, opts \\ []) do
-    %A2A.AgentCard{
+    url = Keyword.get(opts, :url, "http://localhost:4000")
+    capabilities = Keyword.get(opts, :capabilities, %{
+      "streaming" => true,
+      "pushNotifications" => false,
+      "stateTransitionHistory" => true,
+      "extendedAgentCard" => false
+    })
+
+    A2A.AgentCard.new(
       name: ADK.Agent.name(agent),
-      url: Keyword.get(opts, :url, "http://localhost:4000"),
       description: ADK.Agent.description(agent) || "",
       version: Keyword.get(opts, :version, "1.0.0"),
       provider: opts[:provider],
-      skills: build_skills(agent)
-    }
+      skills: build_skills(agent),
+      url: url,
+      capabilities: capabilities
+    )
   end
 
   defp build_skills(%ADK.Agent.LlmAgent{tools: tools}) when is_list(tools) and tools != [] do
@@ -58,17 +62,24 @@ defmodule ADK.A2A.AgentCard do
 
   defp build_skills(_), do: []
 
-  defp tool_to_skill(%{name: name, description: desc}) do
-    %{id: to_string(name), name: to_string(name), description: desc || "", tags: []}
+  defp tool_to_skill(tool) do
+    name = get_tool_name(tool)
+    desc = get_tool_description(tool)
+    %A2A.AgentCard.Skill{
+      id: to_string(name),
+      name: to_string(name),
+      description: desc || "",
+      tags: []
+    }
   end
 
-  defp tool_to_skill(%ADK.Tool.FunctionTool{name: name, description: desc}) do
-    %{id: to_string(name), name: to_string(name), description: desc || "", tags: []}
-  end
+  defp get_tool_name(%{name: name}), do: name
+  defp get_tool_name(%ADK.Tool.FunctionTool{name: name}), do: name
+  defp get_tool_name(mod) when is_atom(mod), do: mod.name()
+  defp get_tool_name(_), do: "unknown"
 
-  defp tool_to_skill(mod) when is_atom(mod) do
-    %{id: mod.name(), name: mod.name(), description: mod.description(), tags: []}
-  end
-
-  defp tool_to_skill(_), do: %{id: "unknown", name: "unknown", description: "", tags: []}
+  defp get_tool_description(%{description: desc}), do: desc
+  defp get_tool_description(%ADK.Tool.FunctionTool{description: desc}), do: desc
+  defp get_tool_description(mod) when is_atom(mod), do: mod.description()
+  defp get_tool_description(_), do: ""
 end

@@ -2,7 +2,7 @@ defmodule ADK.A2A.Server do
   @moduledoc """
   A2A protocol server for ADK agents, implemented as a Plug.
 
-  Wraps `A2A.Plug` from the [a2a](https://github.com/zeroasterisk/a2a-elixir)
+  Wraps `A2A.Server` from the [a2a](https://github.com/zeroasterisk/a2a-elixir)
   package with ADK-specific handler logic (running agents via `ADK.Runner`).
 
   Serves the Agent Card at `GET /.well-known/agent.json` and handles
@@ -22,7 +22,11 @@ defmodule ADK.A2A.Server do
   def ensure_table(name) do
     case :ets.whereis(name) do
       :undefined ->
-        :ets.new(name, [:named_table, :public, :set])
+        try do
+          :ets.new(name, [:named_table, :public, :set])
+        rescue
+          ArgumentError -> name
+        end
 
       _ref ->
         name
@@ -46,273 +50,120 @@ defmodule ADK.A2A.Server do
     task_table_name = Keyword.get(opts, :task_table_name, :adk_a2a_tasks)
     task_table = ensure_table(task_table_name)
 
-    # Start the bridging A2A agent GenServer
-    bridge_name = :"adk_a2a_bridge_#{config_table_name}"
-
-    case GenServer.whereis(bridge_name) do
-      nil ->
-        {:ok, _pid} =
-          ADK.A2A.Server.Bridge.start_link(
-            name: bridge_name,
-            config_table: config_table,
-            task_store: {A2A.TaskStore.ETS, task_table}
-          )
-
-      _pid ->
-        :ok
-    end
-
-    # Initialize A2A.Plug pointing at our bridge agent
-    plug_config =
-      A2A.Plug.init(
-        agent: bridge_name,
-        base_url: url,
-        agent_card_path: [".well-known", "agent.json"]
+    # Initialize A2A.Server with our handler
+    a2a_config =
+      A2A.Server.init(
+        handler: ADK.A2A.Server.Handler,
+        url: url,
+        table: task_table,
+        card_opts: [config_table: config_table]
       )
 
-    plug_config
+    a2a_config
     |> Map.put(:adk_config_table, config_table)
-    |> Map.put(:table, task_table)
   end
 
   @impl Plug
   @spec call(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def call(conn, config) do
-    A2A.Plug.call(conn, config)
+    # Inject config table name into process dictionary so the handler can find it
+    Process.put(:adk_a2a_config_table, config.adk_config_table)
+    A2A.Server.call(conn, config)
   end
 end
 
-defmodule ADK.A2A.Server.Bridge do
+defmodule ADK.A2A.Server.Handler do
   @moduledoc false
-  # A GenServer that implements the A2A agent protocol expected by A2A.Plug.
-  # Delegates actual work to ADK.Runner via config stored in an ETS table.
+  # Implements A2A.Handler behaviour for ADK.
+  # Delegates work to ADK.Runner using config stored in ETS.
 
-  use GenServer
+  @behaviour A2A.Handler
 
-  @behaviour A2A.Agent
-
-  # -- Client API --
-
-  def start_link(opts) do
-    {name, opts} = Keyword.pop(opts, :name, __MODULE__)
-    GenServer.start_link(__MODULE__, opts, name: name)
-  end
-
-  # -- A2A.Agent callbacks (used by our GenServer, not by A2A.Plug directly) --
-
-  @impl A2A.Agent
-  def agent_card do
-    %{name: "adk-bridge", description: "ADK Bridge Agent", version: "1.0.0", skills: [], opts: []}
-  end
-
-  @impl A2A.Agent
-  def handle_message(message, context) do
-    adk_config = Process.get(:adk_bridge_config)
-
-    if adk_config do
-      text = extract_text(message)
-      user_id = "a2a-user"
-      session_id = "a2a-#{context.task_id}"
-
-      events = ADK.Runner.run(adk_config.runner, user_id, session_id, text)
-
-      parts =
-        events
-        |> Enum.flat_map(fn event ->
-          case event do
-            %{content: %{parts: parts}} when is_list(parts) ->
-              Enum.map(parts, fn
-                %{text: t} when is_binary(t) -> A2A.Part.Text.new(t)
-                _ -> nil
-              end)
-
-            _ ->
-              []
-          end
-        end)
-        |> Enum.reject(&is_nil/1)
-
-      case parts do
-        [] -> {:reply, [A2A.Part.Text.new("No response")]}
-        parts -> {:reply, parts}
-      end
-    else
-      {:reply, [A2A.Part.Text.new("Bridge not configured")]}
-    end
-  end
-
-  @impl A2A.Agent
-  def handle_cancel(_context), do: :ok
-
-  defp extract_text(%A2A.Message{parts: parts}) do
-    parts
-    |> Enum.map(fn
-      %A2A.Part.Text{text: t} -> t
-      _ -> ""
-    end)
-    |> Enum.join(" ")
-  end
-
-  defp extract_text(other), do: to_string(other)
-
-  # -- GenServer callbacks --
-
-  @impl GenServer
-  def init(opts) do
-    config_table = Keyword.fetch!(opts, :config_table)
-    task_store = Keyword.get(opts, :task_store)
-
-    Process.put(:adk_bridge_config_table, config_table)
-
-    {:ok,
-     %A2A.Agent.State{
-       module: __MODULE__,
-       task_store: task_store
-     }}
-  end
-
-  @impl GenServer
-  def handle_call({:message, message, opts}, _from, state) do
-    # Inject ADK config into process dictionary for handle_message callback
-    config_table = Process.get(:adk_bridge_config_table)
+  @impl A2A.Handler
+  def agent_card(opts) do
+    # Retrieve config table from card_opts or process dict
+    config_table = opts[:opts][:config_table] || Process.get(:adk_a2a_config_table)
 
     if config_table do
       case :ets.lookup(config_table, :config) do
-        [{:config, adk_config}] -> Process.put(:adk_bridge_config, adk_config)
-        _ -> :ok
+        [{:config, adk_config}] ->
+          url = adk_config.url || opts.url
+          card_opts = adk_config.card_opts || []
+          agent = adk_config.agent
+
+          ADK.A2A.AgentCard.to_a2a_card(agent, Keyword.merge(card_opts, url: url))
+
+        _ ->
+          default_card(opts.url)
       end
-    end
-
-    # Replicate the logic from A2A.Agent.__using__ handle_call({:message, ...})
-    task_id = Keyword.get(opts, :task_id)
-    _context_id = Keyword.get(opts, :context_id)
-    metadata = Keyword.get(opts, :metadata, %{})
-
-    result =
-      if task_id do
-        case A2A.Agent.State.get_task(state, task_id) do
-          {:ok, task} ->
-            A2A.Agent.Runtime.continue_task(__MODULE__, message, task, state)
-
-          {:error, :not_found} ->
-            {:error, :not_found}
-        end
-      else
-        context_id = Keyword.get(opts, :context_id)
-
-        {:ok,
-         A2A.Agent.Runtime.process_message(
-           __MODULE__,
-           message,
-           context_id,
-           state,
-           metadata
-         )}
-      end
-
-    case result do
-      {:ok, {task, state}} ->
-        state = A2A.Agent.State.put_task(state, task)
-        {:reply, {:ok, task}, state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
+    else
+      default_card(opts.url)
     end
   end
 
-  def handle_call({:cancel, task_id}, _from, state) do
-    case A2A.Agent.State.get_task(state, task_id) do
-      {:ok, task} ->
-        if task.status.state in [:completed, :canceled, :failed] do
-          {:reply, {:error, :not_cancelable}, state}
-        else
-          context = %{
-            task_id: task.id,
-            context_id: task.context_id,
-            history: task.history,
-            metadata: task.metadata
-          }
+  @impl A2A.Handler
+  def handle_message(message_text, params) do
+    config_table = Process.get(:adk_a2a_config_table)
 
-          case A2A.Agent.Runtime.run_cancel(__MODULE__, context) do
-            :ok ->
-              task = A2A.Agent.State.transition(task, :canceled)
-              state = A2A.Agent.State.put_task(state, task)
-              {:reply, :ok, state}
+    if config_table do
+      case :ets.lookup(config_table, :config) do
+        [{:config, adk_config}] ->
+          # Use user_id from params if available, else default
+          # v1.0 spec doesn't have a top-level userId in SendMessage, 
+          # but it might be in metadata or we use a fixed one.
+          user_id = params["userId"] || "a2a-user"
+          session_id = params["contextId"] || params["taskId"] || "a2a-session"
 
-            {:error, reason} ->
-              {:reply, {:error, reason}, state}
+          try do
+            events = ADK.Runner.run(adk_config.runner, user_id, session_id, message_text)
+            messages = Enum.map(events, &ADK.A2A.Message.to_a2a_message/1)
+            artifacts = extract_artifacts(events)
+            # IO.inspect({:returning_from_handler, messages, artifacts})
+            {:ok, messages, artifacts}
+          rescue
+            e ->
+              # IO.inspect({:error_in_handler, e, __STACKTRACE__})
+              {:error, Exception.message(e)}
           end
-        end
 
-      {:error, :not_found} ->
-        {:reply, {:error, :not_found}, state}
-    end
-  end
-
-  def handle_call({:get_task, task_id}, _from, state) do
-    {:reply, A2A.Agent.State.get_task(state, task_id), state}
-  end
-
-  def handle_call({:list_tasks, params}, _from, state) do
-    {:reply, A2A.Agent.State.list_tasks(state, params), state}
-  end
-
-  def handle_call(:get_agent_card, _from, state) do
-    config_table = Process.get(:adk_bridge_config_table)
-
-    card =
-      if config_table do
-        case :ets.lookup(config_table, :config) do
-          [{:config, adk_config}] ->
-            url = adk_config[:url] || adk_config.url || "http://localhost:4000"
-            card_opts = adk_config[:card_opts] || adk_config.card_opts || []
-            agent = adk_config[:agent] || adk_config.agent
-
-            a2a_card = ADK.A2A.AgentCard.to_a2a_card(agent, Keyword.merge(card_opts, url: url))
-            card_data = A2A.JSON.encode_agent_card(a2a_card, url: url)
-
-            %{
-              name: card_data["name"] || "adk-bridge",
-              description: card_data["description"] || "",
-              version: card_data["version"] || "1.0.0",
-              skills:
-                (card_data["skills"] || [])
-                |> Enum.map(fn s ->
-                  %{
-                    id: s["id"] || "unknown",
-                    name: s["name"] || "unknown",
-                    description: s["description"] || "",
-                    tags: s["tags"] || []
-                  }
-                end),
-              opts: []
-            }
-
-          _ ->
-            agent_card()
-        end
-      else
-        agent_card()
+        _ ->
+          {:error, "Bridge not configured (no config in table)"}
       end
-
-    {:reply, card, state}
+    else
+      {:error, "Bridge not configured (no table in process dict)"}
+    end
   end
 
-  @impl GenServer
-  def handle_cast({:stream_done, task_id, parts}, state) do
-    case A2A.Agent.State.get_task(state, task_id) do
-      {:ok, task} ->
-        artifact = A2A.Artifact.new(parts)
-        agent_msg = A2A.Message.new_agent(parts)
-        task = %{task | artifacts: task.artifacts ++ [artifact]}
-        task = %{task | history: task.history ++ [agent_msg]}
-        task = %{task | metadata: Map.delete(task.metadata, :stream)}
-        task = A2A.Agent.State.transition(task, :completed)
-        state = A2A.Agent.State.put_task(state, task)
-        {:noreply, state}
+  defp default_card(url) do
+    A2A.AgentCard.new(
+      name: "adk-bridge",
+      description: "ADK Bridge Agent",
+      url: url
+    )
+  end
 
-      {:error, :not_found} ->
-        {:noreply, state}
-    end
+  defp extract_artifacts(events) do
+    events
+    |> Enum.flat_map(fn
+      %{content: %{parts: parts}} when is_list(parts) ->
+        parts
+        |> Enum.map(fn
+          %{text: t} when is_binary(t) -> A2A.Part.text(t)
+          %{"text" => t} -> A2A.Part.text(t)
+          %{file: u} -> A2A.Part.file_url(u)
+          %{"file" => u} -> A2A.Part.file_url(u)
+          %{data: d} -> A2A.Part.data(d)
+          %{"data" => d} -> A2A.Part.data(d)
+          _ -> nil
+        end)
+        |> Enum.reject(&is_nil/1)
+        |> case do
+          [] -> []
+          parts -> [A2A.Artifact.new(parts)]
+        end
+
+      _ ->
+        []
+    end)
   end
 end

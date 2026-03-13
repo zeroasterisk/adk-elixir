@@ -8,30 +8,38 @@ defmodule ADK.A2A.MessageTest do
       event = ADK.Event.new(%{author: "user", content: %{parts: [%{text: "hello"}]}})
       msg = Message.from_event(event)
 
-      assert msg["role"] == "user"
-      assert [%{"type" => "text", "text" => "hello"}] = msg["parts"]
+      assert msg["role"] == "ROLE_USER"
+      assert [%{"text" => "hello"}] = msg["parts"]
     end
 
     test "converts an agent event to an A2A message" do
       event = ADK.Event.new(%{author: "my_agent", content: %{parts: [%{text: "hi back"}]}})
       msg = Message.from_event(event)
 
-      assert msg["role"] == "agent"
-      assert [%{"type" => "text", "text" => "hi back"}] = msg["parts"]
+      assert msg["role"] == "ROLE_AGENT"
+      assert [%{"text" => "hi back"}] = msg["parts"]
     end
 
     test "handles error events" do
       event = ADK.Event.new(%{author: "agent", error: "boom", content: nil})
       msg = Message.from_event(event)
 
-      assert msg["role"] == "agent"
-      assert [%{"type" => "text", "text" => "Error: boom"}] = msg["parts"]
+      assert msg["role"] == "ROLE_AGENT"
+      assert [%{"text" => "Error: boom"}] = msg["parts"]
     end
   end
 
   describe "to_event/1" do
-    test "converts an A2A message to an ADK event" do
-      msg = %{"role" => "user", "parts" => [%{"type" => "text", "text" => "hello"}]}
+    test "converts an A2A message struct to an ADK event" do
+      msg = A2A.Message.new("ROLE_USER", [A2A.Part.text("hello")])
+      event = Message.to_event(msg)
+
+      assert event.author == "user"
+      assert %{parts: [%{text: "hello"}]} = event.content
+    end
+
+    test "converts an A2A message map to an ADK event" do
+      msg = %{"role" => "ROLE_USER", "parts" => [%{"text" => "hello"}]}
       event = Message.to_event(msg)
 
       assert event.author == "user"
@@ -39,11 +47,17 @@ defmodule ADK.A2A.MessageTest do
     end
 
     test "converts agent message to event" do
-      msg = %{"role" => "agent", "parts" => [%{"type" => "text", "text" => "response"}]}
+      msg = %{"role" => "ROLE_AGENT", "parts" => [%{"text" => "response"}]}
       event = Message.to_event(msg)
 
       assert event.author == "agent"
       assert %{parts: [%{text: "response"}]} = event.content
+    end
+
+    test "handles legacy roles" do
+      msg = %{"role" => "user", "parts" => [%{"text" => "hello"}]}
+      event = Message.to_event(msg)
+      assert event.author == "user"
     end
   end
 

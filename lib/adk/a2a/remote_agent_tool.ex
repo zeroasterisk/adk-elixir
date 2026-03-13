@@ -43,15 +43,21 @@ defmodule ADK.A2A.RemoteAgentTool do
   @spec run(t(), ADK.ToolContext.t(), map()) :: ADK.Tool.result()
   def run(%__MODULE__{url: url}, _ctx, %{"message" => message}) do
     case ADK.A2A.Client.send_task(url, message) do
-      {:ok, %{"status" => %{"state" => "completed"}, "artifacts" => artifacts}} ->
+      {:ok, %{"status" => %{"state" => "TASK_STATE_COMPLETED"}, "artifacts" => artifacts}} ->
         text = extract_text_from_artifacts(artifacts)
         {:ok, text}
 
-      {:ok, %{"status" => %{"state" => "failed"} = status}} ->
+      {:ok, %{"status" => %{"state" => "TASK_STATE_FAILED"} = status}} ->
         {:error, status["message"] || "Task failed"}
 
       {:ok, result} ->
-        {:ok, inspect(result)}
+        # Check if it's already a terminal state but not completed
+        state = get_in(result, ["status", "state"])
+        if state in ["TASK_STATE_FAILED", "TASK_STATE_CANCELED", "TASK_STATE_REJECTED"] do
+          {:error, "Task ended with state: #{state}"}
+        else
+          {:ok, inspect(result)}
+        end
 
       {:error, reason} ->
         {:error, reason}
@@ -73,7 +79,6 @@ defmodule ADK.A2A.RemoteAgentTool do
       _ -> []
     end)
     |> Enum.map(fn
-      %{"type" => "text", "text" => t} -> t
       %{"text" => t} -> t
       _ -> ""
     end)
