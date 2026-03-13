@@ -164,6 +164,7 @@ defmodule Mix.Tasks.Adk.ServerTest do
     test "module string resolves correctly" do
       # Mix.Tasks.Adk.Server.resolve_agent/1 is a private fn, test via start behaviour
       # Just confirm the module exists and accepts the --agent flag logic
+      Code.ensure_loaded!(Mix.Tasks.Adk.Server)
       assert function_exported?(Mix.Tasks.Adk.Server, :start_server, 2)
     end
   end

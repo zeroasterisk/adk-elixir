@@ -11,6 +11,9 @@ defmodule ADK.EventActions do
     * `:escalate` — Whether the agent is escalating to its parent.
     * `:skip_summarization` — If `true`, this event's content is excluded from
       context compaction/summarization. Mirrors Python ADK's `skip_summarization`.
+    * `:end_of_agent` — If `true`, the current agent has finished its run within
+      this invocation. May appear multiple times for the same agent when loops
+      are involved. Set by the ADK workflow, not by user code.
   """
 
   @type t :: %__MODULE__{
@@ -19,7 +22,8 @@ defmodule ADK.EventActions do
           requested_auth_configs: map(),
           transfer_to_agent: String.t() | nil,
           escalate: boolean(),
-          skip_summarization: boolean()
+          skip_summarization: boolean(),
+          end_of_agent: boolean()
         }
 
   defstruct state_delta: %{},
@@ -27,5 +31,6 @@ defmodule ADK.EventActions do
             requested_auth_configs: %{},
             transfer_to_agent: nil,
             escalate: false,
-            skip_summarization: false
+            skip_summarization: false,
+            end_of_agent: false
 end
