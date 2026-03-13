@@ -217,6 +217,82 @@ Memory comparison is nuanced: Benchee measures BEAM process allocation (which in
 
 ---
 
+## Stress Testing (Scenarios 7–15)
+
+Scaled-up scenarios that push framework limits beyond the basic 6 scenarios above.
+
+### Executive Summary — Stress Tests
+
+| Scenario | Description | What it stresses |
+|---|---|---|
+| 7 | Context compression (2,000 msgs) | 10x message count for compressor |
+| 8 | Large fan-out (20 sub-agents) | 4x concurrent processes |
+| 9 | Deep fan-out (5×5 = 25 agents) | Nested parallelism |
+| 10 | Complex workflow (Seq→Par→Loop) | Mixed agent type composition |
+| 11 | Long transfer chain (6 agents) | Extended routing overhead |
+| 12 | Transfer with backtracking | Back-and-forth transfer resolution |
+| 13 | Error handling / recovery | Error path vs happy path overhead |
+| 14 | 500 concurrent sessions | 5x session scaling |
+| 15 | Mixed load (50 pipelines + tools) | Realistic production simulation |
+
+### Scenario 7: Context Compression at 2,000 Messages
+
+*Same as Scenario 5 but 10x the messages — 2,000 messages compressed to 1,000-token budget.*
+
+This scenario stresses the TokenBudget compressor with a realistically large conversation history. The 10x increase in message count amplifies list iteration, token estimation, and selection overhead.
+
+**Expected scaling:** ~10x slower than Scenario 5 for both frameworks, with Elixir maintaining its large lead due to efficient list operations and pattern matching.
+
+### Scenario 8: Large Fan-Out (20 Sub-Agents)
+
+*ParallelAgent with 20 sub-agents instead of 5.*
+
+Tests concurrent process spawning at 4x scale. BEAM should handle this trivially (20 processes is nothing), while Python's asyncio.gather with 20 coroutines adds proportionally more scheduling overhead.
+
+### Scenario 9: Deep Fan-Out (5×5 = 25 Agents)
+
+*Nested ParallelAgent — 5 groups of 5 workers.*
+
+This tests hierarchical concurrency: the outer ParallelAgent spawns 5 inner ParallelAgents, each spawning 5 workers. Total: 25 leaf agents + 5 group agents + 1 root = 31 agents. Tests how well the frameworks handle nested concurrent spawning.
+
+### Scenario 10: Complex Workflow (Sequential → Parallel → Loop)
+
+*A realistic pipeline: SequentialAgent containing [LlmAgent, ParallelAgent(3 workers), LoopAgent(2 iterations)].*
+
+This is the most realistic single-pipeline scenario — mixing all three workflow agent types. Tests composition overhead and context passing between different agent types.
+
+### Scenario 11: Long Transfer Chain (A → B → C → D → E → F)
+
+*6-agent transfer chain, double the length of Scenario 6.*
+
+Each hop involves: LLM response parsing → transfer signal detection → agent tree lookup → context switch. 6 hops means 6x the routing overhead. Tests whether transfer resolution scales linearly.
+
+### Scenario 12: Transfer with Backtracking
+
+*Agent transfers that go back and forth: A → B → C, then responses flow back through the chain.*
+
+Tests repeated transfer resolution within the same session. The agent tree must resolve transfers in both directions, testing the robustness of the transfer mechanism under non-linear flow.
+
+### Scenario 13: Error Handling / Crash Recovery
+
+*Tool that raises an exception, caught by the runner, followed by a successful tool call.*
+
+Measures the overhead of the error handling path: exception capture, error event generation, and recovery vs the happy path. Critical for understanding production reliability costs.
+
+### Scenario 14: 500 Concurrent Sessions
+
+*Scale up from 100 (Scenario 4) to 500 simultaneous sessions.*
+
+Pushes session/process limits. BEAM should handle 500 processes with minimal degradation (designed for millions). Python's single-threaded asyncio should show more significant scaling issues as coroutine scheduling overhead accumulates.
+
+### Scenario 15: Mixed Load (Realistic Production Simulation)
+
+*50 concurrent sessions, each running a 3-agent SequentialAgent pipeline with tool calls.*
+
+The closest scenario to real-world production use: multiple users simultaneously running multi-agent pipelines with tools. Combines concurrency stress (50 sessions) with pipeline complexity (3 agents + tool calls per session = ~200 LLM responses total).
+
+---
+
 ## Raw Data
 
 Full benchmark results are in:
@@ -250,5 +326,14 @@ Both benchmarks use identical mock responses per scenario:
 | 4 (concurrent) | Per session: `"Response for user N"` |
 | 5 (compression) | N/A (data processing only, no LLM call) |
 | 6 (transfer) | `transfer_to_agent(B)` → `transfer_to_agent(C)` → `"Final response from C"` |
+| 7 (compression 2K) | N/A (data processing only, no LLM call) — 2,000 messages |
+| 8 (large fan-out) | 20× `"Result from agent N"` |
+| 9 (deep fan-out) | 25× `"Result from deep worker N"` |
+| 10 (complex workflow) | `"Step 1..."` → 3× parallel results → 2× loop iterations |
+| 11 (long chain) | 5× `transfer_to_agent(X)` → `"Final response from F"` |
+| 12 (backtracking) | `transfer(B)` → `transfer(C)` → response → backtrack responses → `transfer(B)` → final |
+| 13 (error handling) | `function_call(risky_tool)` [raises] → `function_call(safe_tool)` → `"Recovered"` |
+| 14 (500 sessions) | Per session: `"Response for user N"` |
+| 15 (mixed load) | Per session: `function_call(process_data)` → 3× agent responses |
 
 Note: Elixir ADK uses per-agent transfer tools (`transfer_to_agent_agent_b`), while Python ADK uses a single `transfer_to_agent` tool with an `agent_name` parameter. Both approaches achieve the same result — this is a documented intentional design difference.
