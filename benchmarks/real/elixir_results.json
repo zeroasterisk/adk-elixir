@@ -1,0 +1,62 @@
+[
+  {
+    "name": "scenario1_single_agent_3tools_10turn",
+    "mean_us": 2022.67,
+    "median_us": 1978.4,
+    "p99_us": 2636.69,
+    "std_dev_us": 142.99,
+    "ips": 494.4,
+    "sample_size": 4940,
+    "memory_mean_bytes": 381907.3829201102
+  },
+  {
+    "name": "scenario2_sequential_pipeline",
+    "mean_us": 203.32,
+    "median_us": 195.9,
+    "p99_us": 285.65,
+    "std_dev_us": 22.93,
+    "ips": 4918.37,
+    "sample_size": 48875,
+    "memory_mean_bytes": 37621.567842493845
+  },
+  {
+    "name": "scenario3_parallel_fanout",
+    "mean_us": 375.78,
+    "median_us": 382.9,
+    "p99_us": 497.12,
+    "std_dev_us": 43.52,
+    "ips": 2661.11,
+    "sample_size": 26495,
+    "memory_mean_bytes": 21923.977683552777
+  },
+  {
+    "name": "scenario4_100_concurrent_sessions",
+    "mean_us": 3280.0,
+    "median_us": 3093.22,
+    "p99_us": 6485.12,
+    "std_dev_us": 806.27,
+    "ips": 304.88,
+    "sample_size": 3044,
+    "memory_mean_bytes": 152034.81455805892
+  },
+  {
+    "name": "scenario5_context_compression",
+    "mean_us": 41.86,
+    "median_us": 34.2,
+    "p99_us": 118.44,
+    "std_dev_us": 20.89,
+    "ips": 23889.83,
+    "sample_size": 235886,
+    "memory_mean_bytes": 60712.0
+  },
+  {
+    "name": "scenario6_transfer_chain",
+    "mean_us": 297.86,
+    "median_us": 292.64,
+    "p99_us": 376.96,
+    "std_dev_us": 19.18,
+    "ips": 3357.24,
+    "sample_size": 33418,
+    "memory_mean_bytes": 64600.469158878506
+  }
+]

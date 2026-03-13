@@ -11,3 +11,7 @@ erl_crash.dump
 .elixir_ls/
 examples/*/_build/
 examples/*/deps/
+-e 
+# Python benchmarks
+benchmarks/real/.venv/
+__pycache__/
