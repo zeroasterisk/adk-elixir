@@ -435,5 +435,5 @@ State is per-invocation, not global. Global state lives in a supervised GenServe
 
 ---
 
-*Last updated: 2026-03-12*
-*Audits: [behavioral-parity-2026-03-12.md](review/behavioral-parity-2026-03-12.md), [design-review-vs-python.md](design-review-vs-python.md)*
+*Last updated: 2026-03-13*
+*Audits: [behavioral-parity-2026-03-12.md](review/behavioral-parity-2026-03-12.md), [design-review-vs-python.md](design-review-vs-python.md), [python-adk-v1.27.0-comparison-v4.md](review/python-adk-v1.27.0-comparison-v4.md)*
