@@ -118,11 +118,9 @@ defmodule ADK.A2A.Server.Handler do
             events = ADK.Runner.run(adk_config.runner, user_id, session_id, message_text)
             messages = Enum.map(events, &ADK.A2A.Message.to_a2a_message/1)
             artifacts = extract_artifacts(events)
-            # IO.inspect({:returning_from_handler, messages, artifacts})
             {:ok, messages, artifacts}
           rescue
             e ->
-              # IO.inspect({:error_in_handler, e, __STACKTRACE__})
               {:error, Exception.message(e)}
           end
 
@@ -132,6 +130,11 @@ defmodule ADK.A2A.Server.Handler do
     else
       {:error, "Bridge not configured (no table in process dict)"}
     end
+  end
+
+  @impl A2A.Handler
+  def handle_task(message_text, params) do
+    handle_message(message_text, params)
   end
 
   defp default_card(url) do
