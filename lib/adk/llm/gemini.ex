@@ -27,6 +27,7 @@ defmodule ADK.LLM.Gemini do
   @default_model "gemini-flash-latest"
 
   @impl true
+  @spec generate(String.t(), map()) :: {:ok, map()} | {:error, term()}
   def generate(model, request) do
     model = if model in [nil, ""], do: @default_model, else: model
 

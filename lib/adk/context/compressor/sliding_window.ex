@@ -32,6 +32,8 @@ defmodule ADK.Context.Compressor.SlidingWindow do
   @default_max_messages 20
 
   @impl true
+  @spec compress([ADK.Context.Compressor.message()], keyword(), map()) ::
+          {:ok, [ADK.Context.Compressor.message()]} | {:error, term()}
   def compress(messages, opts \\ [], _context \\ %{}) do
     {system_msgs, non_system_msgs} =
       Enum.split_with(messages, fn msg -> msg.role == :system end)

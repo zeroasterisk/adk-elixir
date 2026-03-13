@@ -30,6 +30,7 @@ defmodule ADK.LLM.OpenAI do
   @default_model "gpt-4o"
 
   @impl true
+  @spec generate(String.t(), map()) :: {:ok, map()} | {:error, term()}
   def generate(model, request) do
     model = if model in [nil, ""], do: @default_model, else: model
 

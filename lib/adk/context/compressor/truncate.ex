@@ -17,6 +17,8 @@ defmodule ADK.Context.Compressor.Truncate do
   @default_max_messages 20
 
   @impl true
+  @spec compress([ADK.Context.Compressor.message()], keyword(), map()) ::
+          {:ok, [ADK.Context.Compressor.message()]} | {:error, term()}
   def compress(messages, opts \\ [], _context \\ %{}) do
     max = Keyword.get(opts, :max_messages, @default_max_messages)
     keep_system = Keyword.get(opts, :keep_system, true)

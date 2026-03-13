@@ -27,6 +27,7 @@ defmodule ADK.LLM.Anthropic do
   @anthropic_version "2023-06-01"
 
   @impl true
+  @spec generate(String.t(), map()) :: {:ok, map()} | {:error, term()}
   def generate(model, request) do
     model = if model in [nil, ""], do: @default_model, else: model
 

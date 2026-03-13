@@ -189,7 +189,8 @@ defmodule ADK.Event do
       actions: %{
         state_delta: event.actions.state_delta,
         transfer_to_agent: event.actions.transfer_to_agent,
-        escalate: event.actions.escalate
+        escalate: event.actions.escalate,
+        skip_summarization: event.actions.skip_summarization
       }
     }
   end
@@ -219,7 +220,8 @@ defmodule ADK.Event do
           %ADK.EventActions{
             state_delta: a["state_delta"] || %{},
             transfer_to_agent: a["transfer_to_agent"],
-            escalate: a["escalate"] || false
+            escalate: a["escalate"] || false,
+            skip_summarization: a["skip_summarization"] || false
           }
       end
 

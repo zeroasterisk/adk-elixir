@@ -16,6 +16,7 @@ defmodule ADK.Artifact.InMemory do
 
   use Agent
 
+  @spec start_link(keyword()) :: Agent.on_start()
   def start_link(opts \\ []) do
     name = Keyword.get(opts, :name)
     agent_opts = if name, do: [name: name], else: []

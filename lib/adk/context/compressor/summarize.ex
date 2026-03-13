@@ -30,6 +30,8 @@ defmodule ADK.Context.Compressor.Summarize do
   """
 
   @impl true
+  @spec compress([ADK.Context.Compressor.message()], keyword(), map()) ::
+          {:ok, [ADK.Context.Compressor.message()]} | {:error, term()}
   def compress(messages, opts \\ [], context \\ %{}) do
     keep_recent = Keyword.get(opts, :keep_recent, @default_keep_recent)
     model = Map.get(context, :model)
