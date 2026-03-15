@@ -1,0 +1,10 @@
+Task #194 (ADK Elixir Planners Parity) is complete!
+
+I implemented the `ADK.Planner` behaviour and its two implementations matching the Python ADK:
+- `ADK.Planner.BuiltIn`: Applies `thinking_config` seamlessly to the request's generation config.
+- `ADK.Planner.PlanReAct`: Modifies the request with a detailed natural language planning system instruction and post-processes LLM responses to parse tags like `/*PLANNING*/`, `/*REASONING*/`, `/*ACTION*/`, and `/*FINAL_ANSWER*/`, extracting and dropping thought blocks to simulate reasoned tool calling without exposing them back to the conversation history.
+
+Integrated into `ADK.Agent.LlmAgent` via a new `planner` field on the struct, affecting both `build_request` and `apply_planner_to_response`. 
+
+Tests are passing (923 total, 0 failures), including 11 new tests for the planners and `LlmAgent` planner integration. Changes pushed to `main` (commit `3afaa00`). Task is marked done in the store!
+Please post this to Discord channel 1479983772123402260.
