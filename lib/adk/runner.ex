@@ -122,9 +122,14 @@ defmodule ADK.Runner do
     plugins = get_plugins()
 
     telemetry_meta = %{
-      agent_name: ADK.Agent.name(runner.agent),
-      session_id: session_id
-    }
+  agent_name: ADK.Agent.name(runner.agent),
+  session_id: session_id,
+  "gen_ai.system": "gcp.vertex.agent",
+  "gen_ai.operation.name": "invoke_agent",
+  "gen_ai.agent.name": ADK.Agent.name(runner.agent),
+  "gen_ai.conversation.id": session_id,
+  "gen_ai.agent.description": Map.get(runner.agent, :description, "")
+}
 
     # Run before_run plugins — emit telemetry around the full agent execution
     {agent_events, _plugins} =

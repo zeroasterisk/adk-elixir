@@ -23,6 +23,20 @@ defmodule ADK.TelemetryTest do
   end
 
   describe "ADK.Telemetry.span/3" do
+    test "emits stop event with extra metadata when returning {:adk_telemetry, result, extra}" do
+  result = ADK.Telemetry.span([:adk, :agent], %{base: 1}, fn ->
+    {:adk_telemetry, :done, %{extra: 2, "gen_ai.system": "test"}}
+  end)
+
+  assert result == :done
+
+  assert_received {:telemetry_event, [:adk, :agent, :start], _m, %{base: 1}}
+  assert_received {:telemetry_event, [:adk, :agent, :stop], _m, meta}
+  assert meta.base == 1
+  assert meta.extra == 2
+  assert meta[:"gen_ai.system"] == "test"
+end
+
     test "emits start and stop events" do
       result = ADK.Telemetry.span([:adk, :agent], %{agent_name: "test"}, fn -> :hello end)
 

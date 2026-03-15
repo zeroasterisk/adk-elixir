@@ -102,8 +102,13 @@ defmodule ADK.Telemetry do
   @spec span(list(atom()), map(), (-> term())) :: term()
   def span(event_prefix, metadata, fun) when is_list(event_prefix) and is_map(metadata) do
     wrapped_fun = fn ->
-      result = fun.()
-      {result, metadata}
+      case fun.() do
+        {:adk_telemetry, actual_result, extra_metadata} when is_map(extra_metadata) ->
+          {actual_result, Map.merge(metadata, extra_metadata)}
+
+        actual_result ->
+          {actual_result, metadata}
+      end
     end
 
     if otel_loaded?() do
@@ -121,14 +126,22 @@ defmodule ADK.Telemetry do
     span_name = Enum.join(event_prefix, ".")
     tracer = :opentelemetry.get_tracer(:adk)
 
-    :otel_tracer.with_span(tracer, span_name, %{attributes: map_to_otel_attrs(metadata)}, fn _span_ctx ->
-      telemetry_span(event_prefix, metadata, fun)
+    :otel_tracer.with_span(tracer, span_name, %{attributes: map_to_otel_attrs(metadata)}, fn span_ctx ->
+      telemetry_fun = fn ->
+        case fun.() do
+          {res, stop_metadata} ->
+            :otel_span.set_attributes(span_ctx, map_to_otel_attrs(stop_metadata))
+            {res, stop_metadata}
+        end
+      end
+
+      telemetry_span(event_prefix, metadata, telemetry_fun)
     end)
   end
 
   defp map_to_otel_attrs(map) do
     Map.to_list(map)
-    |> Enum.filter(fn {_k, v} -> is_binary(v) or is_number(v) or is_boolean(v) or is_atom(v) end)
+    |> Enum.filter(fn {_k, v} -> is_binary(v) or is_number(v) or is_boolean(v) or is_atom(v) or is_list(v) end)
     |> Map.new()
   end
 

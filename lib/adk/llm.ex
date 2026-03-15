@@ -38,13 +38,49 @@ defmodule ADK.LLM do
         fn -> ADK.LLM.Retry.with_retry(call_fn, retry_opts) end
       end
 
-    telemetry_meta = %{model: model, agent_name: Map.get(request, :agent_name, "unknown")}
+    telemetry_meta = %{
+      model: model,
+      agent_name: Map.get(request, :agent_name, "unknown"),
+      "gen_ai.system": "gcp.vertex.agent",
+      "gen_ai.request.model": model,
+      "gen_ai.operation.name": "generate_content",
+      "gen_ai.agent.name": Map.get(request, :agent_name, "unknown")
+    }
 
     ADK.Telemetry.span([:adk, :llm], telemetry_meta, fn ->
-      if cb_server do
-        ADK.LLM.CircuitBreaker.call(cb_server, call_fn)
-      else
-        call_fn.()
+      res =
+        if cb_server do
+          ADK.LLM.CircuitBreaker.call(cb_server, call_fn)
+        else
+          call_fn.()
+        end
+
+      case res do
+        {:ok, response} ->
+          extra = %{}
+
+          extra =
+            if Map.get(response, :finish_reason) do
+              Map.put(extra, :"gen_ai.response.finish_reasons", [String.downcase(to_string(response.finish_reason))])
+            else
+              extra
+            end
+
+          extra =
+            case Map.get(response, :usage_metadata) do
+              %{prompt_token_count: p_count, candidates_token_count: c_count} ->
+                extra
+                |> Map.put(:"gen_ai.usage.input_tokens", p_count)
+                |> Map.put(:"gen_ai.usage.output_tokens", c_count)
+
+              _ ->
+                extra
+            end
+
+          {:adk_telemetry, {:ok, response}, extra}
+
+        error ->
+          error
       end
     end)
   end

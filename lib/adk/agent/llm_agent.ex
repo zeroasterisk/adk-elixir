@@ -662,7 +662,16 @@ defmodule ADK.Agent.LlmAgent do
           cb_ctx = %{agent: ctx.agent, context: ctx, tool: tool, tool_args: call.args}
 
           tool_result =
-            ADK.Telemetry.span([:adk, :tool], %{tool_name: call.name, agent_name: ADK.Agent.name(ctx.agent)}, fn ->
+            ADK.Telemetry.span([:adk, :tool], %{
+  tool_name: call.name,
+  agent_name: ADK.Agent.name(ctx.agent),
+  "gen_ai.system": "gcp.vertex.agent",
+  "gen_ai.operation.name": "execute_tool",
+  "gen_ai.tool.name": call.name,
+  "gen_ai.tool.description": tool.description || "",
+  "gen_ai.tool.type": to_string(tool.__struct__),
+  "gen_ai.tool.call_id": call[:id] || "call-1"
+}, fn ->
               # Check policy authorization first
               case ADK.Policy.check_tool_authorization(ctx.policies, tool, call.args || %{}, ctx) do
                 {:deny, reason} ->
