@@ -16,6 +16,7 @@ defmodule ADK.Agent.LlmAgent do
     :context_compressor,
     :output_schema,
     :parent_agent,
+    planner: nil,
     description: "",
     tools: [],
     skills: [],
@@ -47,6 +48,7 @@ defmodule ADK.Agent.LlmAgent do
           output_key: atom() | String.t() | nil,
           context_compressor: keyword() | nil,
           output_schema: map() | nil,
+          planner: struct() | nil,
           parent_agent: ADK.Agent.t() | nil,
           description: String.t(),
           tools: [map()],
@@ -168,6 +170,7 @@ defmodule ADK.Agent.LlmAgent do
 
     case llm_result do
       {:ok, response} ->
+        response = apply_planner_to_response(response, ctx, agent)
         event = event_from_response(response, ctx, agent)
 
         case extract_function_calls(response) do
@@ -297,7 +300,8 @@ defmodule ADK.Agent.LlmAgent do
     end
   end
 
-  defp build_request(ctx, agent) do
+  @doc false
+  def build_request(ctx, agent) do
     messages = build_messages(ctx)
     all_tools = effective_tools(agent)
     instruction = compile_instruction(ctx, agent)
@@ -353,8 +357,51 @@ defmodule ADK.Agent.LlmAgent do
       end
 
     # Apply RunConfig passthrough fields
-    apply_run_config_to_request(request, ctx)
+    request = apply_run_config_to_request(request, ctx)
+
+    # Apply Planner (if any)
+    apply_planner_to_request(request, ctx, agent)
   end
+
+  defp apply_planner_to_request(request, ctx, %{planner: planner}) when not is_nil(planner) do
+    cond do
+      is_struct(planner, ADK.Planner.BuiltIn) ->
+        ADK.Planner.BuiltIn.apply_thinking_config(planner, request)
+
+      is_struct(planner, ADK.Planner.PlanReAct) ->
+        instruction = ADK.Planner.PlanReAct.build_planning_instruction(ctx, request)
+
+        request =
+          if instruction do
+            # Append instruction
+            dynamic = request[:dynamic_system_instruction] || ""
+            dynamic = if dynamic == "", do: instruction, else: dynamic <> "\n\n" <> instruction
+            
+            # Note: We append to `instruction` as well to ensure standard compilation
+            full = request[:instruction] || ""
+            full = if full == "", do: instruction, else: full <> "\n\n" <> instruction
+
+            %{request | instruction: full, dynamic_system_instruction: dynamic}
+          else
+            request
+          end
+
+        # Remove 'thought' from history messages so we don't pass them back in
+        messages = Enum.map(request.messages, fn msg ->
+          parts = Enum.map(msg.parts || [], fn part ->
+            Map.delete(part, :thought)
+          end)
+          %{msg | parts: parts}
+        end)
+
+        %{request | messages: messages}
+
+      true ->
+        request
+    end
+  end
+
+  defp apply_planner_to_request(request, _ctx, _agent), do: request
 
   defp apply_run_config_to_request(request, %{run_config: %ADK.RunConfig{} = rc}) do
     request
@@ -567,6 +614,19 @@ defmodule ADK.Agent.LlmAgent do
 
     %{role: :user, parts: reformatted_parts}
   end
+
+  defp apply_planner_to_response(%{content: %{parts: parts}} = response, ctx, %{planner: planner})
+       when not is_nil(planner) and is_struct(planner, ADK.Planner.PlanReAct) do
+    processed_parts = ADK.Planner.PlanReAct.process_planning_response(ctx, parts)
+
+    if processed_parts do
+      %{response | content: %{response.content | parts: processed_parts}}
+    else
+      response
+    end
+  end
+
+  defp apply_planner_to_response(response, _ctx, _agent), do: response
 
   defp event_from_response(response, ctx, agent) do
     ADK.Event.new(%{
