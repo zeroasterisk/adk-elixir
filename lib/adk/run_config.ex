@@ -16,6 +16,7 @@ defmodule ADK.RunConfig do
   - `:output_config` — Structured output config: `response_mime_type`, `response_schema` (default: `nil`)
   - `:support_cfc` — Enable Compositional Function Calling via Live API (default: `false`)
   - `:custom_metadata` — Arbitrary metadata map for the invocation (default: `nil`)
+  - `:get_session_config` — Configuration for getting a session (`num_recent_events`, `after_timestamp`) (default: `nil`)
 
   ## Examples
 
@@ -40,7 +41,8 @@ defmodule ADK.RunConfig do
     response_modalities: nil,
     output_config: nil,
     support_cfc: false,
-    custom_metadata: nil
+    custom_metadata: nil,
+    get_session_config: nil
   ]
 
   @type streaming_mode :: :none | :sse | :live
@@ -48,6 +50,11 @@ defmodule ADK.RunConfig do
   @type output_config :: %{
           optional(:response_mime_type) => String.t(),
           optional(:response_schema) => map()
+        }
+
+  @type get_session_config :: %{
+          optional(:num_recent_events) => non_neg_integer(),
+          optional(:after_timestamp) => float()
         }
 
   @type t :: %__MODULE__{
@@ -59,7 +66,8 @@ defmodule ADK.RunConfig do
           response_modalities: [String.t()] | nil,
           output_config: output_config() | nil,
           support_cfc: boolean(),
-          custom_metadata: map() | nil
+          custom_metadata: map() | nil,
+          get_session_config: get_session_config() | nil
         }
 
   @valid_streaming_modes [:none, :sse, :live]
@@ -108,6 +116,14 @@ defmodule ADK.RunConfig do
 
   defp validate!(%__MODULE__{max_llm_calls: max}) when not is_nil(max) and (not is_integer(max) or max < 1) do
     raise ArgumentError, "max_llm_calls must be a positive integer or nil, got: #{inspect(max)}"
+  end
+
+  defp validate!(%__MODULE__{get_session_config: config}) when not is_nil(config) and not is_map(config) do
+    raise ArgumentError, "get_session_config must be a map or nil, got: #{inspect(config)}"
+  end
+
+  defp validate!(%__MODULE__{get_session_config: %{num_recent_events: num}}) when not is_nil(num) and (not is_integer(num) or num < 0) do
+    raise ArgumentError, "get_session_config.num_recent_events must be a non-negative integer or nil, got: #{inspect(num)}"
   end
 
   defp validate!(_config), do: :ok
