@@ -52,7 +52,7 @@ defmodule ADK.MixProject do
       {:mox, "~> 1.0", only: :test},
       {:bypass, "~> 2.1", only: :test},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
-      {:a2a, path: "../a2a-elixir"},
+      {:a2a, github: "zeroasterisk/a2a-elixir", branch: "main"},
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
       {:plug, "~> 1.14", optional: true},
