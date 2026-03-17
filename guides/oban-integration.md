@@ -243,3 +243,150 @@ ADK.Oban.AgentWorker.enqueue(agent, user_id, msg, queue: :agents_batch, priority
 ```
 
 Everything runs in one deployment. No separate worker process, no Redis, no message broker.
+
+## Scheduled Agent Runs
+
+`ADK.Oban.ScheduledJob` is a thin convenience wrapper for recurring agent runs via the Oban cron plugin. It uses the `:scheduled` queue by default and is designed for system-level background tasks.
+
+### One-Shot Delayed Scheduling
+
+Schedule an agent to run once after a delay:
+
+```elixir
+# Run in 60 seconds
+ADK.Oban.ScheduledJob.schedule(MyApp.Agents.Cleanup, schedule_in: 60)
+
+# Run at a specific time
+ADK.Oban.ScheduledJob.schedule(
+  MyApp.Agents.DailyReport,
+  scheduled_at: ~U[2026-03-18 09:00:00Z]
+)
+
+# With additional options
+ADK.Oban.ScheduledJob.schedule(
+  MyApp.Agents.Cleanup,
+  schedule_in: 3600,
+  user_id: "system",
+  message: "Run cleanup sweep"
+)
+```
+
+### Recurring Cron Configuration
+
+Use the Oban cron plugin for recurring schedules:
+
+```elixir
+# config/config.exs
+config :my_app, Oban,
+  repo: MyApp.Repo,
+  queues: [scheduled: 5],
+  plugins: [
+    {Oban.Plugins.Cron,
+     crontab: [
+       # Daily cleanup agent — runs every day at midnight
+       {"0 0 * * *", ADK.Oban.ScheduledJob,
+        args: %{
+          "agent_module" => "MyApp.Agents.Cleanup",
+          "app_name" => "my_app",
+          "user_id" => "system",
+          "message" => "Run daily cleanup: remove stale sessions and free resources"
+        }},
+
+       # Hourly monitoring agent
+       {"0 * * * *", ADK.Oban.ScheduledJob,
+        args: %{
+          "agent_module" => "MyApp.Agents.Monitor",
+          "app_name" => "my_app",
+          "user_id" => "system",
+          "message" => "Run hourly health check and report anomalies"
+        }}
+     ]}
+  ]
+```
+
+### Example: Daily Cleanup Agent
+
+```elixir
+defmodule MyApp.Agents.Cleanup do
+  def agent do
+    ADK.Agent.LlmAgent.new(
+      name: "cleanup",
+      model: "gemini-flash-latest",
+      instruction: """
+      You are a cleanup agent. Your job is to identify and remove stale data,
+      expired sessions, and temporary files. Be conservative — only remove
+      things older than 24 hours. Report what you cleaned up.
+      """
+    )
+  end
+end
+```
+
+### Example: Hourly Monitoring Agent
+
+```elixir
+defmodule MyApp.Agents.Monitor do
+  def agent do
+    ADK.Agent.LlmAgent.new(
+      name: "monitor",
+      model: "gemini-flash-latest",
+      instruction: """
+      You are a system monitoring agent. Check system health metrics,
+      queue depths, error rates, and response times. Alert on anomalies.
+      """
+    )
+  end
+end
+```
+
+### Inline Agent Config (No Module Needed)
+
+For simple scheduled tasks, skip the module and configure inline:
+
+```elixir
+config :my_app, Oban,
+  plugins: [
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"0 6 * * *", ADK.Oban.ScheduledJob,
+        args: %{
+          "agent_name" => "morning_brief",
+          "model" => "gemini-flash-latest",
+          "instruction" => "Generate a morning briefing summary.",
+          "message" => "What happened overnight? Summarize key events.",
+          "user_id" => "system",
+          "app_name" => "my_app"
+        }}
+     ]}
+  ]
+```
+
+### Telemetry
+
+`ScheduledJob` emits two telemetry events per run:
+
+```elixir
+# Attach handlers to observe scheduled job execution
+:telemetry.attach_many(
+  "scheduled-job-observer",
+  [[:adk, :scheduled_job, :start], [:adk, :scheduled_job, :stop]],
+  fn
+    [:adk, :scheduled_job, :start], _measurements, %{job_id: id, args: args}, _cfg ->
+      Logger.info("Scheduled job #{id} starting", args: args)
+
+    [:adk, :scheduled_job, :stop], %{duration: duration}, %{result: result}, _cfg ->
+      Logger.info("Scheduled job completed in #{duration}ms", result: result)
+  end,
+  nil
+)
+```
+
+### Difference from AgentWorker
+
+| Feature | `AgentWorker` | `ScheduledJob` |
+|---------|--------------|----------------|
+| **Default queue** | `:agents` | `:scheduled` |
+| **Primary use** | User-triggered async jobs | System cron / scheduled tasks |
+| **Inline config** | `agent_config` map with `type` key | `agent_name` + `model` keys |
+| **Cron support** | Manual setup | Designed for Oban cron plugin |
+| **Priority** | Configurable (default 2) | Default Oban priority |
