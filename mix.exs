@@ -64,7 +64,8 @@ defmodule ADK.MixProject do
       {:oban, "~> 2.18", optional: true},
       {:phoenix, "~> 1.7", optional: true},
       {:phoenix_live_view, "~> 1.0", optional: true},
-      {:phoenix_html, "~> 4.0", optional: true}
+      {:phoenix_html, "~> 4.0", optional: true},
+      {:yaml_elixir, "~> 2.11"}
     ]
   end
 
