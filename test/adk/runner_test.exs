@@ -13,7 +13,7 @@ defmodule ADK.RunnerTest do
   alias ADK.Session
   alias ADK.Session.InMemorySessionService
   alias ADK.Artifact.InMemoryArtifactService
-  alias ADK.Agent.RunConfig
+  alias ADK.RunConfig
   alias ADK.Session.GetSessionConfig
 
   defmodule MockAgent do
