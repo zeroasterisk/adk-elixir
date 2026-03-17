@@ -1,0 +1,623 @@
+warning: the VM is running with native name encoding of latin1 which may cause Elixir to malfunction as it expects utf8. Please ensure your locale is set to UTF-8 (which can be verified by running "locale" in your shell) or set the ELIXIR_ERL_OPTIONS="+fnu" environment variable
+Running ExUnit with seed: 259180, max_cases: 16
+Excluding tags: [:integration]
+
+     warning: variable "texts" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     \x{2502}
+ 117 \x{2502}       texts = Enum.map(result, fn m -> hd(m.parts) end)
+     \x{2502}       ~~~~~
+     \x{2502}
+     \x{2514}\x{2500} test/adk/context/compressor/sliding_window_test.exs:117:7: ADK.Context.Compressor.SlidingWindowTest."test compress/3 with invocations handles multi-turn invocations with tool calls"/1
+
+    warning: variable "tool" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 38 \x{2502}       tool = GoogleSearch.new()
+    \x{2502}       ~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/adk/tool/google_search_test.exs:38:7: ADK.Tool.GoogleSearchTest."test run/2 returns error (stub \x{2014} native tool)"/1
+
+    warning: variable "prefix" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 33 \x{2502}     [prefix, "ADK", "Integration", "Fixture" | rest] = Module.split(agent_module)
+    \x{2502}      ~~~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/integration/single_agent_test.exs:33:6: ADK.Integration.SingleAgentTest.load_and_compile_agent/1
+
+.....
+
+  1) test eval_agent (ADK.Integration.SingleAgentTest)
+     test/integration/single_agent_test.exs:44
+     ** (MatchError) no match of right hand side value: ["ADK", "Integration", "Fixture", "HomeAutomationAgent"]
+     code: load_and_compile_agent(agent_module)
+     stacktrace:
+       test/integration/single_agent_test.exs:33: ADK.Integration.SingleAgentTest.load_and_compile_agent/1
+       test/integration/single_agent_test.exs:46: (test)
+
+.........    warning: variable "tool" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+ 33 \x{2502}       tool = BuiltInCodeExecution.new()
+    \x{2502}       ~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/adk/tool/built_in_code_execution_test.exs:33:7: ADK.Tool.BuiltInCodeExecutionTest."test run/2 returns error (stub \x{2014} native tool)"/1
+
+...............................................
+03:41:23.599 [info] The function passed as a handler with ID "test-#PID<0.488.0>" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+..........
+03:41:23.660 [info] Running ADK.Agent.RemoteA2aAgentTest.MockA2aServer with Bandit 1.10.3 at 0.0.0.0:49905 (http)
+...
+03:41:23.661 [info] The function passed as a handler with ID "test-#PID<0.862.0>" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.........
+03:41:23.694 [info] The function passed as a handler with ID "test-#PID<0.903.0>" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+03:41:23.695 [info] The function passed as a handler with ID "test-#PID<0.905.0>" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+03:41:23.696 [info] The function passed as a handler with ID "test-#PID<0.907.0>" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+.
+03:41:23.697 [info] The function passed as a handler with ID "test-#PID<0.909.0>" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+................
+03:41:23.723 [info] The function passed as a handler with ID "test-#PID<0.931.0>" is a local function.
+This means that it is either an anonymous function or a capture of a function without a module specified. That may cause a performance penalty when calling that handler. For more details see the note in `telemetry:attach/4` documentation.
+
+https://hexdocs.pm/telemetry/telemetry.html#attach/4
+......warning: the VM is running with native name encoding of latin1 which may cause Elixir to malfunction as it expects utf8. Please ensure your locale is set to UTF-8 (which can be verified by running "locale" in your shell) or set the ELIXIR_ERL_OPTIONS="+fnu" environment variable
+.......    warning: default values for the optional arguments in slow_agent/2 are never used
+    \x{2502}
+  6 \x{2502}   defp slow_agent(name, delay_ms \\ 10) do
+    \x{2502}        ~
+    \x{2502}
+    \x{2514}\x{2500} test/adk/agent/parallel_agent_test.exs:6:8: ADK.Agent.ParallelAgentTest (module)
+
+     error: ADK.Agent.Tool.Parameter.__struct__/1 is undefined, cannot expand struct ADK.Agent.Tool.Parameter. Make sure the struct name is correct. If the struct name exists and is correct but it still cannot be found, you likely have cyclic module usage in your code
+     \x{2502}
+ 149 \x{2502}             %Parameter{name: "device_id", type: "string", description: "The unique identifier of the device.", required: true}
+     \x{2502}             ^
+     \x{2502}
+     \x{2514}\x{2500} test/integration/fixture/home_automation_agent/agent.ex:149:13: ADK.Integration.Fixture.HomeAutomationAgent.agent/0
+
+..........
+
+  2) test evaluates agents in fixture (ADK.Integration.EvaluateAgentInFixtureTest)
+     test/integration/evaluate_agent_in_fixture_test.exs:51
+     ** (CompileError) test/integration/fixture/home_automation_agent/agent.ex: cannot compile module ADK.Integration.Fixture.HomeAutomationAgent (errors have been logged)
+     stacktrace:
+       (elixir 1.17.3) src/elixir_map.erl:26: :elixir_map.expand_struct/5
+       (elixir 1.17.3) src/elixir_expand.erl:630: :elixir_expand.expand_arg/3
+       (elixir 1.17.3) src/elixir_expand.erl:562: :elixir_expand.expand_list/5
+       (elixir 1.17.3) src/elixir_expand.erl:470: :elixir_expand.expand/3
+       (elixir 1.17.3) src/elixir_expand.erl:630: :elixir_expand.expand_arg/3
+       (elixir 1.17.3) src/elixir_expand.erl:646: :elixir_expand.mapfold/5
+       (elixir 1.17.3) src/elixir_expand.erl:639: :elixir_expand.expand_args/3
+       (elixir 1.17.3) src/elixir_expand.erl:462: :elixir_expand.expand/3
+       (elixir 1.17.3) src/elixir_expand.erl:630: :elixir_expand.expand_arg/3
+       (elixir 1.17.3) src/elixir_expand.erl:646: :elixir_expand.mapfold/5
+       (elixir 1.17.3) src/elixir_expand.erl:639: :elixir_expand.expand_args/3
+       (elixir 1.17.3) src/elixir_map.erl:13: :elixir_map.expand_map/4
+       (elixir 1.17.3) src/elixir_expand.erl:630: :elixir_expand.expand_arg/3
+       (elixir 1.17.3) src/elixir_expand.erl:646: :elixir_expand.mapfold/5
+       (elixir 1.17.3) src/elixir_expand.erl:639: :elixir_expand.expand_args/3
+       (elixir 1.17.3) src/elixir_map.erl:19: :elixir_map.expand_struct/5
+       (elixir 1.17.3) src/elixir_expand.erl:630: :elixir_expand.expand_arg/3
+       (elixir 1.17.3) src/elixir_expand.erl:562: :elixir_expand.expand_list/5
+       (elixir 1.17.3) src/elixir_expand.erl:470: :elixir_expand.expand/3
+
+........................     warning: default values for the optional arguments in build_conn/3 are never used
+     \x{2502}
+ 239 \x{2502}     defp build_conn(method, path, body \\ nil) do
+     \x{2502}          ~
+     \x{2502}
+     \x{2514}\x{2500} test/adk/streaming_test.exs:239:10: ADK.StreamingTest (module)
+
+     warning: default values for the optional arguments in build_dev_conn/3 are never used
+     \x{2502}
+ 374 \x{2502}     defp build_dev_conn(method, path, body \\ nil) do
+     \x{2502}          ~
+     \x{2502}
+     \x{2514}\x{2500} test/adk/streaming_test.exs:374:10: ADK.StreamingTest (module)
+
+.................warning: pattern matching on 0.0 is equivalent to matching only on +0.0 from Erlang/OTP 27+. Instead you must match on +0.0 or -0.0
+\x{2514}\x{2500} test/adk/eval_test.exs: ADK.EvalTest."test Scorer.ExactMatch fails on mismatch"/1
+
+.................    warning: unused alias Eval
+    \x{2502}
+  4 \x{2502}   alias ADK.Eval
+    \x{2502}   ~
+    \x{2502}
+    \x{2514}\x{2500} test/adk/eval_test.exs:4:3
+
+..............................
+03:41:24.189 [debug] POST /run_sse
+.....................................................warning: cannot compile PID #PID<0.1241.0> inside quoted expression for function get/2
+\x{2514}\x{2500} test/adk/auth/auth_test.exs: :"ADK.Test.CredentialWrapper_1383".get/2
+
+warning: cannot compile PID #PID<0.1241.0> inside quoted expression for function put/3
+\x{2514}\x{2500} test/adk/auth/auth_test.exs: :"ADK.Test.CredentialWrapper_1383".put/3
+
+warning: cannot compile PID #PID<0.1241.0> inside quoted expression for function delete/2
+\x{2514}\x{2500} test/adk/auth/auth_test.exs: :"ADK.Test.CredentialWrapper_1383".delete/2
+
+..warning: cannot compile PID #PID<0.1335.0> inside quoted expression for function get/2
+\x{2514}\x{2500} test/adk/auth/auth_test.exs: :"ADK.Test.CredentialWrapper_809".get/2
+
+warning: cannot compile PID #PID<0.1335.0> inside quoted expression for function put/3
+\x{2514}\x{2500} test/adk/auth/auth_test.exs: :"ADK.Test.CredentialWrapper_809".put/3
+
+warning: cannot compile PID #PID<0.1335.0> inside quoted expression for function delete/2
+\x{2514}\x{2500} test/adk/auth/auth_test.exs: :"ADK.Test.CredentialWrapper_809".delete/2
+
+..................warning: cannot compile PID #PID<0.1371.0> inside quoted expression for function get/2
+\x{2514}\x{2500} test/adk/auth/auth_test.exs: :"ADK.Test.CredentialWrapper_3048".get/2
+
+warning: cannot compile PID #PID<0.1371.0> inside quoted expression for function put/3
+\x{2514}\x{2500} test/adk/auth/auth_test.exs: :"ADK.Test.CredentialWrapper_3048".put/3
+
+warning: cannot compile PID #PID<0.1371.0> inside quoted expression for function delete/2
+\x{2514}\x{2500} test/adk/auth/auth_test.exs: :"ADK.Test.CredentialWrapper_3048".delete/2
+
+........
+03:41:24.499 [debug] Chunked 200 in 309ms
+.
+03:41:24.499 [debug] POST /run_sse
+
+03:41:24.499 [debug] Chunked 200 in 86탎
+...
+03:41:24.501 [debug] POST /run_sse
+
+03:41:24.501 [debug] Chunked 200 in 70탎
+.................................................warning: the VM is running with native name encoding of latin1 which may cause Elixir to malfunction as it expects utf8. Please ensure your locale is set to UTF-8 (which can be verified by running "locale" in your shell) or set the ELIXIR_ERL_OPTIONS="+fnu" environment variable
+warning: cannot compile PID #PID<0.1431.0> inside quoted expression for function get/2
+\x{2514}\x{2500} test/adk/auth/auth_test.exs: :"ADK.Test.CredentialWrapper_3812".get/2
+
+warning: cannot compile PID #PID<0.1431.0> inside quoted expression for function put/3
+\x{2514}\x{2500} test/adk/auth/auth_test.exs: :"ADK.Test.CredentialWrapper_3812".put/3
+
+warning: cannot compile PID #PID<0.1431.0> inside quoted expression for function delete/2
+\x{2514}\x{2500} test/adk/auth/auth_test.exs: :"ADK.Test.CredentialWrapper_3812".delete/2
+
+.......................
+03:41:24.616 [debug] POST /api/chat/stream
+
+03:41:24.617 [debug] Chunked 200 in 79탎
+....
+03:41:24.716 [info] Running ADK.Agent.RemoteA2aAgentTest.MockA2aServer with Bandit 1.10.3 at 0.0.0.0:46698 (http)
+...
+03:41:24.725 [debug] POST /run_sse
+
+03:41:24.725 [debug] Chunked 200 in 94탎
+.
+03:41:24.726 [debug] POST /run_sse
+.
+03:41:24.726 [debug] Sent 404 in 64탎
+.
+03:41:24.726 [debug] POST /api/chat/stream
+
+03:41:24.727 [debug] Sent 400 in 59탎
+..
+03:41:24.727 [debug] POST /api/chat/stream
+
+03:41:24.727 [debug] Chunked 200 in 62탎
+.
+03:41:24.729 [info] Running ADK.Agent.RemoteA2aAgentTest.MockA2aServer with Bandit 1.10.3 at 0.0.0.0:49621 (http)
+
+03:41:24.729 [debug] POST /run_sse
+
+03:41:24.730 [debug] Chunked 200 in 122탎
+..
+03:41:24.732 [debug] POST /api/chat/stream
+
+03:41:24.732 [debug] Chunked 200 in 63탎
+.
+03:41:24.742 [info] Running ADK.Agent.RemoteA2aAgentTest.MockA2aServer with Bandit 1.10.3 at 0.0.0.0:44067 (http)
+...
+03:41:24.754 [info] Running ADK.Agent.RemoteA2aAgentTest.MockA2aServer with Bandit 1.10.3 at 0.0.0.0:48254 (http)
+.
+03:41:24.770 [warning] ADK.InstructionCompiler: instruction provider raised: boom
+.........
+03:41:24.773 [warning] ADK.InstructionCompiler: unexpected instruction provider type: 123
+
+03:41:24.773 [warning] ADK.InstructionCompiler: instruction provider raised: oops
+.....................................................warning: cannot compile PID #PID<0.2971.0> inside quoted expression for function get/2
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.CredentialMock_4804".get/2
+
+warning: cannot compile PID #PID<0.2971.0> inside quoted expression for function put/3
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.CredentialMock_4804".put/3
+
+warning: cannot compile PID #PID<0.2971.0> inside quoted expression for function delete/2
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.CredentialMock_4804".delete/2
+
+warning: the VM is running with native name encoding of latin1 which may cause Elixir to malfunction as it expects utf8. Please ensure your locale is set to UTF-8 (which can be verified by running "locale" in your shell) or set the ELIXIR_ERL_OPTIONS="+fnu" environment variable
+.....
+03:41:24.871 [warning] retry: got exception, will retry in 1000ms, 3 attempts left
+....
+03:41:24.965 [warning] ** (Req.TransportError) connection refused
+..warning: cannot compile PID #PID<0.3016.0> inside quoted expression for function save/6
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.ArtifactMock_2054".save/6
+
+warning: cannot compile PID #PID<0.3016.0> inside quoted expression for function load/5
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.ArtifactMock_2054".load/5
+
+warning: cannot compile PID #PID<0.3016.0> inside quoted expression for function list/4
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.ArtifactMock_2054".list/4
+
+warning: cannot compile PID #PID<0.3016.0> inside quoted expression for function delete/5
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.ArtifactMock_2054".delete/5
+
+
+03:41:25.045 [info] [ADK.Plugin.Logging] run start agent=agent invocation=inv-log-8
+
+03:41:25.045 [info] [ADK.Plugin.Logging] run end agent=agent events=0 errors=0 elapsed_ms=3
+....
+03:41:25.047 [debug] [ADK.Plugin.Logging] run start agent=test_agent invocation=inv-log-6
+...
+03:41:25.060 [debug] [ADK.Plugin.Logging] run start agent=test_agent invocation=inv-log-1
+.......
+03:41:25.077 [debug] [ADK.Plugin.Logging] run start agent=test_agent invocation=inv-log-5
+.warning: cannot compile PID #PID<0.3083.0> inside quoted expression for function save/6
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.ArtifactMock_1733".save/6
+
+
+03:41:25.089 [info] [ADK.Plugin.Logging] run start agent=test_agent invocation=inv-log-7
+.....warning: cannot compile PID #PID<0.3083.0> inside quoted expression for function load/5
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.ArtifactMock_1733".load/5
+
+warning: cannot compile PID #PID<0.3083.0> inside quoted expression for function list/4
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.ArtifactMock_1733".list/4
+
+warning: cannot compile PID #PID<0.3083.0> inside quoted expression for function delete/5
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.ArtifactMock_1733".delete/5
+
+......
+03:41:25.100 [info] [ADK.Plugin.Logging] run start agent=test_agent invocation=inv-log-2
+.....................
+03:41:25.124 [info] [ADK.Plugin.Logging] run start agent=agent invocation=inv-bc-4
+.
+03:41:25.124 [info] [ADK.Plugin.Logging] run end agent=agent events=1 errors=0 elapsed_ms=0
+.
+03:41:25.125 [debug] [ADK.Plugin.Logging] run start agent=test_agent invocation=inv-log-4
+...............    warning: variable "ctx" is unused (there is a variable with the same name in the context, use the pin operator (^) to match on it or prefix this variable with underscore if it is not meant to be used)
+    \x{2502}
+ 81 \x{2502}         ctx = ADK.Context.put_temp(ctx, :iteration, count)
+    \x{2502}         ~
+    \x{2502}
+    \x{2514}\x{2500} test/adk/agent/loop_agent_test.exs:81:9: ADK.Agent.LoopAgentTest."test exit_condition stops loop when it returns true"/1
+
+..
+03:41:25.134 [debug] [ADK.Plugin.Logging] run start agent=test_agent invocation=inv-log-3
+....................warning: cannot compile PID #PID<0.3280.0> inside quoted expression for function get/2
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.CredentialMock_3522".get/2
+
+warning: cannot compile PID #PID<0.3280.0> inside quoted expression for function put/3
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.CredentialMock_3522".put/3
+
+warning: cannot compile PID #PID<0.3280.0> inside quoted expression for function delete/2
+\x{2514}\x{2500} test/adk/tool_context_test.exs: :"ADK.Test.CredentialMock_3522".delete/2
+
+............................................................    warning: variable "planner" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    \x{2502}
+  7 \x{2502}     planner = %PlanReAct{}
+    \x{2502}     ~~~~~~~
+    \x{2502}
+    \x{2514}\x{2500} test/adk/planner/plan_re_act_test.exs:7:5: ADK.Planner.PlanReActTest."test build_planning_instruction returns string with formatting guidelines"/1
+
+....................................................................................**................................warning: the VM is running with native name encoding of latin1 which may cause Elixir to malfunction as it expects utf8. Please ensure your locale is set to UTF-8 (which can be verified by running "locale" in your shell) or set the ELIXIR_ERL_OPTIONS="+fnu" environment variable
+.     warning: ADK.ToolContext.get_artifact/2 is deprecated. Use load_artifact/3 instead
+     \x{2502}
+ 209 \x{2502}       assert {:error, :no_artifact_service} = ToolContext.get_artifact(tc, "file")
+     \x{2502}                                                           ~
+     \x{2502}
+     \x{2514}\x{2500} test/adk/tool_context_test.exs:209:59: ADK.ToolContextTest."test legacy backward compatibility get_artifact delegates to load_artifact"/1
+
+     warning: ADK.ToolContext.set_artifact/3 is deprecated. Use save_artifact/4 instead
+     \x{2502}
+ 213 \x{2502}       assert {:error, :no_artifact_service} = ToolContext.set_artifact(tc, "file", "data")
+     \x{2502}                                                           ~
+     \x{2502}
+     \x{2514}\x{2500} test/adk/tool_context_test.exs:213:59: ADK.ToolContextTest."test legacy backward compatibility set_artifact delegates to save_artifact"/1
+
+     warning: ADK.ToolContext.get_credential/2 is deprecated. Use load_credential/2 instead
+     \x{2502}
+ 217 \x{2502}       assert {:error, :no_credential_service} = ToolContext.get_credential(tc, "key")
+     \x{2502}                                                             ~
+     \x{2502}
+     \x{2514}\x{2500} test/adk/tool_context_test.exs:217:61: ADK.ToolContextTest."test legacy backward compatibility get_credential delegates to load_credential"/1
+
+
+03:41:25.966 [warning] retry: got exception, will retry in 2000ms, 2 attempts left
+
+03:41:25.967 [warning] ** (Req.TransportError) connection refused
+warning: the VM is running with native name encoding of latin1 which may cause Elixir to malfunction as it expects utf8. Please ensure your locale is set to UTF-8 (which can be verified by running "locale" in your shell) or set the ELIXIR_ERL_OPTIONS="+fnu" environment variable
+.warning: the VM is running with native name encoding of latin1 which may cause Elixir to malfunction as it expects utf8. Please ensure your locale is set to UTF-8 (which can be verified by running "locale" in your shell) or set the ELIXIR_ERL_OPTIONS="+fnu" environment variable
+.warning: the VM is running with native name encoding of latin1 which may cause Elixir to malfunction as it expects utf8. Please ensure your locale is set to UTF-8 (which can be verified by running "locale" in your shell) or set the ELIXIR_ERL_OPTIONS="+fnu" environment variable
+.warning: the VM is running with native name encoding of latin1 which may cause Elixir to malfunction as it expects utf8. Please ensure your locale is set to UTF-8 (which can be verified by running "locale" in your shell) or set the ELIXIR_ERL_OPTIONS="+fnu" environment variable
+.warning: the VM is running with native name encoding of latin1 which may cause Elixir to malfunction as it expects utf8. Please ensure your locale is set to UTF-8 (which can be verified by running "locale" in your shell) or set the ELIXIR_ERL_OPTIONS="+fnu" environment variable
+..
+03:41:27.968 [warning] retry: got exception, will retry in 4000ms, 1 attempt left
+
+03:41:27.968 [warning] ** (Req.TransportError) connection refused
+...........................
+03:41:31.976 [debug] GET /nonexistent
+.
+03:41:31.976 [debug] Sent 404 in 34탎
+.
+03:41:31.976 [debug] GET /api/agent
+
+03:41:31.976 [debug] Sent 200 in 21탎
+
+03:41:31.981 [info] Running ADK.DevServer.Router with Bandit 1.10.3 at 0.0.0.0:14401 (http)
+
+03:41:31.982 [debug] GET /api/agent
+
+03:41:31.982 [debug] Sent 200 in 44탎
+.
+03:41:31.983 [debug] POST /api/chat
+
+03:41:31.984 [debug] Sent 500 in 1ms
+.
+03:41:31.984 [debug] POST /api/chat
+
+03:41:31.984 [debug] Sent 400 in 44탎
+.
+03:41:31.984 [debug] POST /api/chat
+
+03:41:31.984 [debug] Sent 400 in 35탎
+.
+03:41:31.984 [debug] GET /api/agent
+
+03:41:31.985 [debug] Sent 200 in 24탎
+.
+03:41:31.985 [debug] GET /
+
+03:41:31.985 [debug] Sent 200 in 26탎
+...
+03:41:31.985 [debug] GET /
+
+03:41:31.985 [debug] Sent 200 in 21탎
+..
+03:41:31.985 [debug] GET /api/agent
+
+03:41:31.985 [debug] Sent 200 in 35탎
+.
+03:41:31.985 [debug] GET /
+
+03:41:31.985 [debug] Sent 200 in 16탎
+.
+03:41:31.985 [debug] GET /
+
+03:41:31.983 [error] GenServer #PID<0.4133.0> terminating
+** (stop) exited in: GenServer.stop(#PID<0.3831.0>, :normal, :infinity)
+    ** (EXIT) no process: the process is not alive or there's no process currently associated with the given name, possibly because its application isn't started
+    (elixir 1.17.3) lib/gen_server.ex:1089: GenServer.stop/3
+    (stdlib 6.2.2.3) gen_server.erl:2393: :gen_server.try_terminate/3
+    (stdlib 6.2.2.3) gen_server.erl:2594: :gen_server.terminate/10
+    (stdlib 6.2.2.3) proc_lib.erl:329: :proc_lib.init_p_do_apply/3
+Process Label: {:thousand_island, :shutdown_listener, {14401, Bandit.DelegatingHandler}}
+Last message: {:EXIT, #PID<0.3830.0>, :killed}
+State: %{listener_pid: #PID<0.3831.0>}
+.
+03:41:31.985 [debug] Sent 200 in 18탎
+.......
+03:41:31.985 [error] GenServer #PID<0.3832.0> terminating
+** (stop) killed
+Process Label: {:thousand_island, :acceptor_pool_supervisor, {14401, Bandit.DelegatingHandler}}
+Last message: {:EXIT, #PID<0.3830.0>, :killed}
+State: {:state, {#PID<0.3832.0>, ThousandIsland.AcceptorPoolSupervisor}, :one_for_one, {["acceptor-100", "acceptor-99", "acceptor-98", "acceptor-97", "acceptor-96", "acceptor-95", "acceptor-94", "acceptor-93", "acceptor-92", "acceptor-91", "acceptor-90", "acceptor-89", "acceptor-88", "acceptor-87", "acceptor-86", "acceptor-85", "acceptor-84", "acceptor-83", "acceptor-82", "acceptor-81", "acceptor-80", "acceptor-79", "acceptor-78", "acceptor-77", "acceptor-76", "acceptor-75", "acceptor-74", "acceptor-73", "acceptor-72", "acceptor-71", "acceptor-70", "acceptor-69", "acceptor-68", "acceptor-67", "acceptor-66", "acceptor-65", "acceptor-64", "acceptor-63", "acceptor-62", "acceptor-61", "acceptor-60", "acceptor-59", "acceptor-58", "acceptor-57", "acceptor-56", ...], %{"acceptor-95" => {:child, #PID<0.4115.0>, "acceptor-95", {ThousandIsland.AcceptorSupervisor, :start_link, [{#PID<0.3830.0>, 95, %ThousandIsland.ServerConfig{port: 14401, transport_module: ThousandIsland.Transports.TCP, transport_options: [], handler_module: Bandit.DelegatingHandler, handler_options: %{opts: %{http: [], http_1: [], http_2: [], websocket: []}, plug: {ADK.DevServer.Router, [agent: :demo, model: "gemini-flash-latest", port: 4001]}, handler_module: Bandit.InitialHandler, http_1_enabled: true, http_2_enabled: true}, genserver_options: [], supervisor_options: [], num_acceptors: 100, num_listen_sockets: 1, num_connections: 16384, max_connections_retry_count: 5, max_connections_retry_wait: 1000, read_timeout: 60000, shutdown_timeout: 15000, silent_terminate_on_error: false}}]}, :permanent, false, :infinity, :supervisor, [ThousandIsland.AcceptorSupervisor]}, "acceptor-32" => {:child, #PID<0.3926.0>, "acceptor-32", {ThousandIsland.AcceptorSupervisor, :start_link, [{#PID<0.3830.0>, 32, %ThousandIsland.ServerConfig{port: 14401, transport_module: ThousandIsland.Transports.TCP, transport_options: [], handler_module: Bandit.DelegatingHandler, handler_options: %{opts: %{http: [], http_1: [], http_2: [], websocket: []}, plug: {ADK.DevServer.Router, [agent: :demo, model: "gemini-flash-latest", port: 4001]}, handler_module: Bandit.InitialHandler, http_1_enabled: true, http_2_enabled: true}, genserver_options: [], supervisor_options: [], num_acceptors: 100, num_listen_sockets: 1, num_connections: 16384, max_connections_retry_count: 5, max_connections_retry_wait: 1000, read_timeout: 60000, shutdown_timeout: 15000, silent_terminate_on_error: false}}]}, :permanent, false, :infinity, :supervisor, [ThousandIsland.AcceptorSupervisor]}, "acceptor-55" => {:child, #PID<0.3995.0>, "acceptor-55", {ThousandIsland.AcceptorSupervisor, :start_link, [{#PID<0.3830.0>, 55, %ThousandIsland.ServerConfig{port: 14401, transport_module: ThousandIsland.Transports.TCP, transport_options: [], handler_module: Bandit.DelegatingHandler, handler_options: %{opts: %{http: [], http_1: [], http_2: [], websocket: []}, plug: {ADK.DevServer.Router, [agent: :demo, model: "gemini-flash-latest", port: 4001]}, handler_module: Bandit.InitialHandler, http_1_enabled: true, http_2_enabled: true}, genserver_options: [], supervisor_options: [], num_acceptors: 100, num_listen_sockets: 1, num_connections: 16384, max_connections_retry_count: 5, max_connections_retry_wait: 1000, read_timeout: 60000, shutdown_timeout: 15000, silent_terminate_on_error: false}}]}, :permanent, false, :infinity, :supervisor, [ThousandIsland.AcceptorSupervisor]}, "acceptor-37" => {:child, #PID<0.3941.0>, "acceptor-37", {ThousandIsland.AcceptorSupervisor, :start_link, [{#PID<0.3830.0>, 37, %ThousandIsland.ServerConfig{port: 14401, transport_module: ThousandIsland.Transports.TCP, transport_options: [], handler_module: Bandit.DelegatingHandler, handler_options: %{opts: %{http: [], http_1: [], http_2: [], websocket: []}, plug: {ADK.DevServer.Router, [agent: :demo, model: "gemini-flash-latest", port: 4001]}, handler_module: Bandit.InitialHandler, http_1_enabled: true, http_2_enabled: true}, genserver_options: [], supervisor_options: [], num_acceptors: 100, num_listen_sockets: 1, num_connections: 16384, max_connections_retry_count: 5, max_connections_retry_wait: 1000, read_timeout: 60000, shutdown_timeout: 15000, silent_terminate_on_error: false}}]}, :permanent, false, :infinity, :supervisor, [ThousandIsland.AcceptorSupervisor]}, "acceptor-33" => {:child, #PID<0.3929.0>, "acceptor-33", {ThousandIsland.AcceptorSupervisor, :start_link, [{#PID<0.3830.0>, 33, %ThousandIsland.ServerConfig{port: 14401, transport_module: ThousandIsland.Transports.TCP, transport_options: [], handler_module: Bandit.DelegatingHandler, handler_options: %{opts: %{http: [], http_1: [], http_2: [], websocket: []}, plug: {ADK.DevServer.Router, [agent: :demo, model: "gemini-flash-latest", port: 4001]}, handler_module: Bandit.InitialHandler, http_1_enabled: true, http_2_enabled: true}, genserver_options: [], supervisor_options: [], num_acceptors: 100, num_listen_sockets: 1, num_connections: 16384, max_connections_retry_count: 5, max_connections_retry_wait: 1000, read_timeout: 60000, shutdown_timeout: 15000, silent_terminate_on_error: false}}]}, :permanent, false, :infinity, :supervisor, [ThousandIsland.AcceptorSupervisor]}, "acceptor-9" => {:child, #PID<0.3857.0>, "acceptor-9", {ThousandIsland.AcceptorSupervisor, :start_link, [{#PID<0.3830.0>, 9, %ThousandIsland.ServerConfig{port: 14401, transport_module: ThousandIsland.Transports.TCP, transport_options: [], handler_module: Bandit.DelegatingHandler, handler_options: %{opts: %{http: [], http_1: [], http_2: [], websocket: []}, plug: {ADK.DevServer.Router, [agent: :demo, model: "gemini-flash-latest", port: 4001]}, handler_module: Bandit.InitialHandler, http_1_enabled: true, http_2_enabled: true}, genserver_options: [], supervisor_options: [], num_acceptors: 100, num_listen_sockets: 1, num_connections: 16384, max_connections_retry_count: 5, max_connections_retry_wait: 1000, read_timeout: 60000, shutdown_timeout: 15000, silent_terminate_on_error: false}}]}, :permanent, false, :infinity, :supervisor, [ThousandIsland.AcceptorSupervisor]}, "acceptor-43" => {:child, #PID<0.3959.0>, "acceptor-43", {ThousandIsland.AcceptorSupervisor, :start_link, [{#PID<0.3830.0>, 43, %ThousandIsland.ServerConfig{port: 14401, transport_module: ThousandIsland.Transports.TCP, transport_options: [], handler_module: Bandit.DelegatingHandler, handler_options: %{opts: %{http: [], http_1: [], http_2: [], websocket: []}, plug: {ADK.DevServer.Router, [agent: :demo, model: "gemini-flash-latest", port: 4001]}, handler_module: Bandit.InitialHandler, http_1_enabled: true, http_2_enabled: true}, genserver_options: [], supervisor_options: [], num_acceptors: 100, num_listen_sockets: 1, num_connections: 16384, max_connections_retry_count: 5, max_connections_retry_wait: 1000, read_timeout: 60000, shutdown_timeout: 15000, silent_terminate_on_error: false}}]}, :permanent, false, :infinity, :supervisor, [ThousandIsland.AcceptorSupervisor]}, "acceptor-4" => {:child, #PID<0.3842.0>, "acceptor-4", {ThousandIsland.AcceptorSupervisor, :start_link, [{#PID<0.3830.0>, 4, %ThousandIsland.ServerConfig{port: 14401, transport_module: ThousandIsland.Transports.TCP, transport_options: [], handler_module: Bandit.DelegatingHandler, handler_options: %{opts: %{http: [], http_1: [], http_2: [], websocket: []}, plug: {ADK.DevServer.Router, [agent: :demo, model: "gemini-flash-latest", port: 4001]}, handler_module: Bandit.InitialHandler, http_1_enabled: true, http_2_enabled: true}, genserver_options: [], supervisor_options: [], num_acceptors: 100, num_listen_sockets: 1, num_connections: 16384, max_connections_retry_count: 5, max_connections_retry_wait: 1000, read_timeout: 60000, shutdown_timeout: 15000, silent_terminate_on_error: false}}]}, :permanent, false, :infinity, :supervisor, [ThousandIsland.AcceptorSupervisor]}, "acceptor-62" => {:child, #PID<0.4016.0>, "acceptor-62", {ThousandIsland.AcceptorSupervisor, :start_link, [{ (truncated)
+.................................................................
+03:41:32.014 [debug] POST /apps/test_app/users/user1/sessions
+
+03:41:32.014 [debug] Sent 200 in 132탎
+
+03:41:32.014 [debug] POST /run_sse
+
+03:41:32.015 [debug] Chunked 200 in 45탎
+
+03:41:32.015 [debug] DELETE /apps/test_app/users/user1/sessions/sse-test
+
+03:41:32.015 [debug] Sent 200 in 73탎
+.
+03:41:32.015 [debug] POST /apps/test_app/users/user1/sessions
+
+03:41:32.015 [debug] Sent 200 in 98탎
+
+03:41:32.015 [debug] DELETE /apps/test_app/users/user1/sessions/fZbMhfUjMxqR2_Oq
+
+03:41:32.015 [debug] Sent 200 in 41탎
+.
+03:41:32.015 [debug] GET /list-apps
+
+03:41:32.015 [debug] Sent 200 in 35탎
+.
+03:41:32.016 [debug] GET /health
+
+03:41:32.016 [debug] Sent 200 in 27탎
+.
+03:41:32.016 [debug] POST /run
+
+03:41:32.016 [debug] Sent 404 in 36탎
+.
+03:41:32.016 [debug] POST /apps/test_app/users/user1/sessions
+
+03:41:32.016 [debug] Sent 200 in 98탎
+
+03:41:32.016 [debug] POST /run
+
+03:41:32.016 [debug] Sent 200 in 173탎
+
+03:41:32.016 [debug] DELETE /apps/test_app/users/user1/sessions/run-test
+
+03:41:32.016 [debug] Sent 200 in 70탎
+.
+03:41:32.016 [debug] GET /list-apps
+
+03:41:32.017 [debug] Sent 200 in 41탎
+.
+03:41:32.017 [debug] GET /health
+.
+03:41:32.017 [debug] Sent 200 in 30탎
+
+03:41:32.017 [debug] GET /version
+
+03:41:32.017 [debug] Sent 200 in 27탎
+.
+03:41:32.017 [debug] POST /run_sse
+
+03:41:32.017 [debug] Sent 404 in 41탎
+.
+03:41:32.017 [debug] GET /apps/test_app/users/user1/sessions/nonexistent
+
+03:41:32.017 [debug] Sent 404 in 32탎
+.
+03:41:32.017 [debug] POST /apps/test_app/users/user1/sessions
+
+03:41:32.017 [debug] Sent 200 in 108탎
+
+03:41:32.017 [debug] GET /apps/test_app/users/user1/sessions/sess-crud-test
+
+03:41:32.017 [debug] Sent 200 in 35탎
+
+03:41:32.018 [debug] GET /apps/test_app/users/user1/sessions
+
+03:41:32.018 [debug] Sent 200 in 69탎
+
+03:41:32.018 [debug] DELETE /apps/test_app/users/user1/sessions/sess-crud-test
+
+03:41:32.018 [debug] Sent 200 in 45탎
+.
+03:41:32.018 [debug] GET /apps/test_app/users/user1/sessions/sess-crud-test
+
+03:41:32.018 [debug] Sent 404 in 29탎
+
+03:41:32.018 [debug] OPTIONS /list-apps
+
+03:41:32.018 [debug] Sent 204 in 19탎
+.......
+03:41:32.051 [debug] QUERY OK db=1.1ms decode=0.9ms queue=4.5ms idle=0.0ms
+CREATE TABLE adk_sessions (
+  app_name TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  state TEXT DEFAULT '{}',
+  inserted_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (app_name, user_id, session_id)
+)
+ []
+
+03:41:32.057 [debug] QUERY OK source="adk_sessions" db=0.0ms queue=0.1ms idle=7.2ms
+DELETE FROM "adk_sessions" AS a0 []
+
+03:41:32.062 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=4.7ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user1", "sess1"]
+
+03:41:32.078 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=16.7ms
+INSERT INTO "adk_sessions" ("state","session_id","app_name","user_id","inserted_at","updated_at") VALUES (?1,?2,?3,?4,?5,?6) [%{"list" => [1, 2, 3], "nested" => %{"deep" => true}, "null_val" => nil}, "sess1", "app1", "user1", ~U[2026-03-17 03:41:32.077590Z], ~U[2026-03-17 03:41:32.077590Z]]
+
+03:41:32.079 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.1ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user1", "sess1"]
+.
+03:41:32.081 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=1.9ms
+DELETE FROM "adk_sessions" AS a0 []
+
+03:41:32.081 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.1ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user1", "sess1"]
+
+03:41:32.081 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.1ms
+INSERT INTO "adk_sessions" ("state","session_id","app_name","user_id","inserted_at","updated_at") VALUES (?1,?2,?3,?4,?5,?6) [%{"v" => 1}, "sess1", "app1", "user1", ~U[2026-03-17 03:41:32.081480Z], ~U[2026-03-17 03:41:32.081480Z]]
+
+03:41:32.081 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user1", "sess1"]
+
+03:41:32.081 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.1ms
+UPDATE "adk_sessions" SET "state" = ?, "updated_at" = ? WHERE "session_id" = ? AND "app_name" = ? AND "user_id" = ? [%{"v" => 2}, ~U[2026-03-17 03:41:32.081837Z], "sess1", "app1", "user1"]
+
+03:41:32.082 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user1", "sess1"]
+.
+03:41:32.082 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.1ms
+DELETE FROM "adk_sessions" AS a0 []
+
+03:41:32.082 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user1", "sess1"]
+
+03:41:32.082 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.1ms
+INSERT INTO "adk_sessions" ("state","session_id","app_name","user_id","inserted_at","updated_at") VALUES (?1,?2,?3,?4,?5,?6) [%{}, "sess1", "app1", "user1", ~U[2026-03-17 03:41:32.082494Z], ~U[2026-03-17 03:41:32.082494Z]]
+
+03:41:32.085 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=3.0ms
+DELETE FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user1", "sess1"]
+
+03:41:32.086 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.1ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user1", "sess1"]
+.
+03:41:32.086 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.1ms
+DELETE FROM "adk_sessions" AS a0 []
+
+03:41:32.086 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user1", "sess1"]
+
+03:41:32.086 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.1ms
+INSERT INTO "adk_sessions" ("state","session_id","app_name","user_id","inserted_at","updated_at") VALUES (?1,?2,?3,?4,?5,?6) [%{"counter" => 42, "name" => "test"}, "sess1", "app1", "user1", ~U[2026-03-17 03:41:32.086436Z], ~U[2026-03-17 03:41:32.086436Z]]
+
+03:41:32.086 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user1", "sess1"]
+.
+03:41:32.086 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.1ms
+DELETE FROM "adk_sessions" AS a0 []
+
+03:41:32.087 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["nope", "nope", "nope"]
+.
+03:41:32.087 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.1ms
+DELETE FROM "adk_sessions" AS a0 []
+
+03:41:32.087 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user1", "sess1"]
+
+03:41:32.087 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+INSERT INTO "adk_sessions" ("state","session_id","app_name","user_id","inserted_at","updated_at") VALUES (?1,?2,?3,?4,?5,?6) [%{}, "sess1", "app1", "user1", ~U[2026-03-17 03:41:32.087352Z], ~U[2026-03-17 03:41:32.087352Z]]
+
+03:41:32.087 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user1", "sess2"]
+
+03:41:32.087 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.1ms
+INSERT INTO "adk_sessions" ("state","session_id","app_name","user_id","inserted_at","updated_at") VALUES (?1,?2,?3,?4,?5,?6) [%{}, "sess2", "app1", "user1", ~U[2026-03-17 03:41:32.087617Z], ~U[2026-03-17 03:41:32.087617Z]]
+
+03:41:32.087 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user1", "sess3"]
+
+03:41:32.087 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+INSERT INTO "adk_sessions" ("state","session_id","app_name","user_id","inserted_at","updated_at") VALUES (?1,?2,?3,?4,?5,?6) [%{}, "sess3", "app1", "user1", ~U[2026-03-17 03:41:32.087867Z], ~U[2026-03-17 03:41:32.087867Z]]
+
+03:41:32.088 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+SELECT a0."app_name", a0."user_id", a0."session_id", a0."state", a0."inserted_at", a0."updated_at" FROM "adk_sessions" AS a0 WHERE (((a0."app_name" = ?) AND (a0."user_id" = ?)) AND (a0."session_id" = ?)) ["app1", "user2", "other"]
+
+03:41:32.088 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+INSERT INTO "adk_sessions" ("state","session_id","app_name","user_id","inserted_at","updated_at") VALUES (?1,?2,?3,?4,?5,?6) [%{}, "other", "app1", "user2", ~U[2026-03-17 03:41:32.088113Z], ~U[2026-03-17 03:41:32.088113Z]]
+
+03:41:32.088 [debug] QUERY OK source="adk_sessions" db=0.0ms idle=0.0ms
+SELECT a0."session_id" FROM "adk_sessions" AS a0 WHERE ((a0."app_name" = ?) AND (a0."user_id" = ?)) ["app1", "user1"]
+.........................................
+03:41:32.151 [error] Task #PID<0.4398.0> started from #PID<0.4397.0> terminating
+** (RuntimeError) intentional crash
+    test/adk/supervision_test.exs:111: anonymous fn/0 in ADK.SupervisionTest."test runner supervisor crashed task doesn't affect other tasks"/1
+    (elixir 1.17.3) lib/task/supervised.ex:101: Task.Supervised.invoke_mfa/2
+Function: #Function<0.103126844/0 in ADK.SupervisionTest."test runner supervisor crashed task doesn't affect other tasks"/1>
+    Args: []
+......................................................................
+Finished in 9.3 seconds (8.6s async, 0.6s sync)
+33 doctests, 959 tests, 2 failures, 7 excluded, 2 skipped

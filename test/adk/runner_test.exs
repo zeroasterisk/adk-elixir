@@ -1,10 +1,10 @@
 defmodule ADK.RunnerTest do
   use ExUnit.Case, async: true
 
-  Code.require_file(Path.join([File.cwd!(), "lib/adk/agent/base_agent.ex"]))
+  Code.require_file(Path.join([File.cwd!(), "lib/adk/agent.ex"]))
   Code.require_file(Path.join([File.cwd!(), "lib/adk/agent/llm_agent.ex"]))
 
-  alias ADK.Agent.BaseAgent
+  alias ADK.Agent
   alias ADK.Agent.InvocationContext
   alias ADK.Agent.LlmAgent
   alias ADK.App
