@@ -1,6 +1,8 @@
 defmodule ADK.RunConfigTest do
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureLog
+
   alias ADK.RunConfig
 
   # -- new/1 tests --
@@ -8,13 +10,15 @@ defmodule ADK.RunConfigTest do
   test "new/0 returns defaults" do
     config = RunConfig.new()
     assert config.streaming_mode == :none
-    assert config.max_llm_calls == nil
+    assert config.max_llm_calls == 500
     assert config.output_format == "text"
     assert config.speech_config == nil
     assert config.response_modalities == nil
     assert config.output_config == nil
     assert config.support_cfc == false
     assert config.custom_metadata == nil
+    assert config.output_audio_transcription == %{}
+    assert config.input_audio_transcription == %{}
   end
 
   test "new/1 accepts valid streaming modes" do
@@ -29,24 +33,79 @@ defmodule ADK.RunConfigTest do
     end
   end
 
+  # -- max_llm_calls parity with Python test_run_config.py --
+
+  test "validate_max_llm_calls valid" do
+    config = RunConfig.new(max_llm_calls: 100)
+    assert config.max_llm_calls == 100
+  end
+
+  test "validate_max_llm_calls negative warns but allows" do
+    log =
+      capture_log(fn ->
+        config = RunConfig.new(max_llm_calls: -1)
+        assert config.max_llm_calls == -1
+      end)
+
+    assert log =~ "max_llm_calls is less than or equal to 0"
+  end
+
+  test "validate_max_llm_calls warns on zero" do
+    log =
+      capture_log(fn ->
+        config = RunConfig.new(max_llm_calls: 0)
+        assert config.max_llm_calls == 0
+      end)
+
+    assert log =~ "max_llm_calls is less than or equal to 0"
+  end
+
+  test "validate_max_llm_calls too large" do
+    max = RunConfig.max_integer()
+
+    assert_raise ArgumentError, ~r/max_llm_calls should be less than/, fn ->
+      RunConfig.new(max_llm_calls: max)
+    end
+  end
+
+  test "validate_max_llm_calls rejects non-integer" do
+    assert_raise ArgumentError, ~r/max_llm_calls must be an integer/, fn ->
+      RunConfig.new(max_llm_calls: "five")
+    end
+  end
+
   test "new/1 accepts valid max_llm_calls" do
     assert RunConfig.new(max_llm_calls: 1).max_llm_calls == 1
     assert RunConfig.new(max_llm_calls: 100).max_llm_calls == 100
-    assert RunConfig.new(max_llm_calls: nil).max_llm_calls == nil
+    assert RunConfig.new(max_llm_calls: 500).max_llm_calls == 500
   end
 
-  test "new/1 rejects invalid max_llm_calls" do
-    assert_raise ArgumentError, ~r/max_llm_calls/, fn ->
-      RunConfig.new(max_llm_calls: 0)
-    end
+  # -- Audio transcription configs not shared between instances --
 
-    assert_raise ArgumentError, ~r/max_llm_calls/, fn ->
-      RunConfig.new(max_llm_calls: -1)
-    end
+  test "audio transcription configs are not shared between instances" do
+    config1 = RunConfig.new()
+    config2 = RunConfig.new()
 
-    assert_raise ArgumentError, ~r/max_llm_calls/, fn ->
-      RunConfig.new(max_llm_calls: "five")
-    end
+    # Validate output_audio_transcription exists and is independent
+    assert config1.output_audio_transcription != nil
+    assert config2.output_audio_transcription != nil
+
+    # In Elixir, maps with same content are structurally equal but are
+    # separate values (immutable). We verify they default to %{} independently.
+    assert config1.output_audio_transcription == %{}
+    assert config2.output_audio_transcription == %{}
+
+    # Validate input_audio_transcription exists and is independent
+    assert config1.input_audio_transcription != nil
+    assert config2.input_audio_transcription != nil
+    assert config1.input_audio_transcription == %{}
+    assert config2.input_audio_transcription == %{}
+
+    # Verify that setting one doesn't affect the other
+    config3 = RunConfig.new(output_audio_transcription: %{enabled: true})
+    config4 = RunConfig.new()
+    assert config3.output_audio_transcription == %{enabled: true}
+    assert config4.output_audio_transcription == %{}
   end
 
   test "new/1 accepts output_format" do
@@ -80,6 +139,16 @@ defmodule ADK.RunConfigTest do
     meta = %{trace_id: "abc-123", env: "prod"}
     config = RunConfig.new(custom_metadata: meta)
     assert config.custom_metadata == meta
+  end
+
+  test "new/1 accepts audio transcription configs" do
+    config = RunConfig.new(
+      output_audio_transcription: %{language: "en"},
+      input_audio_transcription: %{language: "fr"}
+    )
+
+    assert config.output_audio_transcription == %{language: "en"}
+    assert config.input_audio_transcription == %{language: "fr"}
   end
 
   # -- build/1 tests --

@@ -8,7 +8,9 @@ defmodule ADK.RunConfig do
   ## Fields
 
   - `:streaming_mode` — `:none`, `:sse`, or `:live` (default: `:none`)
-  - `:max_llm_calls` — Maximum number of LLM calls per run (default: `nil` = unlimited)
+  - `:max_llm_calls` — Maximum number of LLM calls per run (default: `500`).
+    Values ≤ 0 are allowed (meaning unbounded) but emit a warning.
+    Values ≥ `@max_integer` are rejected.
   - `:output_format` — Output format hint, e.g. `"text"`, `"json"` (default: `"text"`)
   - `:speech_config` — Speech configuration map (voice, language) (default: `nil`)
   - `:generate_config` — Generation config overrides (temperature, etc.) (default: `%{}`)
@@ -17,6 +19,8 @@ defmodule ADK.RunConfig do
   - `:support_cfc` — Enable Compositional Function Calling via Live API (default: `false`)
   - `:custom_metadata` — Arbitrary metadata map for the invocation (default: `nil`)
   - `:get_session_config` — Configuration for getting a session (`num_recent_events`, `after_timestamp`) (default: `nil`)
+  - `:output_audio_transcription` — Audio transcription config for output (default: `%{}`)
+  - `:input_audio_transcription` — Audio transcription config for input (default: `%{}`)
 
   ## Examples
 
@@ -32,9 +36,14 @@ defmodule ADK.RunConfig do
       )
   """
 
+  require Logger
+
+  # Mirrors Python's sys.maxsize (64-bit); values at or above this are rejected.
+  @max_integer 9_223_372_036_854_775_807
+
   defstruct [
     streaming_mode: :none,
-    max_llm_calls: nil,
+    max_llm_calls: 500,
     output_format: "text",
     speech_config: nil,
     generate_config: %{},
@@ -42,7 +51,9 @@ defmodule ADK.RunConfig do
     output_config: nil,
     support_cfc: false,
     custom_metadata: nil,
-    get_session_config: nil
+    get_session_config: nil,
+    output_audio_transcription: %{},
+    input_audio_transcription: %{}
   ]
 
   @type streaming_mode :: :none | :sse | :live
@@ -59,7 +70,7 @@ defmodule ADK.RunConfig do
 
   @type t :: %__MODULE__{
           streaming_mode: streaming_mode(),
-          max_llm_calls: pos_integer() | nil,
+          max_llm_calls: integer(),
           output_format: String.t(),
           speech_config: map() | nil,
           generate_config: map(),
@@ -67,13 +78,26 @@ defmodule ADK.RunConfig do
           output_config: output_config() | nil,
           support_cfc: boolean(),
           custom_metadata: map() | nil,
-          get_session_config: get_session_config() | nil
+          get_session_config: get_session_config() | nil,
+          output_audio_transcription: map() | nil,
+          input_audio_transcription: map() | nil
         }
 
   @valid_streaming_modes [:none, :sse, :live]
 
   @doc """
+  Returns the max integer value (mirrors Python's `sys.maxsize`).
+
+  Values at or above this threshold are rejected by `validate_max_llm_calls/1`.
+  """
+  @spec max_integer() :: pos_integer()
+  def max_integer, do: @max_integer
+
+  @doc """
   Create a new RunConfig.
+
+  Each instance gets its own independent `output_audio_transcription` and
+  `input_audio_transcription` maps (not shared references).
 
   ## Examples
 
@@ -114,8 +138,21 @@ defmodule ADK.RunConfig do
     raise ArgumentError, "invalid streaming_mode: #{inspect(mode)}, must be one of #{inspect(@valid_streaming_modes)}"
   end
 
-  defp validate!(%__MODULE__{max_llm_calls: max}) when not is_nil(max) and (not is_integer(max) or max < 1) do
-    raise ArgumentError, "max_llm_calls must be a positive integer or nil, got: #{inspect(max)}"
+  defp validate!(%__MODULE__{max_llm_calls: max}) when not is_integer(max) do
+    raise ArgumentError, "max_llm_calls must be an integer, got: #{inspect(max)}"
+  end
+
+  defp validate!(%__MODULE__{max_llm_calls: max}) when max >= @max_integer do
+    raise ArgumentError, "max_llm_calls should be less than #{@max_integer}"
+  end
+
+  defp validate!(%__MODULE__{max_llm_calls: max}) when max <= 0 do
+    Logger.warning(
+      "max_llm_calls is less than or equal to 0. This will result in " <>
+        "no enforcement on total number of llm calls that will be made for a run. " <>
+        "This may not be ideal, as this could result in a never ending communication " <>
+        "between the model and the agent in certain cases."
+    )
   end
 
   defp validate!(%__MODULE__{get_session_config: config}) when not is_nil(config) and not is_map(config) do
