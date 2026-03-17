@@ -26,7 +26,7 @@ defmodule ADK.MixProject do
   def application do
     [
       mod: {ADK.Application, []},
-      extra_applications: [:logger, :crypto]
+      extra_applications: [:logger, :crypto, :mox]
     ]
   end
 
@@ -49,6 +49,7 @@ defmodule ADK.MixProject do
 
   defp deps do
     [
+      {:mox, "~> 1.0", only: :test},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
       {:a2a, path: "../a2a-elixir"},
       {:jason, "~> 1.4"},
