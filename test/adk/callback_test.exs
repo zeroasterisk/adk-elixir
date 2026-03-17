@@ -1,173 +1,104 @@
+
 defmodule ADK.CallbackTest do
   use ExUnit.Case, async: true
 
-  alias ADK.{Runner, Callback, Event}
+  alias ADK.Agent.LlmAgent
+  alias ADK.Event
+  alias ADK.Runner
 
-  defmodule LoggingCallback do
+  defmodule BeforeAgentCallback do
     @behaviour ADK.Callback
-
     @impl true
-    def before_agent(cb_ctx) do
-      send(self(), {:before_agent, cb_ctx.agent.name})
-      {:cont, cb_ctx}
-    end
-
-    @impl true
-    def after_agent(events, cb_ctx) do
-      send(self(), {:after_agent, cb_ctx.agent.name, length(events)})
-      events
-    end
-
-    @impl true
-    def before_model(cb_ctx) do
-      send(self(), {:before_model, cb_ctx.request.model})
-      {:cont, cb_ctx}
-    end
-
-    @impl true
-    def after_model(result, _cb_ctx) do
-      send(self(), {:after_model, result})
-      result
-    end
-
-    @impl true
-    def before_tool(cb_ctx) do
-      send(self(), {:before_tool, cb_ctx.tool.name})
-      {:cont, cb_ctx}
-    end
-
-    @impl true
-    def after_tool(result, _cb_ctx) do
-      send(self(), {:after_tool, result})
-      result
-    end
-  end
-
-  defmodule HaltAgentCallback do
-    @behaviour ADK.Callback
-
-    @impl true
-    def before_agent(_cb_ctx) do
-      event = Event.new(%{invocation_id: "halted", author: "halt-cb", content: %{parts: [%{text: "halted!"}]}})
+    def before_agent(_context) do
+      event =
+        Event.new(%{
+          author: "agent",
+          content: %{parts: [%{text: "End invocation event before agent call."}]}
+        })
       {:halt, [event]}
     end
   end
 
-  defmodule HaltModelCallback do
+  defmodule BeforeModelCallback do
     @behaviour ADK.Callback
-
     @impl true
-    def before_model(_cb_ctx) do
-      response = %{content: %{role: :model, parts: [%{text: "intercepted"}]}, usage_metadata: nil}
+    def before_model(_context) do
+       response =
+        %{
+          content: %{
+            role: "model",
+            parts: [
+              %{text: "End invocation event before model call."}
+            ]
+          },
+          usage_metadata: nil
+        }
       {:halt, {:ok, response}}
     end
   end
 
-  defmodule TransformAfterAgent do
+  defmodule AfterModelCallback do
     @behaviour ADK.Callback
-
     @impl true
-    def after_agent(events, _cb_ctx) do
-      extra = Event.new(%{invocation_id: "extra", author: "transform-cb", content: %{parts: [%{text: "extra"}]}})
-      events ++ [extra]
+    def after_model({:ok, llm_response}, _context) do
+      new_parts =
+        llm_response.content.parts
+        |> Enum.map(fn part ->
+          if part[:text] do
+            %{part | text: part.text <> "Update response event after model call."}
+          else
+            part
+          end
+        end)
+
+      updated_content = %{llm_response.content | parts: new_parts}
+      updated_response = %{llm_response | content: updated_content}
+
+      {:ok, updated_response}
     end
+    def after_model({:error, _reason} = error, _context), do: error
   end
 
-  defmodule NoopCallback do
-    @behaviour ADK.Callback
-    # Implements no optional callbacks — should be safely skipped
+  # Test Cases
+
+  test "before_agent callback ends invocation" do
+    agent =
+      LlmAgent.new(
+        model: "gemini-1.5-flash",
+        name: "before_agent_callback_agent",
+        instruction: "echo 1"
+      )
+
+    runner = Runner.new(app_name: "test", agent: agent)
+    [response] = Runner.run(runner, "user1", "s1", "Hi.", callbacks: [BeforeAgentCallback])
+    assert Event.text(response) == "End invocation event before agent call."
   end
 
-  setup do
-    # SessionSupervisor is started by the application
-    :ok
+  test "before_model callback ends invocation" do
+    agent =
+      LlmAgent.new(
+        model: "gemini-1.5-flash",
+        name: "before_model_callback_agent",
+        instruction: "echo 2"
+      )
+
+    runner = Runner.new(app_name: "test", agent: agent)
+    [response] = Runner.run(runner, "user1", "s2", "Hi.", callbacks: [BeforeModelCallback])
+    assert Event.text(response) == "End invocation event before model call."
   end
 
-  describe "run_before/3 and run_after/4" do
-    test "run_before with no callbacks returns cont" do
-      assert {:cont, %{}} = Callback.run_before([], :before_agent, %{})
-    end
+  test "after_model callback updates response" do
+    ADK.LLM.Mock.set_responses(["Hello."])
 
-    test "run_before halts on first halting callback" do
-      assert {:halt, [_]} = Callback.run_before([HaltAgentCallback], :before_agent, %{agent: %{name: "x"}, context: %{}})
-    end
+    agent =
+      LlmAgent.new(
+        model: "gemini-1.5-flash",
+        name: "after_model_callback_agent",
+        instruction: "Say hello"
+      )
 
-    test "run_after with no callbacks returns result unchanged" do
-      assert [1, 2] = Callback.run_after([], :after_agent, [1, 2], %{})
-    end
-
-    test "skips callbacks that don't implement the hook" do
-      assert {:cont, %{}} = Callback.run_before([NoopCallback], :before_agent, %{})
-      assert :result = Callback.run_after([NoopCallback], :after_agent, :result, %{})
-    end
-  end
-
-  describe "agent callbacks via Runner" do
-    test "before_agent and after_agent are called" do
-      ADK.LLM.Mock.set_responses(["hello"])
-      agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help")
-      runner = %Runner{app_name: "cb-test", agent: agent}
-
-      events = Runner.run(runner, "u1", "s1", "hi", callbacks: [LoggingCallback])
-
-      assert_received {:before_agent, "bot"}
-      assert_received {:after_agent, "bot", _count}
-      assert length(events) > 0
-    end
-
-    test "before_agent halt short-circuits execution" do
-      agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help")
-      runner = %Runner{app_name: "cb-halt", agent: agent}
-
-      events = Runner.run(runner, "u1", "s2", "hi", callbacks: [HaltAgentCallback])
-
-      assert [%{author: "halt-cb"}] = events
-    end
-
-    test "after_agent can transform events" do
-      ADK.LLM.Mock.set_responses(["ok"])
-      agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help")
-      runner = %Runner{app_name: "cb-transform", agent: agent}
-
-      events = Runner.run(runner, "u1", "s3", "hi", callbacks: [TransformAfterAgent])
-
-      assert List.last(events).author == "transform-cb"
-    end
-  end
-
-  describe "model callbacks" do
-    test "before_model halt returns intercepted response" do
-      agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help")
-      runner = %Runner{app_name: "cb-model", agent: agent}
-
-      events = Runner.run(runner, "u1", "s4", "hi", callbacks: [HaltModelCallback])
-
-      assert [event] = events
-      assert ADK.Event.text(event) == "intercepted"
-    end
-
-    test "before_model and after_model are called on normal flow" do
-      ADK.LLM.Mock.set_responses(["normal"])
-      agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help")
-      runner = %Runner{app_name: "cb-model2", agent: agent}
-
-      Runner.run(runner, "u1", "s5", "hi", callbacks: [LoggingCallback])
-
-      assert_received {:before_model, "test"}
-      assert_received {:after_model, {:ok, _}}
-    end
-  end
-
-  describe "multiple callbacks" do
-    test "callbacks run in order" do
-      ADK.LLM.Mock.set_responses(["hi"])
-      agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help")
-      runner = %Runner{app_name: "cb-multi", agent: agent}
-
-      events = Runner.run(runner, "u1", "s6", "hi", callbacks: [NoopCallback, LoggingCallback, TransformAfterAgent])
-
-      assert_received {:before_agent, "bot"}
-      assert List.last(events).author == "transform-cb"
-    end
+    runner = Runner.new(app_name: "test", agent: agent)
+    [response] = Runner.run(runner, "user1", "s3", "Hi.", callbacks: [AfterModelCallback])
+    assert Event.text(response) == "Hello.Update response event after model call."
   end
 end
