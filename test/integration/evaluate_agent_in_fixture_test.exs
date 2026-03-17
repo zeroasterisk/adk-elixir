@@ -22,11 +22,16 @@ defmodule ADK.Integration.EvaluateAgentInFixtureTest do
     end
   end
 
-  # Helper function to find all test.json files in the fixture directory
+  # Helper function to find all test.json files in the fixture directory.
+  # Only includes agents that use the EmptyResponseScorer pattern (Custom agents
+  # with no-op run_fn). Agents like home_automation_agent have their own
+  # dedicated test files.
+  @empty_scorer_agents ["hello_world_agent"]
+
   defp agent_eval_artifacts_in_fixture do
     fixture_dir = Path.join([__DIR__, "fixture"])
 
-    File.ls!(fixture_dir)
+    @empty_scorer_agents
     |> Enum.flat_map(fn agent_name ->
       agent_dir = Path.join(fixture_dir, agent_name)
       if File.dir?(agent_dir) do
