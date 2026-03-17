@@ -11,7 +11,7 @@ defmodule ADK.Agent.ParallelAgent do
   """
 
   @enforce_keys [:name]
-  defstruct [:name, description: "Runs agents in parallel", sub_agents: [], timeout: 30_000]
+  defstruct [:name, :parent_agent, description: "Runs agents in parallel", sub_agents: [], timeout: 30_000]
 
   @type t :: %__MODULE__{
           name: String.t(),
@@ -43,6 +43,9 @@ defmodule ADK.Agent.ParallelAgent do
   rescue
     e in ArgumentError -> {:error, Exception.message(e)}
   end
+
+  @doc "Clone this agent with optional updates. See `ADK.Agent.Clone`."
+  def clone(agent, update \\ nil), do: ADK.Agent.Clone.clone(agent, update)
 
   defimpl ADK.Agent do
     def name(agent), do: agent.name

@@ -4,7 +4,7 @@ defmodule ADK.Agent.SequentialAgent do
   """
 
   @enforce_keys [:name]
-  defstruct [:name, description: "Runs agents in sequence", sub_agents: []]
+  defstruct [:name, :parent_agent, description: "Runs agents in sequence", sub_agents: []]
 
   @type t :: %__MODULE__{
           name: String.t(),
@@ -35,6 +35,9 @@ defmodule ADK.Agent.SequentialAgent do
   rescue
     e in ArgumentError -> {:error, Exception.message(e)}
   end
+
+  @doc "Clone this agent with optional updates. See `ADK.Agent.Clone`."
+  def clone(agent, update \\ nil), do: ADK.Agent.Clone.clone(agent, update)
 
   defimpl ADK.Agent do
     def name(agent), do: agent.name

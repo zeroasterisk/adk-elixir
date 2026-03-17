@@ -21,7 +21,7 @@ defmodule ADK.Agent.LoopAgent do
   """
 
   @enforce_keys [:name]
-  defstruct [:name, :exit_condition, description: "Runs agents in a loop", sub_agents: [], max_iterations: 10]
+  defstruct [:name, :exit_condition, :parent_agent, description: "Runs agents in a loop", sub_agents: [], max_iterations: 10]
 
   @type exit_condition :: (ADK.Context.t() -> boolean()) | nil
 
@@ -56,6 +56,9 @@ defmodule ADK.Agent.LoopAgent do
   rescue
     e in ArgumentError -> {:error, Exception.message(e)}
   end
+
+  @doc "Clone this agent with optional updates. See `ADK.Agent.Clone`."
+  def clone(agent, update \\ nil), do: ADK.Agent.Clone.clone(agent, update)
 
   defimpl ADK.Agent do
     def name(agent), do: agent.name

@@ -110,6 +110,9 @@ defmodule ADK.Agent.LlmAgent do
     e in ArgumentError -> {:error, Exception.message(e)}
   end
 
+  @doc "Clone this agent with optional updates. See `ADK.Agent.Clone`."
+  def clone(agent, update \\ nil), do: ADK.Agent.Clone.clone(agent, update)
+
   # --- Protocol implementation ---
 
   defimpl ADK.Agent do
