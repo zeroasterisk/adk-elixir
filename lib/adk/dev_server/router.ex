@@ -32,6 +32,15 @@ defmodule ADK.DevServer.Router do
     |> send_resp(200, html)
   end
 
+  get "/flow" do
+    agent = resolve_agent_struct(conn.private[:adk_agent], conn.private[:adk_model])
+    html = flow_html(agent)
+
+    conn
+    |> put_resp_content_type("text/html")
+    |> send_resp(200, html)
+  end
+
   # ── API: agent info ───────────────────────────────────────────────────────────
 
   get "/api/agent" do
@@ -286,6 +295,58 @@ defmodule ADK.DevServer.Router do
 
   # ── Chat UI HTML ──────────────────────────────────────────────────────────────
 
+  defp flow_html(agent) do
+    if Code.ensure_loaded?(ADK.Phoenix.FlowLive) do
+      assigns = %{agent: agent, active_agent: nil}
+
+      rendered =
+        Phoenix.LiveViewTest.rendered_to_string(
+          ADK.Phoenix.FlowLive.flow_graph(assigns)
+        )
+
+      agent_name = ADK.Phoenix.FlowLive.agent_name(agent)
+
+      """
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ADK Flow — #{agent_name}</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+          header { background: #1a1d2e; border-bottom: 1px solid #2d3148; padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
+          header h1 { font-size: 1rem; font-weight: 600; color: #7c83fd; }
+          header .badge { background: #2d3148; border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; color: #94a3b8; }
+          header a { color: #94a3b8; text-decoration: none; font-size: 0.8rem; margin-left: auto; }
+          header a:hover { color: #e2e8f0; }
+          .flow-container { padding: 24px; display: flex; justify-content: center; }
+        </style>
+      </head>
+      <body>
+        <header>
+          <h1>🔀 Agent Flow</h1>
+          <span class="badge">#{agent_name}</span>
+          <a href="/">← Back to Chat</a>
+        </header>
+        <div class="flow-container">
+          #{rendered}
+        </div>
+      </body>
+      </html>
+      """
+    else
+      """
+      <!DOCTYPE html>
+      <html><body style="background:#0f1117;color:#e2e8f0;font-family:system-ui;padding:40px;">
+        <h1>Flow Visualizer Unavailable</h1>
+        <p>Phoenix LiveView is required for the flow visualizer. Add <code>:phoenix_live_view</code> to your dependencies.</p>
+      </body></html>
+      """
+    end
+  end
+
   defp chat_html(agent, model) do
     agent_name =
       case agent do
@@ -334,6 +395,7 @@ defmodule ADK.DevServer.Router do
         <h1>🤖 ADK Dev Server</h1>
         <span class="badge">#{agent_name}</span>
         <span class="badge">#{model}</span>
+        <a href="/flow" style="color:#94a3b8;text-decoration:none;font-size:0.8rem;margin-left:auto;">🔀 Flow</a>
       </header>
 
       <div id="chat">

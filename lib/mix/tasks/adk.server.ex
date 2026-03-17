@@ -21,6 +21,7 @@ defmodule Mix.Tasks.Adk.Server do
   ## Endpoints
 
     * `GET /` — Chat UI (open in browser)
+    * `GET /flow` — Agent flow visualizer (topology graph)
     * `POST /api/chat` — Send a message, get agent response
     * `GET /api/agent` — Agent info / card
 
