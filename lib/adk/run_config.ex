@@ -53,7 +53,10 @@ defmodule ADK.RunConfig do
     custom_metadata: nil,
     get_session_config: nil,
     output_audio_transcription: %{},
-    input_audio_transcription: %{}
+    input_audio_transcription: %{},
+    proactivity: nil,
+    session_resumption: nil,
+    enable_affective_dialog: nil
   ]
 
   @type streaming_mode :: :none | :sse | :live
@@ -68,6 +71,14 @@ defmodule ADK.RunConfig do
           optional(:after_timestamp) => float()
         }
 
+  @type proactivity_config :: %{
+          optional(:proactive_audio) => boolean()
+        }
+
+  @type session_resumption_config :: %{
+          optional(:transparent) => boolean()
+        }
+
   @type t :: %__MODULE__{
           streaming_mode: streaming_mode(),
           max_llm_calls: integer(),
@@ -80,7 +91,10 @@ defmodule ADK.RunConfig do
           custom_metadata: map() | nil,
           get_session_config: get_session_config() | nil,
           output_audio_transcription: map() | nil,
-          input_audio_transcription: map() | nil
+          input_audio_transcription: map() | nil,
+          proactivity: proactivity_config() | nil,
+          session_resumption: session_resumption_config() | nil,
+          enable_affective_dialog: boolean() | nil
         }
 
   @valid_streaming_modes [:none, :sse, :live]
