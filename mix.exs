@@ -50,6 +50,7 @@ defmodule ADK.MixProject do
   defp deps do
     [
       {:mox, "~> 1.0", only: :test},
+      {:bypass, "~> 2.1", only: :test},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
       {:a2a, path: "../a2a-elixir"},
       {:jason, "~> 1.4"},

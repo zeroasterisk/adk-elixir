@@ -1,4 +1,27 @@
 defmodule ADK.Auth.OAuth2 do
+  defstruct issuer: nil,
+            authorization_endpoint: nil,
+            token_endpoint: nil,
+            scopes_supported: []
+
+  defmodule AuthorizationServerMetadata do
+    @moduledoc """
+    Represents the metadata of an OAuth2 authorization server.
+    """
+    defstruct issuer: nil,
+              authorization_endpoint: nil,
+              token_endpoint: nil,
+              scopes_supported: []
+  end
+
+  defmodule ProtectedResourceMetadata do
+    @moduledoc """
+    Represents the metadata of an OAuth2 protected resource.
+    """
+    defstruct resource: nil,
+              authorization_servers: []
+  end
+
   @moduledoc """
   Core OAuth2 HTTP operations: authorization URL generation, auth code exchange,
   and token refresh.
