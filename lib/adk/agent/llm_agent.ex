@@ -72,6 +72,16 @@ defmodule ADK.Agent.LlmAgent do
 
     # Call the LLM
     case ADK.LLM.generate(agent.model, request) do
+      {:ok, %{content: nil}} ->
+        # Empty/nil content response — emit nothing (filtered out)
+        []
+
+      {:ok, %{partial: true} = response} ->
+        # Partial (streaming chunk) response — emit and break the loop
+        event = event_from_response(response, ctx, agent)
+        ADK.Context.emit_event(ctx, event)
+        [event]
+
       {:ok, response} ->
         event = event_from_response(response, ctx, agent)
 
@@ -92,12 +102,13 @@ defmodule ADK.Agent.LlmAgent do
             if transfer do
               target_name = transfer.transfer_to_agent
 
-              transfer_event = ADK.Event.new(%{
-                invocation_id: ctx.invocation_id,
-                author: agent.name,
-                content: %{role: :model, parts: [%{text: "Transferring to #{target_name}"}]},
-                actions: %{transfer_to_agent: target_name}
-              })
+              transfer_event =
+                ADK.Event.new(%{
+                  invocation_id: ctx.invocation_id,
+                  author: agent.name,
+                  content: %{role: :model, parts: [%{text: "Transferring to #{target_name}"}]},
+                  actions: %{transfer_to_agent: target_name}
+                })
 
               ADK.Context.emit_event(ctx, transfer_event)
               [event, transfer_event]
@@ -105,17 +116,20 @@ defmodule ADK.Agent.LlmAgent do
               # Build tool response and loop
               response_parts =
                 Enum.map(tool_results, fn tr ->
-                  %{function_response: %{
-                    name: tr.name,
-                    response: wrap_tool_response(tr[:result] || tr[:error] || "")
-                  }}
+                  %{
+                    function_response: %{
+                      name: tr.name,
+                      response: wrap_tool_response(tr[:result] || tr[:error] || "")
+                    }
+                  }
                 end)
 
-              response_event = ADK.Event.new(%{
-                invocation_id: ctx.invocation_id,
-                author: agent.name,
-                content: %{role: :user, parts: response_parts}
-              })
+              response_event =
+                ADK.Event.new(%{
+                  invocation_id: ctx.invocation_id,
+                  author: agent.name,
+                  content: %{role: :user, parts: response_parts}
+                })
 
               ADK.Context.emit_event(ctx, response_event)
 
@@ -129,12 +143,14 @@ defmodule ADK.Agent.LlmAgent do
         end
 
       {:error, reason} ->
-        error_event = ADK.Event.new(%{
-          invocation_id: ctx.invocation_id,
-          author: agent.name,
-          content: %{role: :model, parts: [%{text: "Error: #{inspect(reason)}"}]},
-          error: reason
-        })
+        error_event =
+          ADK.Event.new(%{
+            invocation_id: ctx.invocation_id,
+            author: agent.name,
+            content: %{role: :model, parts: [%{text: "Error: #{inspect(reason)}"}]},
+            error: reason
+          })
+
         ADK.Context.emit_event(ctx, error_event)
         [error_event]
     end
@@ -159,6 +175,7 @@ defmodule ADK.Agent.LlmAgent do
     case agent.generate_config do
       config when is_map(config) and map_size(config) > 0 ->
         Map.put(request, :generate_config, config)
+
       _ ->
         request
     end
@@ -171,28 +188,37 @@ defmodule ADK.Agent.LlmAgent do
   def compile_instruction(ctx, agent) do
     base = resolve_instruction(agent.instruction, ctx)
 
-    base = case agent.global_instruction do
-      nil -> base
-      "" -> base
-      global ->
-        resolved_global = resolve_instruction(global, ctx)
-        resolved_global <> "\n" <> base
-    end
+    base =
+      case agent.global_instruction do
+        nil ->
+          base
+
+        "" ->
+          base
+
+        global ->
+          resolved_global = resolve_instruction(global, ctx)
+          resolved_global <> "\n" <> base
+      end
 
     # Add transfer instructions if sub-agents exist
-    base = case agent.sub_agents do
-      [] -> base
-      subs ->
-        transfer_info =
-          subs
-          |> Enum.map(fn sa ->
-            name = ADK.Agent.name(sa)
-            desc = ADK.Agent.description(sa)
-            if desc != "", do: "- #{name}: #{desc}", else: "- #{name}"
-          end)
-          |> Enum.join("\n")
-        base <> "\n\nYou can transfer to these agents:\n" <> transfer_info
-    end
+    base =
+      case agent.sub_agents do
+        [] ->
+          base
+
+        subs ->
+          transfer_info =
+            subs
+            |> Enum.map(fn sa ->
+              name = ADK.Agent.name(sa)
+              desc = ADK.Agent.description(sa)
+              if desc != "", do: "- #{name}: #{desc}", else: "- #{name}"
+            end)
+            |> Enum.join("\n")
+
+          base <> "\n\nYou can transfer to these agents:\n" <> transfer_info
+      end
 
     # Substitute {key} state variables from session
     substitute_state_variables(base, ctx)
@@ -232,10 +258,12 @@ defmodule ADK.Agent.LlmAgent do
     case find_agent(root_agent, agent_name) do
       nil ->
         available = get_available_agent_names(root_agent)
+
         raise ArgumentError, """
         Agent '#{agent_name}' not found.
         Available agents: #{Enum.join(available, ", ")}
         """
+
       agent ->
         {:ok, agent}
     end
@@ -253,18 +281,22 @@ defmodule ADK.Agent.LlmAgent do
 
   # ---------- Private Helpers ----------
 
-  defp resolve_instruction(instruction, ctx) when is_function(instruction, 1), do: instruction.(ctx)
+  defp resolve_instruction(instruction, ctx) when is_function(instruction, 1),
+    do: instruction.(ctx)
+
   defp resolve_instruction({mod, fun}, ctx), do: apply(mod, fun, [ctx])
   defp resolve_instruction({mod, fun, args}, ctx), do: apply(mod, fun, [ctx | args])
   defp resolve_instruction(instruction, _ctx) when is_binary(instruction), do: instruction
   defp resolve_instruction(nil, _ctx), do: ""
 
   defp substitute_state_variables(text, %{session_pid: nil}), do: text
+
   defp substitute_state_variables(text, %{session_pid: pid}) do
-    state = case ADK.Session.get(pid) do
-      {:ok, session} -> session.state
-      _ -> %{}
-    end
+    state =
+      case ADK.Session.get(pid) do
+        {:ok, session} -> session.state
+        _ -> %{}
+      end
 
     Regex.replace(~r/\{(\w+)\}/, text, fn full_match, key ->
       try do
@@ -277,6 +309,7 @@ defmodule ADK.Agent.LlmAgent do
       end
     end)
   end
+
   defp substitute_state_variables(text, _ctx), do: text
 
   defp build_messages(ctx) do
@@ -294,12 +327,13 @@ defmodule ADK.Agent.LlmAgent do
         []
       end
 
-    user_msg = case ctx.user_content do
-      %{text: text} -> [%{role: :user, parts: [%{text: text}]}]
-      nil -> []
-      text when is_binary(text) -> [%{role: :user, parts: [%{text: text}]}]
-      _ -> []
-    end
+    user_msg =
+      case ctx.user_content do
+        %{text: text} -> [%{role: :user, parts: [%{text: text}]}]
+        nil -> []
+        text when is_binary(text) -> [%{role: :user, parts: [%{text: text}]}]
+        _ -> []
+      end
 
     history ++ user_msg
   end
@@ -309,16 +343,21 @@ defmodule ADK.Agent.LlmAgent do
       invocation_id: ctx.invocation_id,
       author: agent.name,
       branch: ctx.branch,
-      content: response.content
+      content: response.content,
+      partial: Map.get(response, :partial)
     })
   end
 
-  defp extract_function_calls(%{content: %{parts: parts}}) when is_list(parts) do
+  defp extract_function_calls(%{content: content}) when is_map(content) do
+    parts = Map.get(content, "parts") || Map.get(content, :parts) || []
+
     Enum.flat_map(parts, fn
+      %{"function_call" => fc} -> [fc]
       %{function_call: fc} -> [fc]
       _ -> []
     end)
   end
+
   defp extract_function_calls(_), do: []
 
   defp execute_tools(ctx, agent, calls) do
@@ -339,8 +378,10 @@ defmodule ADK.Agent.LlmAgent do
           case result do
             {:transfer_to_agent, target} ->
               %{name: call.name, result: "Transferring to #{target}", transfer_to_agent: target}
+
             {:ok, value} ->
               %{name: call.name, result: value}
+
             {:error, reason} ->
               %{name: call.name, error: inspect(reason)}
           end
@@ -348,10 +389,18 @@ defmodule ADK.Agent.LlmAgent do
     end)
   end
 
-  defp run_tool(%ADK.Tool.ModuleTool{} = tool, ctx, args), do: ADK.Tool.ModuleTool.run(tool, ctx, args)
-  defp run_tool(%ADK.Tool.FunctionTool{} = tool, ctx, args), do: ADK.Tool.FunctionTool.run(tool, ctx, args)
-  defp run_tool(%ADK.Tool.LongRunningTool{} = tool, ctx, args), do: ADK.Tool.LongRunningTool.run(tool, ctx, args)
-  defp run_tool(%ADK.Tool.GoogleSearch{}, _ctx, _args), do: {:error, "GoogleSearch is a built-in Gemini tool"}
+  defp run_tool(%ADK.Tool.ModuleTool{} = tool, ctx, args),
+    do: ADK.Tool.ModuleTool.run(tool, ctx, args)
+
+  defp run_tool(%ADK.Tool.FunctionTool{} = tool, ctx, args),
+    do: ADK.Tool.FunctionTool.run(tool, ctx, args)
+
+  defp run_tool(%ADK.Tool.LongRunningTool{} = tool, ctx, args),
+    do: ADK.Tool.LongRunningTool.run(tool, ctx, args)
+
+  defp run_tool(%ADK.Tool.GoogleSearch{}, _ctx, _args),
+    do: {:error, "GoogleSearch is a built-in Gemini tool"}
+
   defp run_tool(tool, ctx, args), do: ADK.Tool.FunctionTool.run(tool, ctx, args)
 
   defp wrap_tool_response(response) when is_map(response), do: response
@@ -361,11 +410,14 @@ defmodule ADK.Agent.LlmAgent do
     children = Enum.flat_map(subs, &collect_agent_names(&1, []))
     acc ++ [name] ++ children
   end
+
   defp collect_agent_names(%{name: name}, acc), do: acc ++ [name]
 
   defp find_agent(%{name: name} = agent, name), do: agent
+
   defp find_agent(%{sub_agents: subs}, target) when is_list(subs) do
     Enum.find_value(subs, fn sub -> find_agent(sub, target) end)
   end
+
   defp find_agent(_, _), do: nil
 end

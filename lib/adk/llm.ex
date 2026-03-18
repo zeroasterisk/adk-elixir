@@ -61,7 +61,9 @@ defmodule ADK.LLM do
 
           extra =
             if Map.get(response, :finish_reason) do
-              Map.put(extra, :"gen_ai.response.finish_reasons", [String.downcase(to_string(response.finish_reason))])
+              Map.put(extra, :"gen_ai.response.finish_reasons", [
+                String.downcase(to_string(response.finish_reason))
+              ])
             else
               extra
             end
@@ -134,6 +136,12 @@ defmodule ADK.LLM.Mock do
 
   defp to_response(%{function_call: fc}) do
     %{content: %{role: :model, parts: [%{function_call: fc}]}, usage_metadata: nil}
+  end
+
+  defp to_response(%{partial: partial} = resp) when not is_nil(partial) do
+    # Preserve partial flag alongside any other response fields
+    base = %{content: resp[:content], usage_metadata: nil, partial: partial}
+    if resp[:content], do: base, else: Map.put(base, :content, nil)
   end
 
   defp to_response(%{content: _} = resp), do: resp
