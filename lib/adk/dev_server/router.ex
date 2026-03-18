@@ -41,6 +41,14 @@ defmodule ADK.DevServer.Router do
     |> send_resp(200, html)
   end
 
+  get "/control" do
+    html = control_html()
+
+    conn
+    |> put_resp_content_type("text/html")
+    |> send_resp(200, html)
+  end
+
   # ── API: agent info ───────────────────────────────────────────────────────────
 
   get "/api/agent" do
@@ -293,6 +301,95 @@ defmodule ADK.DevServer.Router do
     |> send_resp(status, Jason.encode!(body))
   end
 
+  # ── Control Plane HTML ─────────────────────────────────────────────────────────
+
+  defp control_html do
+    if Code.ensure_loaded?(ADK.Phoenix.ControlLive) do
+      # Render the ControlLive component statically for the dev server
+      # (without LiveView WebSocket — pure server-rendered snapshot)
+      store_state =
+        if Process.whereis(ADK.Phoenix.ControlLive.Store) do
+          ADK.Phoenix.ControlLive.Store.get_state()
+        else
+          %{sessions: [], runs: [], tools: [], llm: [], errors: []}
+        end
+
+      beam = collect_beam_metrics_static()
+
+      assigns =
+        Map.merge(store_state, %{
+          beam: beam,
+          page_title: "ADK Control Plane"
+        })
+
+      rendered =
+        Phoenix.LiveViewTest.rendered_to_string(
+          ADK.Phoenix.ControlLive.render(assigns)
+        )
+
+      """
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ADK Control Plane</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+          header { background: #1a1d2e; border-bottom: 1px solid #2d3148; padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
+          header h1 { font-size: 1rem; font-weight: 600; color: #7c83fd; }
+          header a { color: #94a3b8; text-decoration: none; font-size: 0.8rem; margin-left: auto; }
+          header a:hover { color: #e2e8f0; }
+          .note { text-align: center; color: #64748b; font-size: 0.75rem; padding: 8px; }
+        </style>
+      </head>
+      <body>
+        <header>
+          <h1>🎛️ Control Plane</h1>
+          <a href="/">💬 Chat</a>
+          <a href="/flow" style="margin-left:8px;">🔀 Flow</a>
+        </header>
+        #{rendered}
+        <div class="note">Auto-refresh: reload page for latest metrics. Use LiveView mount for real-time updates.</div>
+      </body>
+      </html>
+      """
+    else
+      """
+      <!DOCTYPE html>
+      <html><body style="background:#0f1117;color:#e2e8f0;font-family:system-ui;padding:40px;">
+        <h1>Control Plane Unavailable</h1>
+        <p>Phoenix LiveView is required for the control plane. Add <code>:phoenix_live_view</code> to your dependencies.</p>
+      </body></html>
+      """
+    end
+  end
+
+  defp collect_beam_metrics_static do
+    memory = :erlang.memory()
+    total_mem = memory[:total] || 0
+
+    %{
+      process_count: :erlang.system_info(:process_count),
+      memory_human: ADK.Phoenix.ControlLive.format_bytes(total_mem),
+      memory_total: total_mem,
+      atom_count: :erlang.system_info(:atom_count),
+      port_count: :erlang.system_info(:port_count),
+      schedulers: :erlang.system_info(:schedulers),
+      schedulers_online: :erlang.system_info(:schedulers_online),
+      uptime_human: "—",
+      memory_detail: [
+        {"Processes", memory[:processes] || 0},
+        {"Binary", memory[:binary] || 0},
+        {"ETS", memory[:ets] || 0},
+        {"Atom", memory[:atom] || 0},
+        {"Code", memory[:code] || 0},
+        {"System", memory[:system] || 0}
+      ]
+    }
+  end
+
   # ── Chat UI HTML ──────────────────────────────────────────────────────────────
 
   defp flow_html(agent) do
@@ -328,7 +425,8 @@ defmodule ADK.DevServer.Router do
         <header>
           <h1>🔀 Agent Flow</h1>
           <span class="badge">#{agent_name}</span>
-          <a href="/">← Back to Chat</a>
+          <a href="/">💬 Chat</a>
+          <a href="/control" style="color:#94a3b8;text-decoration:none;font-size:0.8rem;margin-left:8px;">🎛️ Control</a>
         </header>
         <div class="flow-container">
           #{rendered}
@@ -396,6 +494,7 @@ defmodule ADK.DevServer.Router do
         <span class="badge">#{agent_name}</span>
         <span class="badge">#{model}</span>
         <a href="/flow" style="color:#94a3b8;text-decoration:none;font-size:0.8rem;margin-left:auto;">🔀 Flow</a>
+        <a href="/control" style="color:#94a3b8;text-decoration:none;font-size:0.8rem;margin-left:8px;">🎛️ Control</a>
       </header>
 
       <div id="chat">

@@ -26,7 +26,7 @@ defmodule ADK.Auth.OAuth2Discovery do
             error -> error
           end
         end
-      error ->
+      _error ->
         case fetch_and_decode(openid_config_url) do
           {:ok, metadata} ->
             if metadata["issuer"] == issuer do
