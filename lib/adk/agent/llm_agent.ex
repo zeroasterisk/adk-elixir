@@ -88,6 +88,7 @@ defmodule ADK.Agent.LlmAgent do
         case extract_function_calls(response) do
           [] ->
             # No tool calls — this is the final response
+            event = maybe_save_output_to_state(event, agent)
             ADK.Context.emit_event(ctx, event)
             [event]
 
@@ -336,6 +337,65 @@ defmodule ADK.Agent.LlmAgent do
       end
 
     history ++ user_msg
+  end
+
+  @doc false
+  def maybe_save_output_to_state(event, agent) do
+    output_key = agent.output_key
+
+    cond do
+      is_nil(output_key) ->
+        event
+
+      event.partial == true ->
+        event
+
+      event.author != agent.name ->
+        require Logger
+        Logger.debug("Skipping output save for agent #{agent.name}: event authored by #{event.author}")
+        event
+
+      true ->
+        text = extract_text_from_event_content(event.content)
+
+        if is_nil(text) or String.trim(text) == "" do
+          event
+        else
+          value = maybe_parse_with_schema(text, agent.output_schema)
+          delta = %{added: Map.put(%{}, output_key, value), changed: %{}, removed: []}
+          actions = event.actions || %ADK.EventActions{}
+          %{event | actions: %{actions | state_delta: delta}}
+        end
+    end
+  end
+
+  defp extract_text_from_event_content(nil), do: nil
+
+  defp extract_text_from_event_content(content) when is_map(content) do
+    parts = Map.get(content, "parts") || Map.get(content, :parts) || []
+
+    texts =
+      Enum.flat_map(parts, fn
+        %{"text" => t} when is_binary(t) -> [t]
+        %{text: t} when is_binary(t) -> [t]
+        _ -> []
+      end)
+
+    case texts do
+      [] -> nil
+      list -> Enum.join(list, "")
+    end
+  end
+
+  defp extract_text_from_event_content(_), do: nil
+
+  defp maybe_parse_with_schema(text, nil), do: text
+
+  defp maybe_parse_with_schema(text, _schema) do
+    case Jason.decode(text) do
+      {:ok, parsed} -> parsed
+      {:error, _} -> text
+    end
   end
 
   defp event_from_response(response, ctx, agent) do
