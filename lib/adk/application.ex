@@ -15,7 +15,8 @@ defmodule ADK.Application do
       ├── ADK.RunnerSupervisor       — Task.Supervisor for async agent executions
       ├── ADK.Telemetry.SpanStore    — ETS-backed debug span storage
       ├── ADK.Tool.Approval          — GenServer for HITL tool approval (optional)
-      └── ADK.LLM.CircuitBreaker     — Circuit breaker for LLM calls
+      ├── ADK.LLM.CircuitBreaker     — Circuit breaker for LLM calls
+      └── ADK.LLM.Router             — Smart multi-backend LLM router with failover
 
   Uses `rest_for_one` because sessions depend on the Registry being alive.
   If the Registry restarts, all sessions must restart to re-register.
@@ -28,10 +29,15 @@ defmodule ADK.Application do
         start_credential_store: true,   # default true
         start_artifact_store: true,     # default true
         start_circuit_breaker: true,    # default true
+        start_llm_router: true,         # default true
         start_approval_server: false,   # default false — enable for HITL in server mode
         circuit_breaker: [              # CircuitBreaker options
           failure_threshold: 5,
           reset_timeout_ms: 60_000
+        ],
+        llm_router: [                   # LLM Router options
+          backends: [],
+          fallback_error: :all_backends_failed
         ]
   """
 
@@ -94,6 +100,11 @@ defmodule ADK.Application do
                [name: ADK.LLM.CircuitBreaker],
                Application.get_env(:adk, :circuit_breaker, [])
              )}
+        ),
+
+        # Smart LLM router with failover (optional)
+        if(start_child?(:start_llm_router, true),
+          do: {ADK.LLM.Router, name: ADK.LLM.Router}
         )
       ]
       |> Enum.reject(&is_nil/1)
