@@ -26,7 +26,7 @@ defmodule ADK.MixProject do
   def application do
     [
       mod: {ADK.Application, []},
-      extra_applications: [:logger, :crypto, :mox]
+      extra_applications: [:logger, :crypto]
     ]
   end
 
