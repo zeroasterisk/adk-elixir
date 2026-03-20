@@ -87,6 +87,31 @@ defmodule ADK.Event do
     function_calls(event) != []
   end
 
+  @doc "Returns true if the event contains at least one function response."
+  def has_function_responses?(event) do
+    function_responses(event) != []
+  end
+
+  @doc "Returns true if the event has text content (not just tool calls)."
+  def text?(event), do: text(event) != nil
+
+  @doc "Returns true if this is a compaction event."
+  def compaction?(event), do: event.author == "system:compaction"
+
+  @doc "Reconstruct an event from a map (string or atom keys)."
+  def from_map(map) when is_map(map) do
+    fields = [:type, :data, :custom_metadata, :error, :content, :id,
+              :invocation_id, :author, :branch, :timestamp, :partial, :actions]
+
+    attrs = Enum.reduce(fields, %{}, fn field, acc ->
+      key_str = Atom.to_string(field)
+      val = Map.get(map, field) || Map.get(map, key_str)
+      if val != nil, do: Map.put(acc, field, val), else: acc
+    end)
+
+    struct(__MODULE__, attrs)
+  end
+
   @doc false
   # Get parts from event content, handling both string and atom keys
   defp parts(event) do
