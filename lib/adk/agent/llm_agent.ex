@@ -6,7 +6,6 @@ defmodule ADK.Agent.LlmAgent do
   This is the primary agent type in ADK Elixir.
   """
 
-  @enforce_keys [:name, :model, :instruction]
   defstruct [
     :name,
     :model,
@@ -97,10 +96,23 @@ defmodule ADK.Agent.LlmAgent do
             ADK.Context.emit_event(ctx, event)
             tool_results = execute_tools(ctx, agent, calls)
 
-            # Check for transfer
+            # Check for exit_loop, transfer, or normal continuation
+            exit_loop = Enum.find(tool_results, &Map.get(&1, :exit_loop))
             transfer = Enum.find(tool_results, &Map.get(&1, :transfer_to_agent))
 
-            if transfer do
+            cond do
+              exit_loop ->
+                exit_reason = exit_loop[:result] || "Exiting loop"
+                escalate_event = ADK.Event.new(%{
+                  invocation_id: ctx.invocation_id,
+                  author: agent.name,
+                  content: %{role: :model, parts: [%{text: exit_reason}]},
+                  actions: %ADK.EventActions{escalate: true}
+                })
+                ADK.Context.emit_event(ctx, escalate_event)
+                [event, escalate_event]
+
+              transfer ->
               target_name = transfer.transfer_to_agent
 
               transfer_event =
@@ -113,7 +125,8 @@ defmodule ADK.Agent.LlmAgent do
 
               ADK.Context.emit_event(ctx, transfer_event)
               [event, transfer_event]
-            else
+
+              true ->
               # Build tool response and loop
               response_parts =
                 Enum.map(tool_results, fn tr ->
@@ -140,7 +153,7 @@ defmodule ADK.Agent.LlmAgent do
               end
 
               [event, response_event | do_run(ctx, agent, iteration + 1)]
-            end
+            end # cond
         end
 
       {:error, reason} ->
@@ -438,6 +451,9 @@ defmodule ADK.Agent.LlmAgent do
           case result do
             {:transfer_to_agent, target} ->
               %{name: call.name, result: "Transferring to #{target}", transfer_to_agent: target}
+
+            {:exit_loop, reason} ->
+              %{name: call.name, result: reason, exit_loop: true}
 
             {:ok, value} ->
               %{name: call.name, result: value}
