@@ -12,7 +12,7 @@ defmodule ADK.MCP.StdioIntegrationTest do
   alias ADK.MCP.Toolset
   alias ADK.Tool.FunctionTool
 
-  @mock_server Path.expand("../../../../priv/test_scripts/mock_mcp_server.exs", __DIR__)
+  @mock_server Path.expand("../../../priv/test_scripts/mock_mcp_server.exs", __DIR__)
 
   describe "MCP stdio → tool discovery → tool call pipeline" do
     setup do
