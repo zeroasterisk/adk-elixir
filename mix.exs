@@ -52,7 +52,9 @@ defmodule ADK.MixProject do
       {:mox, "~> 1.0", only: :test},
       {:bypass, "~> 2.1", only: :test},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
-      {:a2a, github: "zeroasterisk/a2a-elixir", branch: "main"},
+      # A2A protocol support — optional, install {:a2a, "~> 0.2"} to enable
+      # See: https://hex.pm/packages/a2a
+      {:a2a, "~> 0.2", optional: true},
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
       {:plug, "~> 1.14", optional: true},

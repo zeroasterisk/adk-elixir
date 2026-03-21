@@ -1,3 +1,4 @@
+if Code.ensure_loaded?(A2A.AgentCard) and function_exported?(A2A.AgentCard, :new, 1) do
 defmodule ADK.A2A.AgentCard do
   @moduledoc """
   Generates an A2A Agent Card from an ADK agent.
@@ -82,4 +83,9 @@ defmodule ADK.A2A.AgentCard do
   defp get_tool_description(%ADK.Tool.FunctionTool{description: desc}), do: desc
   defp get_tool_description(mod) when is_atom(mod), do: mod.description()
   defp get_tool_description(_), do: ""
+end
+else
+  defmodule ADK.A2A.AgentCard do
+    @moduledoc "Requires {:a2a, \"~> 0.2\"} optional dependency. Install it to enable A2A protocol support."
+  end
 end

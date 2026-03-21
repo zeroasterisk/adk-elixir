@@ -1,3 +1,4 @@
+if Code.ensure_loaded?(A2A.AgentCard) and function_exported?(A2A.AgentCard, :new, 1) do
 defmodule ADK.A2A.RemoteAgentTool do
   @moduledoc """
   Wraps a remote A2A agent as an ADK tool.
@@ -86,4 +87,9 @@ defmodule ADK.A2A.RemoteAgentTool do
   end
 
   defp extract_text_from_artifacts(_), do: ""
+end
+else
+  defmodule ADK.A2A.RemoteAgentTool do
+    @moduledoc "Requires {:a2a, \"~> 0.2\"} optional dependency. Install it to enable A2A protocol support."
+  end
 end

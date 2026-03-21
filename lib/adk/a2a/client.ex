@@ -1,3 +1,4 @@
+if Code.ensure_loaded?(A2A.AgentCard) and function_exported?(A2A.AgentCard, :new, 1) do
 defmodule ADK.A2A.Client do
   @moduledoc """
   A2A protocol client — delegates to `A2A.Client` from the
@@ -87,5 +88,10 @@ defmodule ADK.A2A.Client do
   @spec send_streaming_message(String.t(), String.t(), keyword()) :: {:ok, Enumerable.t()} | {:error, term()}
   def send_streaming_message(base_url, message, opts \\ []) do
     A2A.Client.send_streaming_message(base_url, message, opts)
+  end
+end
+else
+  defmodule ADK.A2A.Client do
+    @moduledoc "Requires {:a2a, \"~> 0.2\"} optional dependency. Install it to enable A2A protocol support."
   end
 end

@@ -1,3 +1,4 @@
+if Code.ensure_loaded?(A2A.AgentCard) and function_exported?(A2A.AgentCard, :new, 1) do
 defmodule ADK.A2A.Message do
   @moduledoc """
   Converts between ADK Events and A2A protocol messages.
@@ -64,4 +65,9 @@ defmodule ADK.A2A.Message do
   defp part_to_content(%A2A.Part{url: u}) when not is_nil(u), do: %{file: u}
   defp part_to_content(%A2A.Part{data: d}) when not is_nil(d), do: %{data: d}
   defp part_to_content(other), do: %{data: other}
+end
+else
+  defmodule ADK.A2A.Message do
+    @moduledoc "Requires {:a2a, \"~> 0.2\"} optional dependency. Install it to enable A2A protocol support."
+  end
 end

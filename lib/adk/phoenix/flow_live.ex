@@ -237,7 +237,7 @@ if Code.ensure_loaded?(Phoenix.Component) do
         %ADK.Agent.LoopAgent{} -> :loop
         %ADK.Agent.LlmAgent{} -> :llm
         %ADK.Agent.Custom{} -> :custom
-        %ADK.Agent.RemoteA2aAgent{} -> :remote
+        agent when is_struct(agent) and agent.__struct__ == ADK.Agent.RemoteA2aAgent -> :remote
         _ -> :unknown
       end
     end

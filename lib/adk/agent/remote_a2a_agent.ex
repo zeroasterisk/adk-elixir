@@ -1,3 +1,4 @@
+if Code.ensure_loaded?(A2A.AgentCard) and function_exported?(A2A.AgentCard, :new, 1) do
 defmodule ADK.Agent.RemoteA2aAgent do
   @moduledoc """
   Agent that communicates with a remote A2A agent via A2A client.
@@ -197,5 +198,10 @@ defimpl ADK.Agent, for: ADK.Agent.RemoteA2aAgent do
         actions: %ADK.EventActions{state_delta: state_delta}
       })
     ]
+  end
+end
+else
+  defmodule ADK.Agent.RemoteA2aAgent do
+    @moduledoc "Requires {:a2a, \"~> 0.2\"} optional dependency. Install it to enable A2A protocol support."
   end
 end

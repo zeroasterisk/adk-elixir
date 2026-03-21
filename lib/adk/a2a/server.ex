@@ -1,3 +1,4 @@
+if Code.ensure_loaded?(A2A.AgentCard) and function_exported?(A2A.AgentCard, :new, 1) do
 defmodule ADK.A2A.Server do
   @moduledoc """
   A2A protocol server for ADK agents, implemented as a Plug.
@@ -168,5 +169,10 @@ defmodule ADK.A2A.Server.Handler do
       _ ->
         []
     end)
+  end
+end
+else
+  defmodule ADK.A2A.Server do
+    @moduledoc "Requires {:a2a, \"~> 0.2\"} optional dependency. Install it to enable A2A protocol support."
   end
 end
