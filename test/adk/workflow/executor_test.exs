@@ -21,9 +21,12 @@ defmodule ADK.Workflow.ExecutorTest do
   defp build_graph(edges, nodes \\ %{}) do
     expanded =
       Enum.flat_map(edges, fn
-        {from, %{} = routes} -> [{from, routes}]
+        {from, %{} = routes} ->
+          [{from, routes}]
+
         tuple ->
           elements = Tuple.to_list(tuple)
+
           case elements do
             [from, to] -> [{from, to}]
             chain -> Enum.chunk_every(chain, 2, 1, :discard) |> Enum.map(fn [a, b] -> {a, b} end)
@@ -272,5 +275,23 @@ defmodule ADK.Workflow.ExecutorTest do
 
       :telemetry.detach("test-node-#{inspect(ref)}")
     end
+  end
+
+  test "validates node output and stops on error" do
+    step_a =
+      ADK.Workflow.Step.new(:a, fn _ctx -> "output A" end, nil, fn output ->
+        if output == "output A", do: {:error, "validation failed"}, else: :ok
+      end)
+
+    step_b = ADK.Workflow.Step.new(:b, fn _ctx -> "output B" end)
+
+    graph = build_graph([{:START, :a, :b, :END}], %{a: step_a, b: step_b})
+    events = Executor.run(graph, make_ctx())
+
+    # We expect an error event from the workflow
+    texts = Enum.map(events, &ADK.Event.text/1) |> Enum.reject(&is_nil/1)
+
+    assert Enum.any?(texts, &String.contains?(&1, "validation_failed"))
+    assert not Enum.any?(texts, &String.contains?(&1, "output B"))
   end
 end

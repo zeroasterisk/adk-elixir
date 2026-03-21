@@ -174,6 +174,13 @@ defmodule ADK.Workflow.Executor do
 
     {status, events, output} = run_node(node_def, node_id, ctx)
 
+    status =
+      if status == :ok do
+        validate_output(node_def, output, ctx)
+      else
+        status
+      end
+
     if status == :ok do
       state.store.save(state.workflow_id, node_id, :completed, output)
 
@@ -333,6 +340,25 @@ defmodule ADK.Workflow.Executor do
       {{:error, :unknown_node_type}, [event], nil}
     end
   end
+
+  # ── Validation ──
+
+  defp validate_output(%ADK.Workflow.Step{validate: val}, output, ctx) when is_function(val) do
+    case :erlang.fun_info(val, :arity) do
+      {:arity, 1} -> val.(output)
+      {:arity, 2} -> val.(output, ctx)
+      _ -> :ok
+    end
+    |> case do
+      :ok -> :ok
+      {:error, reason} -> {:error, {:validation_failed, reason}}
+      false -> {:error, :validation_failed}
+      true -> :ok
+      _ -> :ok
+    end
+  end
+
+  defp validate_output(_node_def, _output, _ctx), do: :ok
 
   # ── Helpers ──
 

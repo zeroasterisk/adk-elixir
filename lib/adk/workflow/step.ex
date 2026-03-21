@@ -3,22 +3,25 @@ defmodule ADK.Workflow.Step do
   Represents a single workflow step with support for execution and compensation.
   """
   @enforce_keys [:name, :run]
-  defstruct [:name, :run, :compensate]
+  defstruct [:name, :run, :compensate, :validate]
 
   @type t :: %__MODULE__{
           name: atom() | String.t(),
           run: (any() -> any()) | (any(), any() -> any()),
-          compensate: (any(), any(), any() -> any()) | nil
+          compensate: (any(), any(), any() -> any()) | nil,
+          validate:
+            (any(), any() -> :ok | {:error, any()}) | (any() -> :ok | {:error, any()}) | nil
         }
 
   @doc """
   Create a new step with a run function and optional compensation function.
   """
-  def new(name, run_fun, compensate_fun \\ nil) do
+  def new(name, run_fun, compensate_fun \\ nil, validate_fun \\ nil) do
     %__MODULE__{
       name: name,
       run: run_fun,
-      compensate: compensate_fun
+      compensate: compensate_fun,
+      validate: validate_fun
     }
   end
 end
