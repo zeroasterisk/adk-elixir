@@ -91,7 +91,7 @@ defmodule ADK.InstructionCompiler do
   """
   @spec substitute_vars(String.t(), map()) :: String.t()
   def substitute_vars(instruction, state) when is_binary(instruction) and is_map(state) do
-    Regex.replace(~r/\{(\w+)\}/, instruction, fn full_match, key ->
+    Regex.replace(~r/\{\{\s*(\w+)\s*\}\}/, instruction, fn full_match, key ->
       atom_value =
         try do
           Map.get(state, String.to_existing_atom(key))

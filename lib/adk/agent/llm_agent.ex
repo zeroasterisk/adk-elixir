@@ -100,6 +100,23 @@ defmodule ADK.Agent.LlmAgent do
     # Build LLM request
     request = build_request(ctx, agent)
 
+    # Run before_model callbacks
+    callbacks = ctx.callbacks || []
+    cb_ctx = %{agent: agent, context: ctx, request: request}
+    case ADK.Callback.run_before(callbacks, :before_model, cb_ctx) do
+      {:halt, {:ok, response}} ->
+        event = event_from_response(response, ctx, agent)
+        event = maybe_save_output_to_state(event, agent)
+        if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
+        ADK.Context.emit_event(ctx, event)
+        [event]
+
+      {:halt, {:error, reason}} ->
+        error_event = ADK.Event.error(reason, invocation_id: ctx.invocation_id, author: agent.name)
+        ADK.Context.emit_event(ctx, error_event)
+        [error_event]
+
+      {:cont, _cb_ctx} ->
     # Call the LLM
     case ADK.LLM.generate(agent.model, request) do
       {:ok, %{content: nil}} ->
@@ -112,13 +129,21 @@ defmodule ADK.Agent.LlmAgent do
         ADK.Context.emit_event(ctx, event)
         [event]
 
-      {:ok, response} ->
+      {:ok, raw_response} ->
+        # Run after_model callbacks (can modify response)
+        after_cb_ctx = %{agent: agent, context: ctx}
+        response = ADK.Callback.run_after(callbacks, :after_model, {:ok, raw_response}, after_cb_ctx)
+        response = case response do
+          {:ok, r} -> r
+          other -> other
+        end
         event = event_from_response(response, ctx, agent)
 
         case extract_function_calls(response) do
           [] ->
             # No tool calls — this is the final response
             event = maybe_save_output_to_state(event, agent)
+            if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
             ADK.Context.emit_event(ctx, event)
             [event]
 
@@ -198,17 +223,34 @@ defmodule ADK.Agent.LlmAgent do
         end
 
       {:error, reason} ->
-        error_event =
-          ADK.Event.new(%{
-            invocation_id: ctx.invocation_id,
-            author: agent.name,
-            content: %{role: :model, parts: [%{text: "Error: #{inspect(reason)}"}]},
-            error: reason
-          })
+        # Run on_model_error callbacks
+        cb_ctx_err = %{agent: agent, context: ctx}
+        case ADK.Callback.run_on_error(callbacks, {:error, reason}, cb_ctx_err) do
+          {:retry, _new_cb_ctx} ->
+            do_run(ctx, agent, iteration + 1)
 
-        ADK.Context.emit_event(ctx, error_event)
-        [error_event]
-    end
+          {:fallback, {:ok, response}} ->
+            event = event_from_response(response, ctx, agent)
+            event = maybe_save_output_to_state(event, agent)
+            if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
+            ADK.Context.emit_event(ctx, event)
+            [event]
+
+          {:error, final_reason} ->
+            error_event =
+              ADK.Event.new(%{
+                invocation_id: ctx.invocation_id,
+                author: agent.name,
+                content: %{role: :model, parts: [%{text: "Error: #{inspect(final_reason)}"}]},
+                error: final_reason
+              })
+
+            if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, error_event)
+            ADK.Context.emit_event(ctx, error_event)
+            [error_event]
+        end
+    end  # end LLM generate case
+    end  # end before_model callback case
   end
 
   @doc """
@@ -529,7 +571,25 @@ defmodule ADK.Agent.LlmAgent do
 
         tool ->
           tool_ctx = ADK.ToolContext.new(ctx, call[:id] || "call-1", tool)
-          result = run_tool(tool, tool_ctx, call.args || %{})
+          callbacks = ctx.callbacks || []
+          tool_cb_ctx = %{agent: agent, context: ctx, tool: tool, tool_args: call.args || %{}}
+
+          result = case ADK.Callback.run_before(callbacks, :before_tool, tool_cb_ctx) do
+            {:halt, halted_result} -> halted_result
+            {:cont, _} -> 
+              res = run_tool(tool, tool_ctx, call.args || %{})
+              case res do
+                {:error, reason} ->
+                  case ADK.Callback.run_on_tool_error(callbacks, {:error, reason}, tool_cb_ctx) do
+                    {:retry, _} -> run_tool(tool, tool_ctx, call.args || %{})
+                    {:fallback, fallback_res} -> fallback_res
+                    err -> err
+                  end
+                other -> other
+              end
+          end
+
+          result = ADK.Callback.run_after(callbacks, :after_tool, result, tool_cb_ctx)
 
           case result do
             {:transfer_to_agent, target} ->
