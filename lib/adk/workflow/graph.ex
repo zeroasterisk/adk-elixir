@@ -44,11 +44,12 @@ defmodule ADK.Workflow.Graph do
   @spec build([edge()], %{node_id() => any()}) :: t()
   def build(edges, node_defs \\ %{}) do
     # Extract all node IDs from edges
-    node_ids = extract_node_ids(edges)
+    edge_node_ids = extract_node_ids(edges)
+    all_node_ids = Enum.uniq(edge_node_ids ++ Map.keys(node_defs))
 
     # Build nodes map: sentinels + user-provided definitions
     nodes =
-      node_ids
+      all_node_ids
       |> Enum.reduce(%{}, fn id, acc ->
         node = Map.get(node_defs, id, id)
         Map.put(acc, id, node)
@@ -247,8 +248,8 @@ defmodule ADK.Workflow.Graph do
     end
   end
 
-  defp validate_reachability(%{edges: edges} = graph) do
-    node_ids = extract_node_ids(edges) |> MapSet.new()
+  defp validate_reachability(%{nodes: nodes} = graph) do
+    node_ids = Map.keys(nodes) |> MapSet.new()
 
     # BFS from :START
     reachable = bfs(graph, [:START], MapSet.new())
