@@ -80,7 +80,8 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
   describe "transfer event production (parity: test_auto_to_auto)" do
     test "LLM calling transfer tool produces function_call then transfer events" do
       ADK.LLM.Mock.set_responses([
-        %{function_call: %{name: "transfer_to_agent_sub_agent_1", args: %{}, id: "fc-1"}}
+        %{function_call: %{name: "transfer_to_agent_sub_agent_1", args: %{}, id: "fc-1"}},
+        "Echo: test1"
       ])
 
       sub = LlmAgent.new(name: "sub_agent_1", model: "test", instruction: "Sub agent.")
@@ -104,10 +105,10 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
 
       events = ADK.Agent.run(root, ctx)
 
-      # Elixir produces exactly 2 events: fc event + transfer event
-      assert length(events) == 2
+      # Elixir now produces 3 events since it processes sub-agents inline
+      assert length(events) == 3
 
-      [fc_event, transfer_event] = events
+      [fc_event, transfer_event, target_event] = events
 
       # First event: function call from root_agent
       assert fc_event.author == "root_agent"
@@ -121,6 +122,9 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
       actions = transfer_event.actions
       assert is_map(actions)
       assert Map.get(actions, :transfer_to_agent) == "sub_agent_1"
+
+      # Third event: target agent executes
+      assert target_event.author == "sub_agent_1"
 
       GenServer.stop(session_pid)
     end

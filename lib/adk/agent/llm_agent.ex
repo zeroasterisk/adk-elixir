@@ -46,6 +46,7 @@ defmodule ADK.Agent.LlmAgent do
         }
 
   def new(opts) do
+    opts = ADK.Skill.apply_to_opts(opts, Keyword.get(opts, :skills, []))
     agent = struct!(__MODULE__, opts)
     wire_parent(agent)
   end
@@ -577,11 +578,16 @@ defmodule ADK.Agent.LlmAgent do
           result = case ADK.Callback.run_before(callbacks, :before_tool, tool_cb_ctx) do
             {:halt, halted_result} -> halted_result
             {:cont, _} -> 
-              res = run_tool(tool, tool_ctx, call.args || %{})
+              res = ADK.Telemetry.Contract.tool_span(%{tool_name: tool.name, agent_name: agent.name}, fn -> 
+                run_tool(tool, tool_ctx, call.args || %{})
+              end)
               case res do
                 {:error, reason} ->
                   case ADK.Callback.run_on_tool_error(callbacks, {:error, reason}, tool_cb_ctx) do
-                    {:retry, _} -> run_tool(tool, tool_ctx, call.args || %{})
+                    {:retry, _} -> 
+                      ADK.Telemetry.Contract.tool_span(%{tool_name: tool.name, agent_name: agent.name}, fn -> 
+                        run_tool(tool, tool_ctx, call.args || %{})
+                      end)
                     {:fallback, fallback_res} -> fallback_res
                     err -> err
                   end
