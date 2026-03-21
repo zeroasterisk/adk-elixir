@@ -78,7 +78,8 @@ defmodule ADK.Workflow.Executor do
           node_timeout: node_timeout,
           completed: completed_set,
           visited: MapSet.new(),
-          join_results: %{}
+          join_results: %{},
+          history: []
         }
       )
 
@@ -153,7 +154,9 @@ defmodule ADK.Workflow.Executor do
         ordered: true
       )
       |> Enum.flat_map(fn
-        {:ok, {_node_id, events}} -> events
+        {:ok, {_node_id, events}} ->
+          events
+
         {:exit, reason} ->
           [ADK.Event.new(author: "workflow", content: "Parallel node failed: #{inspect(reason)}")]
       end)
@@ -169,80 +172,165 @@ defmodule ADK.Workflow.Executor do
       node_id: node_id
     })
 
-    # Execute the node
-    {events, output} = run_node(node_def, node_id, ctx)
+    {status, events, output} = run_node(node_def, node_id, ctx)
 
-    # Checkpoint
-    state.store.save(state.workflow_id, node_id, :completed, output)
+    if status == :ok do
+      state.store.save(state.workflow_id, node_id, :completed, output)
 
-    emit_telemetry([:node, :stop], %{
-      workflow_id: state.workflow_id,
-      node_id: node_id,
-      event_count: length(events)
-    })
+      emit_telemetry([:node, :stop], %{
+        workflow_id: state.workflow_id,
+        node_id: node_id,
+        event_count: length(events)
+      })
 
-    # Update state
-    new_state = %{state |
-      completed: MapSet.put(state.completed, node_id),
-      visited: MapSet.put(state.visited, node_id)
-    }
+      new_state = %{
+        state
+        | completed: MapSet.put(state.completed, node_id),
+          visited: MapSet.put(state.visited, node_id),
+          history: [node_id | state.history]
+      }
 
-    # Determine next nodes
-    next_events =
-      case Graph.outgoing(graph, node_id) do
-        :none ->
+      next_events =
+        case Graph.outgoing(graph, node_id) do
+          :none ->
+            []
+
+          {:unconditional, targets} ->
+            execute_nodes(targets, graph, ctx, new_state)
+
+          {:conditional, routes} ->
+            route_key = extract_route(events, output)
+
+            case Map.get(routes, route_key) do
+              nil ->
+                case Map.get(routes, "default") || Map.get(routes, :default) do
+                  nil -> []
+                  default_target -> execute_nodes([default_target], graph, ctx, new_state)
+                end
+
+              target ->
+                execute_nodes([target], graph, ctx, new_state)
+            end
+        end
+
+      events ++ next_events
+    else
+      state.store.save(state.workflow_id, node_id, :failed, output)
+
+      emit_telemetry([:node, :fail], %{
+        workflow_id: state.workflow_id,
+        node_id: node_id,
+        reason: status
+      })
+
+      compensation_events = rollback(state.history, status, graph, ctx)
+
+      events ++
+        compensation_events ++
+        [
+          ADK.Event.error("Workflow failed at node #{node_id}: #{inspect(status)}",
+            author: "workflow"
+          )
+        ]
+    end
+  end
+
+  defp rollback([], _reason, _graph, _ctx), do: []
+
+  defp rollback([node_id | rest], reason, graph, ctx) do
+    node_def = Map.get(graph.nodes, node_id)
+
+    events =
+      case node_def do
+        %ADK.Workflow.Step{compensate: comp} when is_function(comp) ->
+          invoke_compensate(comp, node_id, reason, ctx)
+
+        _ ->
           []
-
-        {:unconditional, targets} ->
-          execute_nodes(targets, graph, ctx, new_state)
-
-        {:conditional, routes} ->
-          # Extract route from output or last event
-          route_key = extract_route(events, output)
-
-          case Map.get(routes, route_key) do
-            nil ->
-              # Try default route
-              case Map.get(routes, "default") || Map.get(routes, :default) do
-                nil -> []
-                default_target -> execute_nodes([default_target], graph, ctx, new_state)
-              end
-
-            target ->
-              execute_nodes([target], graph, ctx, new_state)
-          end
       end
 
-    events ++ next_events
+    events ++ rollback(rest, reason, graph, ctx)
+  end
+
+  defp invoke_compensate(comp, node_id, reason, ctx) do
+    result =
+      case :erlang.fun_info(comp, :arity) do
+        {:arity, 1} -> comp.(ctx)
+        {:arity, 2} -> comp.(node_id, ctx)
+        {:arity, 3} -> comp.(node_id, reason, ctx)
+        _ -> comp.(ctx)
+      end
+
+    wrap_events(result, :"#{node_id}_compensate")
   end
 
   # ── Node Execution ──
 
-  defp run_node(node_def, node_id, ctx) when is_function(node_def, 1) do
-    result = node_def.(ctx)
+  defp run_node(%ADK.Workflow.Step{} = step, node_id, ctx) do
+    result =
+      if is_function(step.run, 2) do
+        step.run.(node_id, ctx)
+      else
+        step.run.(ctx)
+      end
+
+    status =
+      case result do
+        {:error, _} = err -> err
+        {:halt, reason} -> {:error, reason}
+        _ -> :ok
+      end
+
     events = wrap_events(result, node_id)
     output = extract_output(events)
-    {events, output}
+    {status, events, output}
+  end
+
+  defp run_node(node_def, node_id, ctx) when is_function(node_def, 1) do
+    result = node_def.(ctx)
+
+    status =
+      case result do
+        {:error, _} = err -> err
+        {:halt, reason} -> {:error, reason}
+        _ -> :ok
+      end
+
+    events = wrap_events(result, node_id)
+    output = extract_output(events)
+    {status, events, output}
   end
 
   defp run_node(node_def, node_id, _ctx) when is_function(node_def, 0) do
     result = node_def.()
+
+    status =
+      case result do
+        {:error, _} = err -> err
+        {:halt, reason} -> {:error, reason}
+        _ -> :ok
+      end
+
     events = wrap_events(result, node_id)
     output = extract_output(events)
-    {events, output}
+    {status, events, output}
   end
 
   defp run_node(node_def, _node_id, ctx) do
-    # Try ADK.Agent protocol
     if ADK.Agent.impl_for(node_def) do
       child_ctx = ADK.Context.for_child(ctx, node_def)
       events = ADK.Agent.run(node_def, child_ctx)
       output = extract_output(events)
-      {events, output}
+
+      status =
+        if Enum.any?(events, &(&1.custom_metadata && &1.custom_metadata[:error])),
+          do: {:error, :agent_error},
+          else: :ok
+
+      {status, events, output}
     else
-      # Unknown node type — emit error
       event = ADK.Event.error("Unknown node type: #{inspect(node_def)}", author: "workflow")
-      {[event], nil}
+      {{:error, :unknown_node_type}, [event], nil}
     end
   end
 
@@ -256,7 +344,8 @@ defmodule ADK.Workflow.Executor do
       case Graph.outgoing(graph, node_id) do
         :none -> []
         {:unconditional, targets} -> execute_nodes(targets, graph, ctx, new_state)
-        {:conditional, _routes} -> [] # Can't route without re-executing
+        # Can't route without re-executing
+        {:conditional, _routes} -> []
       end
     end)
   end
@@ -272,7 +361,12 @@ defmodule ADK.Workflow.Executor do
   defp wrap_events(nil, _node_id), do: []
 
   defp wrap_events(result, node_id) do
-    [ADK.Event.new(author: to_string(node_id), content: %{"parts" => [%{"text" => inspect(result)}]})]
+    [
+      ADK.Event.new(
+        author: to_string(node_id),
+        content: %{"parts" => [%{"text" => inspect(result)}]}
+      )
+    ]
   end
 
   defp extract_output(events) do

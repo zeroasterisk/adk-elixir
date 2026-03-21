@@ -126,7 +126,10 @@ defmodule ADK.Workflow do
   - `:resume_id` — resume from a previous execution's checkpoints
   """
   @spec run(t(), ADK.Context.t(), keyword()) :: [ADK.Event.t()]
-  def run(%__MODULE__{} = workflow, %ADK.Context{} = ctx, opts \\ []) do
+  @spec run(atom() | String.t(), function(), function() | nil) :: ADK.Workflow.Step.t()
+  def run(arg1, arg2, arg3 \\ [])
+
+  def run(%__MODULE__{} = workflow, %ADK.Context{} = ctx, opts) do
     Executor.run(
       workflow.graph,
       ctx,
@@ -140,6 +143,10 @@ defmodule ADK.Workflow do
         opts
       )
     )
+  end
+
+  def run(name, run_fun, compensate_fun) when is_atom(name) or is_binary(name) do
+    ADK.Workflow.Step.new(name, run_fun, compensate_fun)
   end
 
   @doc """
