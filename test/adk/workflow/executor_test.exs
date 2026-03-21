@@ -3,7 +3,7 @@ defmodule ADK.Workflow.ExecutorTest do
 
   alias ADK.Workflow.{Graph, Executor, Checkpoint.EtsStore}
 
-  defp make_agent(name, text \\ nil) do
+  defp make_agent(name, text) do
     text = text || "output from #{name}"
 
     ADK.Agent.Custom.new(

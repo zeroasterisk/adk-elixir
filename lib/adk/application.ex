@@ -14,6 +14,7 @@ defmodule ADK.Application do
       ├── ADK.SessionSupervisor      — DynamicSupervisor for session GenServers
       ├── ADK.RunnerSupervisor       — Task.Supervisor for async agent executions
       ├── ADK.Telemetry.SpanStore    — ETS-backed debug span storage
+      ├── ADK.Workflow.Checkpoint.EtsStore — ETS-backed workflow checkpoints
       ├── ADK.Tool.Approval          — GenServer for HITL tool approval (optional)
       ├── ADK.LLM.CircuitBreaker     — Circuit breaker for LLM calls
       └── ADK.LLM.Router             — Smart multi-backend LLM router with failover
@@ -86,6 +87,9 @@ defmodule ADK.Application do
 
         # ETS-backed debug span storage
         ADK.Telemetry.SpanStore,
+
+        # ETS-backed workflow checkpoint store
+        ADK.Workflow.Checkpoint.EtsStore,
 
         # Approval server for HITL tool confirmation (optional)
         if(start_child?(:start_approval_server, false),
