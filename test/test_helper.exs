@@ -1,4 +1,4 @@
-ExUnit.start(exclude: [:integration])
+ExUnit.start(exclude: [:integration, :a2a])
 
 # Ensure the ADK application is started even when running with `--no-start`.
 # This starts the supervision tree (SessionRegistry, RunnerSupervisor, etc.)

@@ -34,6 +34,7 @@ defmodule ADK.Agent.RemoteA2aAgentParityTest do
   via actual network failures are tagged @tag :skip_error_bug.
   """
   use ExUnit.Case, async: true
+  @moduletag :a2a
 
   alias ADK.Agent.RemoteA2aAgent
 
@@ -635,12 +636,13 @@ defmodule ADK.Agent.RemoteA2aAgentParityTest do
 
     test "target can be an AgentCard struct" do
       card =
-        A2A.AgentCard.new(
+        %A2A.AgentCard{
           name: "remote",
           url: "https://example.com/rpc",
           description: "Remote agent",
-          version: "1.0"
-        )
+          version: "1.0",
+          skills: []
+        }
 
       agent = RemoteA2aAgent.new(name: "test", target: card)
       assert %A2A.AgentCard{} = agent.target

@@ -1,4 +1,4 @@
-if Code.ensure_loaded?(A2A.AgentCard) and function_exported?(A2A.AgentCard, :new, 1) do
+if Code.ensure_loaded?(A2A.AgentCard) do
 defmodule ADK.A2A.RemoteAgentTool do
   @moduledoc """
   Wraps a remote A2A agent as an ADK tool.

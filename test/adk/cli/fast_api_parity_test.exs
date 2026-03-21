@@ -37,6 +37,7 @@ defmodule ADK.CLI.FastApiParityTest do
   """
 
   use ExUnit.Case, async: true
+  @moduletag :a2a
 
   import Plug.Test
   import Plug.Conn

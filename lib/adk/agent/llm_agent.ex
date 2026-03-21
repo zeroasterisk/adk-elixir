@@ -19,6 +19,7 @@ defmodule ADK.Agent.LlmAgent do
     description: "",
     tools: [],
     sub_agents: [],
+    _peer_agents: [],
     max_iterations: 10,
     generate_config: %{},
     disallow_transfer_to_parent: false,
@@ -45,8 +46,38 @@ defmodule ADK.Agent.LlmAgent do
         }
 
   def new(opts) do
-    struct!(__MODULE__, opts)
+    agent = struct!(__MODULE__, opts)
+    wire_parent(agent)
   end
+
+  defp wire_parent(%__MODULE__{sub_agents: []} = agent), do: agent
+  defp wire_parent(%__MODULE__{sub_agents: subs} = agent) when is_list(subs) do
+    # Create a minimal parent reference (no sub_agents to avoid circularity)
+    parent_ref = %__MODULE__{name: agent.name, model: agent.model, instruction: agent.instruction,
+                             description: agent.description}
+
+    # First pass: recursively wire children
+    wired_subs = Enum.map(subs, fn
+      %__MODULE__{} = child ->
+        %{child | parent_agent: parent_ref}
+        |> wire_parent()
+      other -> other
+    end)
+
+    # Second pass: set peer agents (siblings excluding self)
+    wired_subs = Enum.map(wired_subs, fn
+      %__MODULE__{} = child ->
+        peers = Enum.filter(wired_subs, fn
+          %__MODULE__{name: n} -> n != child.name
+          _ -> false
+        end)
+        %{child | _peer_agents: peers}
+      other -> other
+    end)
+
+    %{agent | sub_agents: wired_subs}
+  end
+  defp wire_parent(agent), do: agent
 
   # ---------- Protocol Implementation ----------
 
@@ -120,11 +151,21 @@ defmodule ADK.Agent.LlmAgent do
                   invocation_id: ctx.invocation_id,
                   author: agent.name,
                   content: %{role: :model, parts: [%{text: "Transferring to #{target_name}"}]},
-                  actions: %{transfer_to_agent: target_name}
+                  actions: %ADK.EventActions{transfer_to_agent: target_name}
                 })
 
               ADK.Context.emit_event(ctx, transfer_event)
-              [event, transfer_event]
+
+              # Execute the target agent within the same invocation
+              target_events =
+                case find_transfer_target(agent, target_name) do
+                  nil -> []
+                  target_agent ->
+                    target_ctx = %{ctx | agent: target_agent}
+                    do_run(target_ctx, target_agent, 0)
+                end
+
+              [event, transfer_event | target_events]
 
               true ->
               # Build tool response and loop
@@ -242,20 +283,62 @@ defmodule ADK.Agent.LlmAgent do
   Compute the full tool list including auto-generated transfer tools.
   """
   def effective_tools(agent) do
+    targets = transfer_targets(agent)
     transfer_tools =
-      case agent.sub_agents do
+      case targets do
         [] -> []
-        subs -> ADK.Tool.TransferToAgent.tools_for_sub_agents(subs)
+        agents -> ADK.Tool.TransferToAgent.tools_for_sub_agents(agents)
       end
 
     agent.tools ++ transfer_tools
   end
 
+  @doc false
+  def find_transfer_target(agent, target_name) do
+    # Check sub-agents
+    result = Enum.find(agent.sub_agents || [], fn a ->
+      is_struct(a) && Map.get(a, :name) == target_name
+    end)
+
+    if result do
+      result
+    else
+      # Check parent
+      parent = agent.parent_agent
+      if parent && is_struct(parent) && Map.get(parent, :name) == target_name do
+        parent
+      else
+        # Check peer agents
+        Enum.find(agent._peer_agents || [], fn a ->
+          is_struct(a) && Map.get(a, :name) == target_name
+        end)
+      end
+    end
+  end
+
   @doc """
   Compute the list of agents this agent can transfer to.
+
+  Includes sub-agents, parent (if not disallowed), and peer siblings (if not disallowed).
   """
   def transfer_targets(agent) do
-    agent.sub_agents || []
+    subs = agent.sub_agents || []
+
+    parent =
+      if agent.parent_agent && !agent.disallow_transfer_to_parent do
+        [agent.parent_agent]
+      else
+        []
+      end
+
+    peers =
+      if !agent.disallow_transfer_to_peers do
+        agent._peer_agents || []
+      else
+        []
+      end
+
+    subs ++ parent ++ peers
   end
 
   @doc """

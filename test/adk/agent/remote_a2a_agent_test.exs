@@ -1,5 +1,6 @@
 defmodule ADK.Agent.RemoteA2aAgentTest do
   use ExUnit.Case, async: true
+  @moduletag :a2a
 
   alias ADK.Agent.RemoteA2aAgent
   alias ADK.Context

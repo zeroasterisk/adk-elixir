@@ -8,58 +8,86 @@ defmodule ADK.Auth.OAuth2Discovery do
   @timeout 5000
 
   def discover_auth_server_metadata(issuer) do
-    oauth_server_config_url = URI.parse(issuer) |> Map.put(:path, "/.well-known/oauth-authorization-server") |> URI.to_string()
-    openid_config_url = URI.parse(issuer) |> Map.put(:path, "/.well-known/openid-configuration") |> URI.to_string()
+    parsed = URI.parse(issuer)
+    issuer_path = parsed.path || ""
+    
+    path_relative = Path.join(issuer_path, "/.well-known/openid-configuration")
+    path_relative = if String.starts_with?(path_relative, "/"), do: path_relative, else: "/" <> path_relative
 
-    case fetch_and_decode(oauth_server_config_url) do
-      {:ok, metadata} ->
-        if metadata["issuer"] == issuer do
-          {:ok, struct(AuthorizationServerMetadata, metadata)}
-        else
-          case fetch_and_decode(openid_config_url) do
-            {:ok, metadata} ->
-              if metadata["issuer"] == issuer do
-                {:ok, struct(AuthorizationServerMetadata, metadata)}
-              else
-                {:error, :mismatched_issuer}
-              end
-            error -> error
-          end
-        end
-      _error ->
-        case fetch_and_decode(openid_config_url) do
-          {:ok, metadata} ->
-            if metadata["issuer"] == issuer do
-              {:ok, struct(AuthorizationServerMetadata, metadata)}
-            else
-              {:error, :mismatched_issuer}
-            end
-          error -> error
-        end
-    end
+    # RFC 8414: try standard well-known URLs, then path-prefixed variants
+    candidate_urls = [
+      Map.put(parsed, :path, "/.well-known/oauth-authorization-server") |> URI.to_string(),
+      Map.put(parsed, :path, "/.well-known/openid-configuration") |> URI.to_string(),
+      # Path-relative: issuer_path + /.well-known/...
+      Map.put(parsed, :path, path_relative) |> URI.to_string()
+    ]
+    |> Enum.uniq()
+
+    try_candidates(candidate_urls, issuer, AuthorizationServerMetadata, :mismatched_issuer, :issuer)
   end
 
-  def discover_resource_metadata(resource) do
-    url = URI.parse(resource) |> Map.put(:path, "/.well-known/oauth-protected-resource") |> URI.to_string()
+  defp try_candidates([url], match_val, struct_mod, error_tag, match_key) do
     case fetch_and_decode(url) do
       {:ok, metadata} ->
-        if metadata["resource"] == resource do
-          {:ok, struct(ProtectedResourceMetadata, metadata)}
+        if metadata[match_key] == match_val do
+          {:ok, struct(struct_mod, metadata)}
         else
-          {:error, :mismatched_resource}
+          {:error, error_tag}
         end
       error -> error
     end
   end
 
+  defp try_candidates([url | rest], match_val, struct_mod, error_tag, match_key) do
+    case fetch_and_decode(url) do
+      {:ok, metadata} ->
+        if metadata[match_key] == match_val do
+          {:ok, struct(struct_mod, metadata)}
+        else
+          try_candidates(rest, match_val, struct_mod, error_tag, match_key)
+        end
+      _error ->
+        try_candidates(rest, match_val, struct_mod, error_tag, match_key)
+    end
+  end
+
+  def discover_resource_metadata(resource) do
+    parsed = URI.parse(resource)
+    url = Map.put(parsed, :path, "/.well-known/oauth-protected-resource") |> URI.to_string()
+    try_candidates([url], resource, ProtectedResourceMetadata, :mismatched_resource, :resource)
+  end
+
   defp fetch_and_decode(url) do
-    case Req.get(url, timeout: @timeout) do
-      {:ok, %{status: 200, body: body}} ->
+    result =
+      try do
+        Req.get(url, receive_timeout: @timeout, retry: false)
+      rescue
+        _ -> {:error, :http_error}
+      catch
+        _, _ -> {:error, :http_error}
+      end
+
+    case result do
+      {:ok, %{status: 200, body: body}} when is_binary(body) ->
         case Jason.decode(body) do
-          {:ok, data} -> {:ok, data}
+          {:ok, data} -> {:ok, atomize_keys(data)}
           _ -> {:error, :invalid_json}
         end
+      {:ok, %{status: 200, body: body}} when is_map(body) ->
+        {:ok, atomize_keys(body)}
       _ -> {:error, :http_error}
     end
+  end
+
+  defp atomize_keys(map) when is_map(map) do
+    Map.new(map, fn
+      {k, v} when is_binary(k) ->
+        try do
+          {String.to_existing_atom(k), v}
+        rescue
+          ArgumentError -> {String.to_atom(k), v}
+        end
+      {k, v} -> {k, v}
+    end)
   end
 end

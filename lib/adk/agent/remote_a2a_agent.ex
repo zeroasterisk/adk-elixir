@@ -1,4 +1,4 @@
-if Code.ensure_loaded?(A2A.AgentCard) and function_exported?(A2A.AgentCard, :new, 1) do
+if Code.ensure_loaded?(A2A.AgentCard) do
 defmodule ADK.Agent.RemoteA2aAgent do
   @moduledoc """
   Agent that communicates with a remote A2A agent via A2A client.
@@ -90,7 +90,7 @@ defimpl ADK.Agent, for: ADK.Agent.RemoteA2aAgent do
 
   # --- Helpers ---
 
-  defp extract_url(%A2A.AgentCard{} = card), do: A2A.AgentCard.url(card) || raise "No URL found in AgentCard"
+  defp extract_url(%A2A.AgentCard{} = card), do: card.url || raise "No URL found in AgentCard"
   defp extract_url(url) when is_binary(url), do: url
 
   defp get_context_id(agent, ctx) do

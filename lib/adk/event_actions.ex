@@ -26,6 +26,7 @@ defmodule ADK.EventActions do
           end_of_agent: boolean()
         }
 
+  @derive Jason.Encoder
   defstruct state_delta: %{},
             artifact_delta: %{},
             requested_auth_configs: %{},

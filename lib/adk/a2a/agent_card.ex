@@ -1,4 +1,4 @@
-if Code.ensure_loaded?(A2A.AgentCard) and function_exported?(A2A.AgentCard, :new, 1) do
+if Code.ensure_loaded?(A2A.AgentCard) do
 defmodule ADK.A2A.AgentCard do
   @moduledoc """
   Generates an A2A Agent Card from an ADK agent.
@@ -28,9 +28,8 @@ defmodule ADK.A2A.AgentCard do
   """
   @spec from_agent(ADK.Agent.t(), keyword()) :: map()
   def from_agent(agent, opts \\ []) do
-    agent
-    |> to_a2a_card(opts)
-    |> A2A.AgentCard.to_map()
+    card = to_a2a_card(agent, opts)
+    A2A.JSON.encode_agent_card(card)
   end
 
   @doc """
@@ -39,22 +38,14 @@ defmodule ADK.A2A.AgentCard do
   @spec to_a2a_card(ADK.Agent.t(), keyword()) :: A2A.AgentCard.t()
   def to_a2a_card(agent, opts \\ []) do
     url = Keyword.get(opts, :url, "http://localhost:4000")
-    capabilities = Keyword.get(opts, :capabilities, %{
-      "streaming" => true,
-      "pushNotifications" => false,
-      "stateTransitionHistory" => true,
-      "extendedAgentCard" => false
-    })
 
-    A2A.AgentCard.new(
+    %A2A.AgentCard{
       name: ADK.Agent.name(agent),
       description: ADK.Agent.description(agent) || "",
       version: Keyword.get(opts, :version, "1.0.0"),
-      provider: opts[:provider],
-      skills: build_skills(agent),
       url: url,
-      capabilities: capabilities
-    )
+      skills: build_skills(agent)
+    }
   end
 
   defp build_skills(%ADK.Agent.LlmAgent{tools: tools}) when is_list(tools) and tools != [] do
@@ -66,7 +57,7 @@ defmodule ADK.A2A.AgentCard do
   defp tool_to_skill(tool) do
     name = get_tool_name(tool)
     desc = get_tool_description(tool)
-    %A2A.AgentCard.Skill{
+    %{
       id: to_string(name),
       name: to_string(name),
       description: desc || "",

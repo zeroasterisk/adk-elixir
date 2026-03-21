@@ -1,5 +1,6 @@
 defmodule ADK.A2A.ServerETSTest do
   use ExUnit.Case, async: false
+  @moduletag :a2a
 
   test "init/1 creates ETS-backed config with adk_config_table" do
     agent = ADK.Agent.LlmAgent.new(name: "test", model: "test", instruction: "test")

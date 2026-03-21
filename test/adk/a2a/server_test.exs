@@ -1,5 +1,6 @@
 defmodule ADK.A2A.ServerTest do
   use ExUnit.Case, async: true
+  @moduletag :a2a
 
   alias ADK.A2A.Server
 

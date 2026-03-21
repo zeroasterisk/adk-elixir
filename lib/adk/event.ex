@@ -45,17 +45,20 @@ defmodule ADK.Event do
   end
 
   def text(event) do
-    parts(event)
-    |> Enum.find_value(fn
-      %{"text" => text} -> text
-      %{text: text} -> text
-      _ -> nil
-    end)
+    text_part =
+      parts(event)
+      |> Enum.find_value(fn
+        %{"text" => text} -> text
+        %{text: text} -> text
+        _ -> nil
+      end)
+
+    text_part || event.error
   end
 
   def final_response?(event) do
     transfer = get_flex(event.actions, "transfer_to_agent")
-    !event.partial && !transfer
+    !event.partial && !transfer && !has_function_calls?(event)
   end
 
   def error(reason, opts) do
@@ -65,7 +68,18 @@ defmodule ADK.Event do
   end
 
   def to_map(event) do
-    Map.from_struct(event)
+    event
+    |> Map.from_struct()
+    |> Map.update(:timestamp, nil, fn
+      %DateTime{} = dt -> DateTime.to_iso8601(dt)
+      nil -> nil
+      other -> other
+    end)
+    |> Map.update(:actions, nil, fn
+      %ADK.EventActions{} = a -> Map.from_struct(a)
+      nil -> %ADK.EventActions{} |> Map.from_struct()
+      other -> other
+    end)
   end
 
   def function_calls(event) do
@@ -109,7 +123,68 @@ defmodule ADK.Event do
       if val != nil, do: Map.put(acc, field, val), else: acc
     end)
 
-    struct(__MODULE__, attrs)
+    # Coerce timestamp from ISO 8601 string to DateTime
+    attrs = case attrs[:timestamp] do
+      s when is_binary(s) ->
+        case DateTime.from_iso8601(s) do
+          {:ok, dt, _} -> Map.put(attrs, :timestamp, dt)
+          _ -> attrs
+        end
+      _ -> attrs
+    end
+
+    # Coerce actions from map to EventActions struct
+    attrs = case attrs[:actions] do
+      m when is_map(m) and not is_struct(m) ->
+        ea = struct(ADK.EventActions, %{
+          state_delta: Map.get(m, "state_delta") || Map.get(m, :state_delta) || %{},
+          artifact_delta: Map.get(m, "artifact_delta") || Map.get(m, :artifact_delta) || %{},
+          requested_auth_configs: Map.get(m, "requested_auth_configs") || Map.get(m, :requested_auth_configs) || %{},
+          transfer_to_agent: Map.get(m, "transfer_to_agent") || Map.get(m, :transfer_to_agent),
+          escalate: Map.get(m, "escalate") || Map.get(m, :escalate) || false,
+          skip_summarization: Map.get(m, "skip_summarization") || Map.get(m, :skip_summarization) || false,
+          end_of_agent: Map.get(m, "end_of_agent") || Map.get(m, :end_of_agent) || false
+        })
+        Map.put(attrs, :actions, ea)
+      _ -> attrs
+    end
+
+    event = struct(__MODULE__, attrs)
+
+    # Migrate legacy top-level function_calls/function_responses into content.parts
+    event = migrate_legacy_function_calls(event, map)
+    event = migrate_legacy_function_responses(event, map)
+    event
+  end
+
+  defp migrate_legacy_function_calls(event, map) do
+    legacy = Map.get(map, "function_calls") || Map.get(map, :function_calls)
+    if is_list(legacy) and length(legacy) > 0 do
+      new_parts = Enum.map(legacy, fn fc -> %{function_call: fc} end)
+      existing_parts = case event.content do
+        %{parts: p} when is_list(p) -> p
+        %{"parts" => p} when is_list(p) -> p
+        _ -> []
+      end
+      %{event | content: %{parts: existing_parts ++ new_parts}}
+    else
+      event
+    end
+  end
+
+  defp migrate_legacy_function_responses(event, map) do
+    legacy = Map.get(map, "function_responses") || Map.get(map, :function_responses)
+    if is_list(legacy) and length(legacy) > 0 do
+      new_parts = Enum.map(legacy, fn fr -> %{function_response: fr} end)
+      existing_parts = case event.content do
+        %{parts: p} when is_list(p) -> p
+        %{"parts" => p} when is_list(p) -> p
+        _ -> []
+      end
+      %{event | content: %{parts: existing_parts ++ new_parts}}
+    else
+      event
+    end
   end
 
   @doc false
@@ -141,12 +216,13 @@ defmodule ADK.Event do
   def on_branch?(event, branch) do
     case {event.branch, branch} do
       {nil, _} -> true
+      {_, nil} -> true
+      {event_branch, target_branch} when event_branch == target_branch -> true
       {event_branch, target_branch} ->
-        # An event is visible on a branch if either:
-        # 1. The event's branch is a prefix of the target (parent events visible to children)
-        # 2. The target branch is a prefix of the event's branch (same branch)
-        String.starts_with?(target_branch, event_branch) or
-          String.starts_with?(event_branch, target_branch)
+        # An event is visible on a branch only if the event's branch is a
+        # proper ancestor of the target branch (parent events visible to children).
+        # We require a dot separator to avoid partial-name matches (e.g. "rooter" vs "root").
+        String.starts_with?(target_branch, event_branch <> ".")
     end
   end
 end

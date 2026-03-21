@@ -30,7 +30,7 @@ defmodule ADK.Eval.Scorer do
   @spec response_text([ADK.Event.t()]) :: String.t()
   def response_text(events) do
     events
-    |> Enum.filter(fn e -> e.author != "user" and not e.partial end)
+    |> Enum.filter(fn e -> e.author != "user" and !e.partial end)
     |> Enum.flat_map(fn e ->
       case e.content do
         %{parts: parts} when is_list(parts) ->

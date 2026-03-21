@@ -1,5 +1,6 @@
 defmodule ADK.A2A.MessageTest do
   use ExUnit.Case, async: true
+  @moduletag :a2a
 
   alias ADK.A2A.Message
 
@@ -31,7 +32,7 @@ defmodule ADK.A2A.MessageTest do
 
   describe "to_event/1" do
     test "converts an A2A message struct to an ADK event" do
-      msg = A2A.Message.new("ROLE_USER", [A2A.Part.text("hello")])
+      msg = A2A.Message.new_user("hello")
       event = Message.to_event(msg)
 
       assert event.author == "user"

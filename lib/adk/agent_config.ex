@@ -141,7 +141,7 @@ defmodule ADK.AgentConfig do
       |> maybe_put(:output_key, atomize(config["output_key"]))
       |> maybe_put(:max_iterations, config["max_iterations"])
 
-    ADK.Agent.LlmAgent.new(opts)
+    {:ok, ADK.Agent.LlmAgent.new(opts)}
   end
 
   defp build_composite_agent(module, config, base_dir) do

@@ -15,25 +15,25 @@ defmodule ADK.Auth.CredentialRefresherRegistryParityTest do
   defmodule AlwaysRefresher do
     @behaviour ADK.Auth.Refresher
     @impl true
-    def refresh(cred), do: {:ok, Map.put(cred, :refreshed, true)}
+    def refresh(cred, _scheme \\ nil), do: {:ok, Map.put(cred, :refreshed, true)}
     @impl true
-    def is_expired?(_cred), do: false
+    def refresh_needed?(_cred, _scheme \\ nil), do: {:ok, false}
   end
 
   defmodule ExpiredRefresher do
     @behaviour ADK.Auth.Refresher
     @impl true
-    def refresh(cred), do: {:ok, Map.put(cred, :refreshed, true)}
+    def refresh(cred, _scheme \\ nil), do: {:ok, Map.put(cred, :refreshed, true)}
     @impl true
-    def is_expired?(_cred), do: true
+    def refresh_needed?(_cred, _scheme \\ nil), do: {:ok, true}
   end
 
   defmodule NeverRefresher do
     @behaviour ADK.Auth.Refresher
     @impl true
-    def refresh(cred), do: {:ok, cred}
+    def refresh(cred, _scheme \\ nil), do: {:ok, cred}
     @impl true
-    def is_expired?(_cred), do: false
+    def refresh_needed?(_cred, _scheme \\ nil), do: {:ok, false}
   end
 
   setup do
@@ -76,23 +76,23 @@ defmodule ADK.Auth.CredentialRefresherRegistryParityTest do
   end
 
   describe "refresher behaviour (mirrors refresher contract)" do
-    test "refresh/1 returns updated credential" do
+    test "refresh/2 returns updated credential" do
       cred = %{type: :oauth2, token: "old"}
-      assert {:ok, updated} = AlwaysRefresher.refresh(cred)
+      assert {:ok, updated} = AlwaysRefresher.refresh(cred, nil)
       assert updated.refreshed == true
     end
 
-    test "is_expired?/1 returns false for AlwaysRefresher" do
-      assert AlwaysRefresher.is_expired?(%{token: "abc"}) == false
+    test "refresh_needed?/2 returns {:ok, false} for AlwaysRefresher" do
+      assert {:ok, false} = AlwaysRefresher.refresh_needed?(%{token: "abc"}, nil)
     end
 
-    test "is_expired?/1 returns true for ExpiredRefresher" do
-      assert ExpiredRefresher.is_expired?(%{token: "old"}) == true
+    test "refresh_needed?/2 returns {:ok, true} for ExpiredRefresher" do
+      assert {:ok, true} = ExpiredRefresher.refresh_needed?(%{token: "old"}, nil)
     end
 
-    test "NeverRefresher.refresh/1 returns credential unchanged" do
+    test "NeverRefresher.refresh/2 returns credential unchanged" do
       cred = %{type: :api_key, key: "secret"}
-      assert {:ok, ^cred} = NeverRefresher.refresh(cred)
+      assert {:ok, ^cred} = NeverRefresher.refresh(cred, nil)
     end
   end
 
@@ -102,19 +102,18 @@ defmodule ADK.Auth.CredentialRefresherRegistryParityTest do
       refresher = Registry.get_refresher(:oauth2)
       cred = %{type: :oauth2, token: "stale"}
 
-      if refresher.is_expired?(cred) do
-        assert {:ok, refreshed} = refresher.refresh(cred)
-        assert refreshed.refreshed == true
-      end
+      assert {:ok, true} = refresher.refresh_needed?(cred, nil)
+      assert {:ok, refreshed} = refresher.refresh(cred, nil)
+      assert refreshed.refreshed == true
     end
 
     test "skip refresh when not expired" do
       Registry.register(:api_key, NeverRefresher)
       refresher = Registry.get_refresher(:api_key)
       cred = %{type: :api_key, key: "valid"}
-      refute refresher.is_expired?(cred)
+      assert {:ok, false} = refresher.refresh_needed?(cred, nil)
       # no refresh needed, credential unchanged
-      assert {:ok, ^cred} = refresher.refresh(cred)
+      assert {:ok, ^cred} = refresher.refresh(cred, nil)
     end
   end
 end

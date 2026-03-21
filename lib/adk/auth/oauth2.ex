@@ -1,4 +1,5 @@
 defmodule ADK.Auth.OAuth2 do
+  @derive Jason.Encoder
   defstruct issuer: nil,
             authorization_endpoint: nil,
             token_endpoint: nil,
@@ -8,6 +9,7 @@ defmodule ADK.Auth.OAuth2 do
     @moduledoc """
     Represents the metadata of an OAuth2 authorization server.
     """
+    @derive Jason.Encoder
     defstruct issuer: nil,
               authorization_endpoint: nil,
               token_endpoint: nil,
@@ -18,6 +20,7 @@ defmodule ADK.Auth.OAuth2 do
     @moduledoc """
     Represents the metadata of an OAuth2 protected resource.
     """
+    @derive Jason.Encoder
     defstruct resource: nil,
               authorization_servers: []
   end
