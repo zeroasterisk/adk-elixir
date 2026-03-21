@@ -119,6 +119,28 @@ defmodule ADK.Workflow do
   end
 
   @doc """
+  Add edges and node definitions to an existing workflow.
+
+  ## Examples
+
+      iex> w = ADK.Workflow.new(name: "test")
+      iex> w = ADK.Workflow.add(w, {:START, :a, :END}, %{a: my_agent})
+      iex> length(w.graph.edges)
+      2
+  """
+  @spec add(t(), tuple() | [tuple()], map()) :: t()
+  def add(%__MODULE__{} = workflow, edge_or_edges, node_defs \\ %{}) do
+    incoming_edges = if is_list(edge_or_edges), do: edge_or_edges, else: [edge_or_edges]
+
+    new_edges = workflow.edges ++ incoming_edges
+    new_nodes = Map.merge(workflow.nodes, node_defs)
+
+    graph = build_graph(new_edges, new_nodes)
+
+    %{workflow | edges: new_edges, nodes: new_nodes, graph: graph}
+  end
+
+  @doc """
   Run the workflow, returning a list of events.
 
   ## Options
@@ -127,9 +149,10 @@ defmodule ADK.Workflow do
   """
   @spec run(t(), ADK.Context.t(), keyword()) :: [ADK.Event.t()]
   @spec run(atom() | String.t(), function(), function() | nil) :: ADK.Workflow.Step.t()
-  def run(arg1, arg2, arg3 \\ [])
+  def run(arg1, arg2, arg3 \\ nil)
 
   def run(%__MODULE__{} = workflow, %ADK.Context{} = ctx, opts) do
+    opts = opts || []
     Executor.run(
       workflow.graph,
       ctx,
