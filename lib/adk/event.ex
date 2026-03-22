@@ -27,7 +27,7 @@ defmodule ADK.Event do
             author: nil,
             branch: nil,
             timestamp: nil,
-            partial: nil,
+            partial: false,
             actions: nil
 
   def new(opts) do
