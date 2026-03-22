@@ -39,15 +39,18 @@ defmodule ADK.LLM.Gemini do
   end
 
   defp do_generate(model, auth, request) do
-    url = "#{@base_url}/#{model}:generateContent"
+    base = Map.get(request, :base_url, @base_url)
+    url = "#{base}/#{model}:generateContent"
     body = build_request_body(request)
 
-    req_options = [url: url, json: body]
+    custom_headers = Map.get(request, :custom_headers, [])
+
+    req_options = [url: url, json: body, headers: custom_headers]
 
     req_options =
       case auth do
         {:api_key, key} -> req_options ++ [params: [key: key]]
-        {:bearer, token} -> req_options ++ [headers: [{"authorization", "Bearer #{token}"}]]
+        {:bearer, token} -> update_in(req_options[:headers], &([{"authorization", "Bearer #{token}"} | &1]))
       end
 
     req_options = req_options ++ req_test_options()

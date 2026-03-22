@@ -41,13 +41,16 @@ defmodule ADK.LLM.OpenAI do
   end
 
   defp do_generate(model, api_key, request) do
-    url = "#{base_url()}/chat/completions"
+    base = Map.get(request, :base_url, base_url())
+    url = "#{base}/chat/completions"
     body = build_request_body(model, request)
+
+    custom_headers = Map.get(request, :custom_headers, [])
 
     req_options = [
       url: url,
       json: body,
-      headers: [{"authorization", "Bearer #{api_key}"}]
+      headers: [{"authorization", "Bearer #{api_key}"}] ++ custom_headers
     ]
 
     req_options = req_options ++ req_test_options()
