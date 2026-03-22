@@ -65,7 +65,12 @@ if Code.ensure_loaded?(Ecto) do
       defmodule <%= inspect @module %> do
         use Ecto.Migration
 
-        def change do
+        def up do
+          create table(:adk_internal_metadata, primary_key: false) do
+            add :key, :string, primary_key: true
+            add :value, :string
+          end
+
           create table(:adk_sessions, primary_key: false) do
             add :app_name, :string, null: false
             add :user_id, :string, null: false
@@ -77,6 +82,29 @@ if Code.ensure_loaded?(Ecto) do
 
           create unique_index(:adk_sessions, [:app_name, :user_id, :session_id])
           create index(:adk_sessions, [:app_name, :user_id])
+
+          create table(:events, primary_key: false) do
+            add :id, :string, primary_key: true
+            add :app_name, :string, null: false
+            add :user_id, :string, null: false
+            add :session_id, :string, null: false
+            add :invocation_id, :string
+            add :timestamp, :utc_datetime_usec
+            add :event_data, :map
+          end
+
+          create index(:events, [:app_name, :user_id, :session_id])
+
+          # Insert schema version marker to match python parity
+          execute "INSERT INTO adk_internal_metadata (key, value) VALUES ('schema_version', '1')"
+        end
+
+        def down do
+          drop table(:events)
+          drop index(:adk_sessions, [:app_name, :user_id])
+          drop unique_index(:adk_sessions, [:app_name, :user_id, :session_id])
+          drop table(:adk_sessions)
+          drop table(:adk_internal_metadata)
         end
       end
       """
