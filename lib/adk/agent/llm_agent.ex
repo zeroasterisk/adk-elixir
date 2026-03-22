@@ -101,10 +101,32 @@ defmodule ADK.Agent.LlmAgent do
     # Build LLM request
     request = build_request(ctx, agent)
 
-    # Run before_model callbacks
-    callbacks = ctx.callbacks || []
-    cb_ctx = %{agent: agent, context: ctx, request: request}
-    case ADK.Callback.run_before(callbacks, :before_model, cb_ctx) do
+    # Run before_model plugins
+    plugins = ctx.plugins || []
+    {plugin_skip, request} =
+      case ADK.Plugin.run_before_model(plugins, ctx, request) do
+        {:skip, response} -> {true, response}
+        {:ok, modified_request} -> {false, modified_request}
+      end
+
+    if plugin_skip do
+      case request do
+        {:ok, response} ->
+          event = event_from_response(response, ctx, agent)
+          event = maybe_save_output_to_state(event, agent)
+          if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
+          ADK.Context.emit_event(ctx, event)
+          [event]
+        {:error, reason} ->
+          error_event = ADK.Event.error(reason, invocation_id: ctx.invocation_id, author: agent.name)
+          ADK.Context.emit_event(ctx, error_event)
+          [error_event]
+      end
+    else
+      # Run before_model callbacks
+      callbacks = ctx.callbacks || []
+      cb_ctx = %{agent: agent, context: ctx, request: request}
+      case ADK.Callback.run_before(callbacks, :before_model, cb_ctx) do
       {:halt, {:ok, response}} ->
         event = event_from_response(response, ctx, agent)
         event = maybe_save_output_to_state(event, agent)
@@ -131,9 +153,11 @@ defmodule ADK.Agent.LlmAgent do
         [event]
 
       {:ok, raw_response} ->
+        # Run after_model plugins
+        response_from_plugin = ADK.Plugin.run_after_model(plugins, ctx, {:ok, raw_response})
         # Run after_model callbacks (can modify response)
         after_cb_ctx = %{agent: agent, context: ctx}
-        response = ADK.Callback.run_after(callbacks, :after_model, {:ok, raw_response}, after_cb_ctx)
+        response = ADK.Callback.run_after(callbacks, :after_model, response_from_plugin, after_cb_ctx)
         response = case response do
           {:ok, r} -> r
           other -> other
@@ -224,9 +248,22 @@ defmodule ADK.Agent.LlmAgent do
         end
 
       {:error, reason} ->
-        # Run on_model_error callbacks
-        cb_ctx_err = %{agent: agent, context: ctx}
-        case ADK.Callback.run_on_error(callbacks, {:error, reason}, cb_ctx_err) do
+        # Run on_model_error plugins
+        plugin_error_res = ADK.Plugin.run_on_model_error(plugins, ctx, {:error, reason})
+        
+        case plugin_error_res do
+          {:ok, response} ->
+            # Plugin handled the error and provided a fake response, proceed as if LLM returned it
+            event = event_from_response(response, ctx, agent)
+            event = maybe_save_output_to_state(event, agent)
+            if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
+            ADK.Context.emit_event(ctx, event)
+            [event]
+            
+          {:error, final_reason} ->
+            # Run on_model_error callbacks
+            cb_ctx_err = %{agent: agent, context: ctx}
+            case ADK.Callback.run_on_error(callbacks, {:error, final_reason}, cb_ctx_err) do
           {:retry, _new_cb_ctx} ->
             do_run(ctx, agent, iteration + 1)
 
@@ -249,9 +286,11 @@ defmodule ADK.Agent.LlmAgent do
             if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, error_event)
             ADK.Context.emit_event(ctx, error_event)
             [error_event]
-        end
+            end # closes Callback.run_on_error
+        end # closes plugin_error_res case
     end  # end LLM generate case
     end  # end before_model callback case
+    end  # end plugin_skip else
   end
 
   @doc """
@@ -573,29 +612,48 @@ defmodule ADK.Agent.LlmAgent do
         tool ->
           tool_ctx = ADK.ToolContext.new(ctx, call[:id] || "call-1", tool)
           callbacks = ctx.callbacks || []
+          plugins = ctx.plugins || []
           tool_cb_ctx = %{agent: agent, context: ctx, tool: tool, tool_args: call.args || %{}}
 
-          result = case ADK.Callback.run_before(callbacks, :before_tool, tool_cb_ctx) do
-            {:halt, halted_result} -> halted_result
-            {:cont, _} -> 
-              res = ADK.Telemetry.Contract.tool_span(%{tool_name: tool.name, agent_name: agent.name}, fn -> 
-                run_tool(tool, tool_ctx, call.args || %{})
-              end)
-              case res do
-                {:error, reason} ->
-                  case ADK.Callback.run_on_tool_error(callbacks, {:error, reason}, tool_cb_ctx) do
-                    {:retry, _} -> 
-                      ADK.Telemetry.Contract.tool_span(%{tool_name: tool.name, agent_name: agent.name}, fn -> 
-                        run_tool(tool, tool_ctx, call.args || %{})
-                      end)
-                    {:fallback, fallback_res} -> fallback_res
-                    err -> err
-                  end
-                other -> other
-              end
+          {plugin_skip, plugin_res, call_args} =
+            case ADK.Plugin.run_before_tool(plugins, ctx, tool.name, call.args || %{}) do
+              {:skip, response} -> {true, response, call.args || %{}}
+              {:ok, modified_args} -> {false, nil, modified_args}
+            end
+
+          result = if plugin_skip do
+            plugin_res
+          else
+            tool_cb_ctx = %{tool_cb_ctx | tool_args: call_args}
+            case ADK.Callback.run_before(callbacks, :before_tool, tool_cb_ctx) do
+              {:halt, halted_result} -> halted_result
+              {:cont, _} ->
+                res = ADK.Telemetry.Contract.tool_span(%{tool_name: tool.name, agent_name: agent.name}, fn ->
+                  run_tool(tool, tool_ctx, call_args)
+                end)
+                case res do
+                  {:error, reason} ->
+                    # Let plugins try to recover first
+                    case ADK.Plugin.run_on_tool_error(plugins, ctx, tool.name, {:error, reason}) do
+                      {:ok, recovered} -> {:ok, recovered}
+                      plugin_err ->
+                        # Fallback to callbacks
+                        case ADK.Callback.run_on_tool_error(callbacks, plugin_err, tool_cb_ctx) do
+                          {:retry, _} ->
+                            ADK.Telemetry.Contract.tool_span(%{tool_name: tool.name, agent_name: agent.name}, fn ->
+                              run_tool(tool, tool_ctx, call_args)
+                            end)
+                          {:fallback, fallback_res} -> fallback_res
+                          err -> err
+                        end
+                    end
+                  other -> other
+                end
+            end
           end
 
           result = ADK.Callback.run_after(callbacks, :after_tool, result, tool_cb_ctx)
+          result = ADK.Plugin.run_after_tool(plugins, ctx, tool.name, result)
 
           case result do
             {:transfer_to_agent, target} ->

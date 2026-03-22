@@ -123,6 +123,15 @@ defmodule ADK.Plugin do
               {:ok, map()} | {:error, term()}
 
   @doc """
+  Called when an LLM model call fails.
+
+  Return `{:ok, response}` to recover and use the fake response, or
+  `{:error, new_error}` to continue the error chain.
+  """
+  @callback on_model_error(ADK.Context.t(), {:error, term()}) ::
+              {:ok, map()} | {:error, term()}
+
+  @doc """
   Called before each tool execution.
 
   Return `{:ok, args}` to continue (possibly with modified args), or
@@ -140,6 +149,15 @@ defmodule ADK.Plugin do
               ADK.Tool.result()
 
   @doc """
+  Called when a tool execution fails.
+
+  Return `{:ok, response}` to recover and use the fake response, or
+  `{:error, new_error}` to continue the error chain.
+  """
+  @callback on_tool_error(ADK.Context.t(), tool_name :: String.t(), {:error, term()}) ::
+              ADK.Tool.result()
+
+  @doc """
   Called for each event emitted during execution (observe-only).
 
   Always return `:ok`. Use this for logging, telemetry, or side effects.
@@ -152,8 +170,10 @@ defmodule ADK.Plugin do
     after_run: 3,
     before_model: 2,
     after_model: 2,
+    on_model_error: 2,
     before_tool: 3,
     after_tool: 3,
+    on_tool_error: 3,
     on_event: 2
   ]
 
@@ -242,6 +262,27 @@ defmodule ADK.Plugin do
   end
 
   @doc """
+  Run on_model_error hooks for all registered plugins, threading the error through each.
+
+  If any plugin recovers the error and returns `{:ok, response}`, subsequent plugins
+  are skipped for the error chain and the error is considered handled.
+  """
+  @spec run_on_model_error([{module(), state()}], ADK.Context.t(), {:error, term()}) ::
+          {:ok, map()} | {:error, term()}
+  def run_on_model_error(plugins, ctx, error) do
+    Enum.reduce_while(plugins, error, fn {mod, _st}, current_err ->
+      if function_exported?(mod, :on_model_error, 2) do
+        case mod.on_model_error(ctx, current_err) do
+          {:ok, response} -> {:halt, {:ok, response}}
+          {:error, new_err} -> {:cont, {:error, new_err}}
+        end
+      else
+        {:cont, current_err}
+      end
+    end)
+  end
+
+  @doc """
   Run before_tool hooks for all registered plugins.
 
   Returns `{:ok, final_args}` if all plugins continue, or
@@ -277,6 +318,24 @@ defmodule ADK.Plugin do
         mod.after_tool(ctx, tool_name, res)
       else
         res
+      end
+    end)
+  end
+
+  @doc """
+  Run on_tool_error hooks for all registered plugins, threading the error through each.
+  """
+  @spec run_on_tool_error([{module(), state()}], ADK.Context.t(), String.t(), {:error, term()}) ::
+          ADK.Tool.result()
+  def run_on_tool_error(plugins, ctx, tool_name, error) do
+    Enum.reduce_while(plugins, error, fn {mod, _st}, current_err ->
+      if function_exported?(mod, :on_tool_error, 3) do
+        case mod.on_tool_error(ctx, tool_name, current_err) do
+          {:ok, response} -> {:halt, {:ok, response}}
+          {:error, new_err} -> {:cont, {:error, new_err}}
+        end
+      else
+        {:cont, current_err}
       end
     end)
   end
