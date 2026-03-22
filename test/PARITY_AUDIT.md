@@ -144,7 +144,7 @@ This document lists the Python ADK tests that are missing a corresponding test i
 | `./tests/unittests/sessions/test_dynamic_pickle_type.py` | `test/adk/sessions/dynamic_pickle_type_test.exs` |
 | `./tests/unittests/sessions/test_session_service.py` | `test/adk/sessions/session_service_test.exs` |
 | `./tests/unittests/sessions/test_v0_storage_event.py` | `test/adk/sessions/v0_storage_event_test.exs` |
-| `./tests/unittests/sessions/test_vertex_ai_session_service.py` | `test/adk/sessions/vertex_ai_session_service_test.exs` |
+| `./tests/unittests/sessions/test_vertex_ai_session_service.py` | `test/adk/session/store/vertex_ai_test.exs` | ✅ 
 | `./tests/unittests/streaming/test_live_streaming_configs.py` | `test/adk/streaming/live_streaming_configs_test.exs` |
 | `./tests/unittests/streaming/test_multi_agent_streaming.py` | `test/adk/streaming/multi_agent_streaming_test.exs` |
 | `./tests/unittests/streaming/test_streaming.py` | `test/adk/streaming/streaming_test.exs` |
