@@ -169,8 +169,14 @@ defmodule ADK.LLM.Gemini do
 
   defp format_part(%{text: text}), do: %{text: text}
 
-  defp format_part(%{function_call: %{name: name, args: args}}) do
-    %{functionCall: %{name: name, args: args}}
+  defp format_part(%{function_call: %{name: name, args: args}} = part) do
+    fc = %{name: name, args: args}
+    fc = if Map.has_key?(part.function_call, :thought_signature) do
+      Map.put(fc, :thought_signature, part.function_call.thought_signature)
+    else
+      fc
+    end
+    %{functionCall: fc}
   end
 
   defp format_part(%{function_response: %{name: name, response: resp}}) do
@@ -213,8 +219,14 @@ defmodule ADK.LLM.Gemini do
 
   defp parse_response_part(%{"text" => text}), do: %{text: text}
 
-  defp parse_response_part(%{"functionCall" => %{"name" => name, "args" => args}}) do
-    %{function_call: %{name: name, args: args}}
+  defp parse_response_part(%{"functionCall" => fc}) do
+    base = %{name: Map.get(fc, "name"), args: Map.get(fc, "args")}
+    base = if Map.has_key?(fc, "thought_signature") do
+      Map.put(base, :thought_signature, fc["thought_signature"])
+    else
+      base
+    end
+    %{function_call: base}
   end
 
   # Code execution response parts

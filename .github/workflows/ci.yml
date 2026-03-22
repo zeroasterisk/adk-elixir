@@ -8,11 +8,20 @@ on:
 
 jobs:
   test:
+    name: Test on Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        elixir: ['1.16', '1.17']
-        otp: ['26', '27']
+        include:
+          - elixir: '1.14'
+            otp: '25'
+          - elixir: '1.15'
+            otp: '26'
+          - elixir: '1.16'
+            otp: '26'
+          - elixir: '1.17'
+            otp: '27'
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1
@@ -21,5 +30,13 @@ jobs:
           otp-version: ${{ matrix.otp }}
       - run: mix deps.get
       - run: mix compile --warnings-as-errors
-      - run: mix test
-      - run: mix format --check-formatted
+      - name: Run Unit Tests
+        run: mix test
+      - name: Run Integration Tests
+        run: mix test --include integration
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        if: env.GEMINI_API_KEY != ''
+      - name: Check Formatting
+        run: mix format --check-formatted
+        if: matrix.elixir == '1.17'
