@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "adk-elixir": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "mcpdoc",
+        "mcpdoc",
+        "--urls",
+        "ADKElixir:doc/llms.txt",
+        "--allowed-domains",
+        "*"
+      ]
+    }
+  }
+}
