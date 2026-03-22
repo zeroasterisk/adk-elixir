@@ -76,11 +76,14 @@ defmodule ADK.Memory.InMemory do
       events
       |> Enum.filter(&has_text_content?/1)
       |> Enum.map(fn event ->
-        Entry.new(
-          content: extract_text(event),
-          author: event.author,
-          timestamp: event.timestamp
-        )
+        opts =
+          if event.id do
+            [id: event.id, content: extract_text(event), author: event.author, timestamp: event.timestamp]
+          else
+            [content: extract_text(event), author: event.author, timestamp: event.timestamp]
+          end
+
+        Entry.new(opts)
       end)
 
     add(app_name, user_id, entries)
