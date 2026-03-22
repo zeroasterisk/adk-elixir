@@ -57,11 +57,23 @@ defmodule ADK.Models.CacheMetadata do
   """
   @spec new(keyword() | map()) :: t()
   def new(attrs) when is_list(attrs) do
+    validate_non_negative!(attrs, :invocations_used)
+    validate_non_negative!(attrs, :contents_count)
     struct!(__MODULE__, attrs)
   end
 
   def new(attrs) when is_map(attrs) do
-    struct!(__MODULE__, Map.to_list(attrs))
+    validate_non_negative!(attrs, :invocations_used)
+    validate_non_negative!(attrs, :contents_count)
+    struct!(__MODULE__, attrs)
+  end
+
+  defp validate_non_negative!(attrs, key) do
+    value = if is_map(attrs), do: Map.get(attrs, key), else: Keyword.get(attrs, key)
+    if value != nil and is_number(value) and value < 0 do
+      raise ArgumentError, "#{key} must be greater than or equal to 0"
+    end
+    attrs
   end
 
   @doc """
@@ -71,11 +83,15 @@ defmodule ADK.Models.CacheMetadata do
   and contents count are tracked for future prefix matching.
   """
   @spec fingerprint_only(String.t(), non_neg_integer()) :: t()
-  def fingerprint_only(fingerprint, contents_count) do
+  def fingerprint_only(fingerprint, contents_count) when is_integer(contents_count) and contents_count >= 0 do
     %__MODULE__{
       fingerprint: fingerprint,
       contents_count: contents_count
     }
+  end
+
+  def fingerprint_only(_, _) do
+    raise ArgumentError, "contents_count must be greater than or equal to 0"
   end
 
   @doc """
