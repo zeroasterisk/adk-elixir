@@ -101,8 +101,12 @@ defmodule ADK.LLM.Anthropic do
 
     # Apply generate_config
     case Map.get(request, :generate_config) do
-      nil -> body
-      config when config == %{} -> body
+      nil ->
+        body
+
+      config when config == %{} ->
+        body
+
       config ->
         body
         |> put_if(:temperature, config[:temperature])
@@ -128,57 +132,167 @@ defmodule ADK.LLM.Anthropic do
   end
 
   defp format_message(%{role: role, parts: parts}) do
-    case classify_parts(parts) do
-      {:function_response, responses} ->
-        %{
-          role: "user",
-          content:
-            Enum.map(responses, fn %{name: name, response: resp} ->
-              %{
-                type: "tool_result",
-                tool_use_id: Map.get(resp, :tool_call_id, name),
-                content: Jason.encode!(Map.delete(resp, :tool_call_id))
-              }
-            end)
-        }
-
-      {:function_calls, calls} ->
-        %{
-          role: "assistant",
-          content:
-            Enum.map(calls, fn %{name: name, args: args} ->
-              %{
-                type: "tool_use",
-                id: Map.get(args, :tool_call_id, name),
-                name: name,
-                input: Map.delete(args, :tool_call_id)
-              }
-            end)
-        }
-
-      {:text, text} ->
-        %{role: map_role(role), content: text}
-    end
-  end
-
-  defp classify_parts(parts) do
     responses = for %{function_response: fr} <- parts, do: fr
     calls = for %{function_call: fc} <- parts, do: fc
 
     cond do
-      responses != [] -> {:function_response, responses}
-      calls != [] -> {:function_calls, calls}
-      true ->
-        text =
-          parts
-          |> Enum.map_join("", fn
-            %{text: t} -> t
-            _ -> ""
-          end)
+      responses != [] ->
+        %{
+          role: "user",
+          content: Enum.map(responses, &format_function_response/1)
+        }
 
-        {:text, text}
+      calls != [] ->
+        content =
+          parts
+          |> Enum.map(fn
+            %{text: t} -> %{type: "text", text: t}
+            %{function_call: fc} -> format_function_call(fc)
+            _ -> nil
+          end)
+          |> Enum.reject(&is_nil/1)
+
+        %{role: "assistant", content: content}
+
+      true ->
+        role_str = map_role(role)
+
+        content =
+          parts
+          |> Enum.map(&format_part(&1, role_str))
+          |> Enum.reject(&is_nil/1)
+
+        # To maintain exact previous behavior for simple text where possible,
+        # if it's just one text block, we can leave it as a string, but Anthropic
+        # prefers arrays or strings. Let's just use the array.
+        # Wait, Python sends array of blocks. We will too.
+        if Enum.all?(content, &is_binary/1) do
+          %{role: role_str, content: Enum.join(content, "\n")}
+        else
+          %{role: role_str, content: content}
+        end
     end
   end
+
+  defp format_function_response(%{name: name, response: resp}) do
+    # tool_call_id might be under atom or string key
+    id_from_resp = Map.get(resp, :tool_call_id, Map.get(resp, "tool_call_id", name))
+
+    content = extract_tool_result_content(resp)
+
+    %{
+      type: "tool_result",
+      tool_use_id: id_from_resp,
+      content: content
+    }
+  end
+
+  defp extract_tool_result_content(resp) do
+    resp_clean = Map.drop(resp, [:tool_call_id, "tool_call_id"])
+
+    cond do
+      # If it has "content" as a list
+      Map.has_key?(resp_clean, :content) and is_list(resp_clean.content) ->
+        resp_clean.content
+        |> Enum.map(fn
+          %{type: "text", text: t} -> t
+          %{"type" => "text", "text" => t} -> t
+          _ -> nil
+        end)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.join("\n")
+
+      Map.has_key?(resp_clean, "content") and is_list(resp_clean["content"]) ->
+        resp_clean["content"]
+        |> Enum.map(fn
+          %{type: "text", text: t} -> t
+          %{"type" => "text", "text" => t} -> t
+          _ -> nil
+        end)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.join("\n")
+
+      # If it has "result"
+      Map.has_key?(resp_clean, :result) ->
+        serialize_tool_result(resp_clean.result)
+
+      Map.has_key?(resp_clean, "result") ->
+        serialize_tool_result(resp_clean["result"])
+
+      # Otherwise, the whole thing
+      true ->
+        serialize_tool_result(resp_clean)
+    end
+  end
+
+  defp serialize_tool_result(val) when is_binary(val), do: val
+  defp serialize_tool_result(val), do: Jason.encode!(val)
+
+  defp format_function_call(%{name: name, args: args, id: id}) do
+    %{
+      type: "tool_use",
+      id: Map.get(args, :tool_call_id, Map.get(args, "tool_call_id", id || name)),
+      name: name,
+      input: Map.drop(args, [:tool_call_id, "tool_call_id"])
+    }
+  end
+
+  defp format_function_call(%{name: name, args: args}) do
+    %{
+      type: "tool_use",
+      id: Map.get(args, :tool_call_id, Map.get(args, "tool_call_id", name)),
+      name: name,
+      input: Map.drop(args, [:tool_call_id, "tool_call_id"])
+    }
+  end
+
+  defp format_part(%{text: t}, _role), do: %{type: "text", text: t}
+
+  defp format_part(%{inline_data: %{mime_type: mime, data: data}}, role) do
+    if role == "assistant" do
+      require Logger
+
+      cond do
+        String.starts_with?(mime, "image/") ->
+          Logger.warning("Image data is not supported in Claude for assistant turns.")
+
+        String.starts_with?(mime, "application/pdf") ->
+          Logger.warning("PDF data is not supported in Claude for assistant turns.")
+
+        true ->
+          Logger.warning("Media data is not supported in Claude for assistant turns.")
+      end
+
+      nil
+    else
+      cond do
+        String.starts_with?(mime, "image/") ->
+          %{
+            type: "image",
+            source: %{
+              type: "base64",
+              media_type: mime,
+              data: data
+            }
+          }
+
+        String.starts_with?(mime, "application/pdf") ->
+          %{
+            type: "document",
+            source: %{
+              type: "base64",
+              media_type: mime,
+              data: data
+            }
+          }
+
+        true ->
+          nil
+      end
+    end
+  end
+
+  defp format_part(_, _), do: nil
 
   defp map_role(:user), do: "user"
   defp map_role(:model), do: "assistant"

@@ -198,24 +198,31 @@ defmodule ADK.LLM.AnthropicTest do
   describe "generate/2 - error handling" do
     test "returns :unauthorized on 401" do
       stub_anthropic(401, %{"error" => %{"message" => "Invalid API key"}})
-      assert {:error, :unauthorized} = Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+
+      assert {:error, :unauthorized} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
     end
 
     test "returns :rate_limited on 429" do
       stub_anthropic(429, %{"error" => %{"message" => "Rate limited"}})
-      assert {:error, :rate_limited} = Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+
+      assert {:error, :rate_limited} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
     end
 
     test "returns :api_error on 500" do
       stub_anthropic(500, %{"error" => %{"message" => "Internal error"}})
-      assert {:error, {:api_error, 500, _}} = Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+
+      assert {:error, {:api_error, 500, _}} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
     end
 
     test "returns :missing_api_key when no key configured" do
       Application.delete_env(:adk, :anthropic_api_key)
       System.delete_env("ANTHROPIC_API_KEY")
 
-      assert {:error, :missing_api_key} = Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+      assert {:error, :missing_api_key} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
     end
   end
 
@@ -281,6 +288,193 @@ defmodule ADK.LLM.AnthropicTest do
       end)
 
       assert {:ok, _} = Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+    end
+  end
+
+  describe "part_to_message_block parity" do
+    test "dict result serialized as json" do
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        [msg] = decoded["messages"]
+        [block] = msg["content"]
+
+        assert block["type"] == "tool_result"
+        assert block["tool_use_id"] == "test_id"
+
+        parsed = Jason.decode!(block["content"])
+        assert parsed["topic"] == "travel"
+        assert parsed["active"] == true
+
+        Req.Test.json(conn, %{
+          "content" => [%{"type" => "text", "text" => "ok"}]
+        })
+      end)
+
+      Anthropic.generate("claude", %{
+        messages: [
+          %{
+            role: :model,
+            parts: [
+              %{
+                function_response: %{
+                  name: "get_topic",
+                  response: %{
+                    "result" => %{"topic" => "travel", "active" => true},
+                    "tool_call_id" => "test_id"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      })
+    end
+
+    test "list result serialized as json" do
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        [msg] = decoded["messages"]
+        [block] = msg["content"]
+
+        parsed = Jason.decode!(block["content"])
+        assert parsed == ["item1", "item2"]
+
+        Req.Test.json(conn, %{})
+      end)
+
+      Anthropic.generate("claude", %{
+        messages: [
+          %{
+            role: :model,
+            parts: [
+              %{
+                function_response: %{
+                  name: "get_items",
+                  response: %{"result" => ["item1", "item2"]}
+                }
+              }
+            ]
+          }
+        ]
+      })
+    end
+
+    test "content array joined" do
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        [msg] = decoded["messages"]
+        [block] = msg["content"]
+
+        assert block["content"] == "First part\nSecond part"
+
+        Req.Test.json(conn, %{})
+      end)
+
+      Anthropic.generate("claude", %{
+        messages: [
+          %{
+            role: :model,
+            parts: [
+              %{
+                function_response: %{
+                  name: "multi_response_tool",
+                  response: %{
+                    "content" => [
+                      %{"type" => "text", "text" => "First part"},
+                      %{"type" => "text", "text" => "Second part"}
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      })
+    end
+
+    test "pdf document inline_data" do
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        [msg] = decoded["messages"]
+        assert length(msg["content"]) == 2
+        [text_block, doc_block] = msg["content"]
+
+        assert text_block["type"] == "text"
+        assert text_block["text"] == "Summarize this"
+
+        assert doc_block["type"] == "document"
+        assert doc_block["source"]["type"] == "base64"
+        assert doc_block["source"]["media_type"] == "application/pdf"
+        assert doc_block["source"]["data"] == Base.encode64("fake_pdf_data")
+
+        Req.Test.json(conn, %{})
+      end)
+
+      Anthropic.generate("claude", %{
+        messages: [
+          %{
+            role: :user,
+            parts: [
+              %{text: "Summarize this"},
+              %{
+                inline_data: %{
+                  mime_type: "application/pdf",
+                  data: Base.encode64("fake_pdf_data")
+                }
+              }
+            ]
+          }
+        ]
+      })
+    end
+
+    test "filters images for assistant role and logs warning" do
+      import ExUnit.CaptureLog
+
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        [msg] = decoded["messages"]
+        # Only text should remain! Image filtered.
+        assert length(msg["content"]) == 1
+        [block] = msg["content"]
+
+        assert block["type"] == "text"
+        assert block["text"] == "I see a cat."
+
+        Req.Test.json(conn, %{})
+      end)
+
+      log =
+        capture_log(fn ->
+          Anthropic.generate("claude", %{
+            messages: [
+              %{
+                role: :model,
+                parts: [
+                  %{text: "I see a cat."},
+                  %{
+                    inline_data: %{
+                      mime_type: "image/png",
+                      data: Base.encode64("fake_image_data")
+                    }
+                  }
+                ]
+              }
+            ]
+          })
+        end)
+
+      assert log =~ "Image data is not supported in Claude for assistant turns."
     end
   end
 end
