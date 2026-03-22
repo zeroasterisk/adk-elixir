@@ -375,6 +375,25 @@ defmodule ADK.Agent.LlmAgent do
       agent_name: agent.name
     }
 
+    request = 
+      if ctx.run_config do 
+        live_connect = %{} 
+        live_connect = if ctx.run_config.output_audio_transcription, do: Map.put(live_connect, :output_audio_transcription, ctx.run_config.output_audio_transcription), else: live_connect 
+        live_connect = if ctx.run_config.input_audio_transcription, do: Map.put(live_connect, :input_audio_transcription, ctx.run_config.input_audio_transcription), else: live_connect 
+        live_connect = if not is_nil(ctx.run_config.enable_affective_dialog), do: Map.put(live_connect, :enable_affective_dialog, ctx.run_config.enable_affective_dialog), else: live_connect 
+        live_connect = if ctx.run_config.proactivity, do: Map.put(live_connect, :proactivity, ctx.run_config.proactivity), else: live_connect 
+        live_connect = if ctx.run_config.session_resumption, do: Map.put(live_connect, :session_resumption, ctx.run_config.session_resumption), else: live_connect 
+        live_connect = if ctx.run_config.realtime_input_config, do: Map.put(live_connect, :realtime_input_config, ctx.run_config.realtime_input_config), else: live_connect 
+        live_connect = if ctx.run_config.context_window_compression, do: Map.put(live_connect, :context_window_compression, ctx.run_config.context_window_compression), else: live_connect 
+        if live_connect != %{} do 
+          Map.put(request, :live_connect_config, live_connect) 
+        else 
+          request 
+        end 
+      else 
+        request 
+      end 
+
     case agent.generate_config do
       config when is_map(config) and map_size(config) > 0 ->
         Map.put(request, :generate_config, config)
@@ -712,10 +731,17 @@ defmodule ADK.Agent.LlmAgent do
               %{name: call.name, result: fallback_res}
 
             _ ->
-              # Module callbacks
-              case ADK.Callback.run_on_tool_error(callbacks, {:error, err_msg}, tool_cb_ctx) do
-                {:fallback, fallback_res} -> fallback_res
-                _ -> %{name: call.name, error: err_msg}
+              # Plugins
+              plugins = ctx.plugins || []
+              case ADK.Plugin.run_on_tool_error(plugins, ctx, call.name, {:error, err_msg}) do
+                {:ok, recovered} ->
+                  %{name: call.name, result: recovered}
+                {:error, reason} ->
+                  # Module callbacks
+                  case ADK.Callback.run_on_tool_error(callbacks, {:error, reason}, tool_cb_ctx) do
+                    {:fallback, fallback_res} -> fallback_res
+                    _ -> %{name: call.name, error: reason}
+                  end
               end
           end
 

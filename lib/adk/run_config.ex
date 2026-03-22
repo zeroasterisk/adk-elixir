@@ -56,7 +56,9 @@ defmodule ADK.RunConfig do
     input_audio_transcription: %{},
     proactivity: nil,
     session_resumption: nil,
-    enable_affective_dialog: nil
+    enable_affective_dialog: nil,
+    realtime_input_config: nil,
+    context_window_compression: nil
   ]
 
   @type streaming_mode :: :none | :sse | :live
@@ -94,7 +96,9 @@ defmodule ADK.RunConfig do
           input_audio_transcription: map() | nil,
           proactivity: proactivity_config() | nil,
           session_resumption: session_resumption_config() | nil,
-          enable_affective_dialog: boolean() | nil
+          enable_affective_dialog: boolean() | nil,
+          realtime_input_config: map() | nil,
+          context_window_compression: map() | nil
         }
 
   @valid_streaming_modes [:none, :sse, :live]

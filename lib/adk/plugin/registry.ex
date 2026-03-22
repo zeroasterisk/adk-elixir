@@ -48,6 +48,6 @@ defmodule ADK.Plugin.Registry do
     Agent.update(__MODULE__, fn _ -> [] end)
   end
 
-  defp normalize(mod) when is_atom(mod), do: {mod, %{}}
+  defp normalize(mod) when is_atom(mod), do: {mod, []}
   defp normalize({mod, config}), do: {mod, config}
 end

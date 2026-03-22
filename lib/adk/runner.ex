@@ -3,7 +3,7 @@ defmodule ADK.Runner do
   Orchestrates agent execution — creates sessions, runs agents, collects events.
   """
 
-  defstruct [:app_name, :agent, :session_store, :artifact_service, :memory_store]
+  defstruct [:app_name, :agent, :session_store, :artifact_service, :memory_store, plugins: []]
 
   @type t :: %__MODULE__{
           app_name: String.t(),
@@ -38,7 +38,8 @@ defmodule ADK.Runner do
       agent: Keyword.fetch!(opts, :agent),
       session_store: Keyword.get(opts, :session_store),
       artifact_service: Keyword.get(opts, :artifact_service),
-      memory_store: Keyword.get(opts, :memory_store)
+      memory_store: Keyword.get(opts, :memory_store),
+      plugins: Keyword.get(opts, :plugins, [])
     }
   end
 
@@ -118,8 +119,8 @@ defmodule ADK.Runner do
       on_event: on_event
     }
 
-    # Gather global plugins
-    plugins = get_plugins()
+    # Gather global plugins, combine with runner-specific plugins
+    plugins = get_plugins() ++ Map.get(runner, :plugins, [])
 
     telemetry_meta = %{
   agent_name: ADK.Agent.name(runner.agent),
