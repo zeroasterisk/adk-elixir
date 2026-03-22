@@ -28,10 +28,13 @@ defmodule ADK.Event do
             branch: nil,
             timestamp: nil,
             partial: nil,
-            actions: nil
+            actions: nil,
+            input_transcription: nil,
+            output_transcription: nil
 
   def new(opts) do
     opts_map = if is_map(opts), do: opts, else: Map.new(opts)
+
     defaults = %{
       id: generate_id(),
       timestamp: DateTime.utc_now()
@@ -114,40 +117,66 @@ defmodule ADK.Event do
 
   @doc "Reconstruct an event from a map (string or atom keys)."
   def from_map(map) when is_map(map) do
-    fields = [:type, :data, :custom_metadata, :error, :content, :id,
-              :invocation_id, :author, :branch, :timestamp, :partial, :actions]
+    fields = [
+      :type,
+      :data,
+      :custom_metadata,
+      :error,
+      :content,
+      :id,
+      :invocation_id,
+      :author,
+      :branch,
+      :timestamp,
+      :partial,
+      :actions,
+      :input_transcription,
+      :output_transcription
+    ]
 
-    attrs = Enum.reduce(fields, %{}, fn field, acc ->
-      key_str = Atom.to_string(field)
-      val = Map.get(map, field) || Map.get(map, key_str)
-      if val != nil, do: Map.put(acc, field, val), else: acc
-    end)
+    attrs =
+      Enum.reduce(fields, %{}, fn field, acc ->
+        key_str = Atom.to_string(field)
+        val = Map.get(map, field) || Map.get(map, key_str)
+        if val != nil, do: Map.put(acc, field, val), else: acc
+      end)
 
     # Coerce timestamp from ISO 8601 string to DateTime
-    attrs = case attrs[:timestamp] do
-      s when is_binary(s) ->
-        case DateTime.from_iso8601(s) do
-          {:ok, dt, _} -> Map.put(attrs, :timestamp, dt)
-          _ -> attrs
-        end
-      _ -> attrs
-    end
+    attrs =
+      case attrs[:timestamp] do
+        s when is_binary(s) ->
+          case DateTime.from_iso8601(s) do
+            {:ok, dt, _} -> Map.put(attrs, :timestamp, dt)
+            _ -> attrs
+          end
+
+        _ ->
+          attrs
+      end
 
     # Coerce actions from map to EventActions struct
-    attrs = case attrs[:actions] do
-      m when is_map(m) and not is_struct(m) ->
-        ea = struct(ADK.EventActions, %{
-          state_delta: Map.get(m, "state_delta") || Map.get(m, :state_delta) || %{},
-          artifact_delta: Map.get(m, "artifact_delta") || Map.get(m, :artifact_delta) || %{},
-          requested_auth_configs: Map.get(m, "requested_auth_configs") || Map.get(m, :requested_auth_configs) || %{},
-          transfer_to_agent: Map.get(m, "transfer_to_agent") || Map.get(m, :transfer_to_agent),
-          escalate: Map.get(m, "escalate") || Map.get(m, :escalate) || false,
-          skip_summarization: Map.get(m, "skip_summarization") || Map.get(m, :skip_summarization) || false,
-          end_of_agent: Map.get(m, "end_of_agent") || Map.get(m, :end_of_agent) || false
-        })
-        Map.put(attrs, :actions, ea)
-      _ -> attrs
-    end
+    attrs =
+      case attrs[:actions] do
+        m when is_map(m) and not is_struct(m) ->
+          ea =
+            struct(ADK.EventActions, %{
+              state_delta: Map.get(m, "state_delta") || Map.get(m, :state_delta) || %{},
+              artifact_delta: Map.get(m, "artifact_delta") || Map.get(m, :artifact_delta) || %{},
+              requested_auth_configs:
+                Map.get(m, "requested_auth_configs") || Map.get(m, :requested_auth_configs) || %{},
+              transfer_to_agent:
+                Map.get(m, "transfer_to_agent") || Map.get(m, :transfer_to_agent),
+              escalate: Map.get(m, "escalate") || Map.get(m, :escalate) || false,
+              skip_summarization:
+                Map.get(m, "skip_summarization") || Map.get(m, :skip_summarization) || false,
+              end_of_agent: Map.get(m, "end_of_agent") || Map.get(m, :end_of_agent) || false
+            })
+
+          Map.put(attrs, :actions, ea)
+
+        _ ->
+          attrs
+      end
 
     event = struct(__MODULE__, attrs)
 
@@ -159,13 +188,17 @@ defmodule ADK.Event do
 
   defp migrate_legacy_function_calls(event, map) do
     legacy = Map.get(map, "function_calls") || Map.get(map, :function_calls)
+
     if is_list(legacy) and length(legacy) > 0 do
       new_parts = Enum.map(legacy, fn fc -> %{function_call: fc} end)
-      existing_parts = case event.content do
-        %{parts: p} when is_list(p) -> p
-        %{"parts" => p} when is_list(p) -> p
-        _ -> []
-      end
+
+      existing_parts =
+        case event.content do
+          %{parts: p} when is_list(p) -> p
+          %{"parts" => p} when is_list(p) -> p
+          _ -> []
+        end
+
       %{event | content: %{parts: existing_parts ++ new_parts}}
     else
       event
@@ -174,13 +207,17 @@ defmodule ADK.Event do
 
   defp migrate_legacy_function_responses(event, map) do
     legacy = Map.get(map, "function_responses") || Map.get(map, :function_responses)
+
     if is_list(legacy) and length(legacy) > 0 do
       new_parts = Enum.map(legacy, fn fr -> %{function_response: fr} end)
-      existing_parts = case event.content do
-        %{parts: p} when is_list(p) -> p
-        %{"parts" => p} when is_list(p) -> p
-        _ -> []
-      end
+
+      existing_parts =
+        case event.content do
+          %{parts: p} when is_list(p) -> p
+          %{"parts" => p} when is_list(p) -> p
+          _ -> []
+        end
+
       %{event | content: %{parts: existing_parts ++ new_parts}}
     else
       event
@@ -200,6 +237,7 @@ defmodule ADK.Event do
   # Access a map key flexibly: try string key first, then atom key.
   # Handles maps with either string or atom keys (e.g., from JSON decode vs internal construction).
   defp get_flex(nil, _key), do: nil
+
   defp get_flex(map, key) when is_map(map) and is_binary(key) do
     case Map.get(map, key) do
       nil ->
@@ -208,16 +246,25 @@ defmodule ADK.Event do
         rescue
           ArgumentError -> nil
         end
-      val -> val
+
+      val ->
+        val
     end
   end
+
   defp get_flex(_map, _key), do: nil
 
   def on_branch?(event, branch) do
     case {event.branch, branch} do
-      {nil, _} -> true
-      {_, nil} -> true
-      {event_branch, target_branch} when event_branch == target_branch -> true
+      {nil, _} ->
+        true
+
+      {_, nil} ->
+        true
+
+      {event_branch, target_branch} when event_branch == target_branch ->
+        true
+
       {event_branch, target_branch} ->
         # An event is visible on a branch only if the event's branch is a
         # proper ancestor of the target branch (parent events visible to children).
