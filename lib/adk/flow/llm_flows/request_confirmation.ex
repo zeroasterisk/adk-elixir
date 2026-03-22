@@ -32,7 +32,7 @@ defmodule ADK.Flows.LlmFlows.RequestConfirmation do
   alias ADK.Tool.Confirmation
   
 
-  @request_confirmation_function_call_name ADK.Tool.confirmation_function_name()
+  @request_confirmation_function_call_name "adk_request_confirmation"
 
   @type process_result ::
           {:ok, Event.t()}
