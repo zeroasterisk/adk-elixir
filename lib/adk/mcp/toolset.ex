@@ -50,6 +50,8 @@ defmodule ADK.MCP.Toolset do
 
   alias ADK.MCP.Client
   alias ADK.MCP.ToolAdapter
+  alias ADK.Auth.Config
+  alias ADK.Auth.Credential
 
   @type filter :: [String.t()] | (map() -> boolean()) | nil
 
@@ -59,6 +61,8 @@ defmodule ADK.MCP.Toolset do
           | {:env, [{String.t(), String.t()}]}
           | {:timeout, pos_integer()}
           | {:tool_filter, filter()}
+          | {:auth_config, Config.t()}
+          | {:client_mod, module()}
           | {:name, GenServer.name()}
 
   # --- Public API ---
@@ -70,6 +74,7 @@ defmodule ADK.MCP.Toolset do
 
   - `:tool_filter` — an optional list of tool names to include, or a
     predicate function `(tool_map -> boolean)`.
+  - `:auth_config` — an optional `ADK.Auth.Config` struct.
   """
   @spec start_link([start_opt]) :: GenServer.on_start()
   def start_link(opts) do
@@ -82,14 +87,29 @@ defmodule ADK.MCP.Toolset do
 
   Applies the configured `:tool_filter` if one was given at start time.
   """
-  @spec get_tools(GenServer.server(), map() | nil) :: {:ok, [ADK.Tool.FunctionTool.t()]} | {:error, term()}
+  @spec get_tools(GenServer.server(), map() | nil) ::
+          {:ok, [ADK.Tool.FunctionTool.t()]} | {:error, term()}
   def get_tools(toolset, _context \\ nil) do
     GenServer.call(toolset, :get_tools, 30_000)
   end
 
-  @doc "Return the auth config (always nil for MCP stdio toolsets)."
-  @spec get_auth_config(GenServer.server()) :: nil
-  def get_auth_config(_toolset), do: nil
+  @doc "Return the auth config."
+  @spec get_auth_config(GenServer.server()) :: Config.t() | nil
+  def get_auth_config(toolset) do
+    GenServer.call(toolset, :get_auth_config)
+  end
+
+  @doc "Set the exchanged auth credential in the auth config."
+  @spec set_exchanged_credential(GenServer.server(), Credential.t()) :: :ok
+  def set_exchanged_credential(toolset, credential) do
+    GenServer.cast(toolset, {:set_exchanged_credential, credential})
+  end
+
+  @doc "Return auth headers built from the exchanged credential."
+  @spec get_auth_headers(GenServer.server()) :: map() | nil
+  def get_auth_headers(toolset) do
+    GenServer.call(toolset, :get_auth_headers)
+  end
 
   @doc "Return server info from the MCP initialization handshake."
   @spec server_info(GenServer.server()) :: {:ok, map()} | {:error, term()}
@@ -107,11 +127,19 @@ defmodule ADK.MCP.Toolset do
 
   @impl true
   def init(opts) do
-    {tool_filter, client_opts} = Keyword.pop(opts, :tool_filter, nil)
+    {tool_filter, opts1} = Keyword.pop(opts, :tool_filter, nil)
+    {auth_config, opts2} = Keyword.pop(opts1, :auth_config, nil)
+    {client_mod, client_opts} = Keyword.pop(opts2, :client_mod, Client)
 
-    case Client.start_link(client_opts) do
+    case client_mod.start_link(client_opts) do
       {:ok, client} ->
-        {:ok, %{client: client, tool_filter: tool_filter}}
+        {:ok,
+         %{
+           client: client,
+           client_mod: client_mod,
+           tool_filter: tool_filter,
+           auth_config: auth_config
+         }}
 
       {:error, reason} ->
         {:stop, reason}
@@ -130,15 +158,40 @@ defmodule ADK.MCP.Toolset do
     end
   end
 
+  def handle_call(:get_auth_config, _from, state) do
+    {:reply, state.auth_config, state}
+  end
+
+  def handle_call(:get_auth_headers, _from, state) do
+    headers = extract_auth_headers(state.auth_config)
+    {:reply, headers, state}
+  end
+
   def handle_call(:server_info, _from, state) do
-    reply = Client.server_info(state.client)
+    reply = state.client_mod.server_info(state.client)
     {:reply, reply, state}
+  end
+
+  @impl true
+  def handle_cast({:set_exchanged_credential, credential}, %{auth_config: auth_config} = state) do
+    new_auth_config =
+      if auth_config do
+        %{auth_config | exchanged_credential: credential}
+      else
+        nil
+      end
+
+    {:noreply, %{state | auth_config: new_auth_config}}
   end
 
   @impl true
   def terminate(_reason, state) do
     if Process.alive?(state.client) do
-      Client.close(state.client)
+      if function_exported?(state.client_mod, :close, 1) do
+        state.client_mod.close(state.client)
+      else
+        Client.close(state.client)
+      end
     end
 
     :ok
@@ -147,6 +200,47 @@ defmodule ADK.MCP.Toolset do
   end
 
   # --- Private ---
+
+  defp extract_auth_headers(%Config{exchanged_credential: %Credential{} = cred} = _config) do
+    case cred.type do
+      :oauth2 ->
+        if cred.access_token do
+          %{"Authorization" => "Bearer #{cred.access_token}"}
+        else
+          nil
+        end
+
+      :http_bearer ->
+        if cred.access_token do
+          %{"Authorization" => "Bearer #{cred.access_token}"}
+        else
+          nil
+        end
+
+      :http_basic ->
+        if cred.client_id && cred.client_secret do
+          encoded = Base.encode64("#{cred.client_id}:#{cred.client_secret}")
+          %{"Authorization" => "Basic #{encoded}"}
+        else
+          nil
+        end
+
+      :api_key ->
+        loc = Map.get(cred.metadata, "in", "header")
+
+        if loc == "header" do
+          header_name = Map.get(cred.metadata, "header_name", "X-API-Key")
+          %{header_name => cred.api_key}
+        else
+          nil
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  defp extract_auth_headers(_), do: nil
 
   defp apply_filter(tools, nil), do: tools
 
