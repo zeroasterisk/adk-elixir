@@ -47,11 +47,11 @@ defmodule ADK.MCP.ToolAdapter do
 
   defp call_mcp(client, tool_name, args) do
     case ADK.MCP.Client.call_tool(client, tool_name, args) do
-      {:ok, %{"content" => content}} ->
-        {:ok, extract_text(content)}
-
       {:ok, %{"isError" => true} = result} ->
         {:error, extract_text(result["content"] || [])}
+
+      {:ok, %{"content" => content}} ->
+        {:ok, extract_text(content)}
 
       {:ok, result} ->
         {:ok, inspect(result)}
