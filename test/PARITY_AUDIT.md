@@ -124,7 +124,6 @@ This document lists the Python ADK tests that are missing a corresponding test i
 | `./tests/unittests/models/test_apigee_llm.py` | `test/adk/models/apigee_llm_test.exs` |
 | `./tests/unittests/models/test_cache_metadata.py` | `test/adk/models/cache_metadata_test.exs` |
 | `./tests/unittests/models/test_completions_http_client.py` | `test/adk/models/completions_http_client_test.exs` |
-| `./tests/unittests/models/test_gemini_llm_connection.py` | `test/adk/models/gemini_llm_connection_test.exs` |
 | `./tests/unittests/models/test_gemma_llm.py` | `test/adk/models/gemma_llm_test.exs` |
 | `./tests/unittests/models/test_google_llm.py` | `test/adk/models/google_llm_test.exs` |
 | `./tests/unittests/models/test_interactions_utils.py` | `test/adk/models/interactions_utils_test.exs` |
