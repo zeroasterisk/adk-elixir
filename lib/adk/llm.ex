@@ -107,6 +107,10 @@ defmodule ADK.LLM.Mock do
   @impl true
   def generate(_model, request) do
     case Process.get(:adk_mock_responses) do
+      [{:error, _} = err | rest] ->
+        Process.put(:adk_mock_responses, rest)
+        err
+
       [response | rest] ->
         Process.put(:adk_mock_responses, rest)
         {:ok, to_response(response)}

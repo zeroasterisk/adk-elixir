@@ -28,7 +28,9 @@ defmodule ADK.Integration.SingleAgentTest do
     end
   end
 
+  @tag :integration
   test "eval_agent" do
+    Code.compile_file(Path.join([__DIR__, "fixture", "home_automation_agent", "agent.ex"]))
     agent_module = ADK.Integration.Fixture.HomeAutomationAgent
 
     eval_file = Path.join([__DIR__, "fixture", "home_automation_agent", "simple_test.test.json"])
@@ -57,7 +59,12 @@ defmodule ADK.Integration.SingleAgentTest do
         )
       end)
 
-    runner = Runner.new(app_name: "test", agent: agent_module)
+    runner = Runner.new(app_name: "test", agent: agent_module.agent())
+
+    ADK.LLM.Mock.set_responses([
+      %{function_call: %{name: "set_device_info", args: %{"device_id" => "device_2", "status" => "OFF"}}},
+      %{text: "I have set the device_2 status to off."}
+    ])
 
     report = Eval.run(runner, cases)
 
