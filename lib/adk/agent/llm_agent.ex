@@ -16,6 +16,9 @@ defmodule ADK.Agent.LlmAgent do
     :parent_agent,
     :planner,
     :context_compressor,
+    :before_tool_callback,
+    :after_tool_callback,
+    :on_tool_error_callback,
     description: "",
     tools: [],
     sub_agents: [],
@@ -36,6 +39,12 @@ defmodule ADK.Agent.LlmAgent do
           parent_agent: t() | nil,
           planner: struct() | nil,
           context_compressor: keyword() | nil,
+          before_tool_callback: (map(), map(), map() -> {:cont, map()} | {:halt, any()}) | nil,
+          after_tool_callback: (map(), map(), map(), any() -> any()) | nil,
+          on_tool_error_callback:
+            (map(), map(), map(), term() ->
+               {:retry, any()} | {:fallback, any()} | {:error, any()})
+            | nil,
           description: String.t(),
           tools: [map()],
           sub_agents: [map()],
@@ -52,32 +61,46 @@ defmodule ADK.Agent.LlmAgent do
   end
 
   defp wire_parent(%__MODULE__{sub_agents: []} = agent), do: agent
+
   defp wire_parent(%__MODULE__{sub_agents: subs} = agent) when is_list(subs) do
     # Create a minimal parent reference (no sub_agents to avoid circularity)
-    parent_ref = %__MODULE__{name: agent.name, model: agent.model, instruction: agent.instruction,
-                             description: agent.description}
+    parent_ref = %__MODULE__{
+      name: agent.name,
+      model: agent.model,
+      instruction: agent.instruction,
+      description: agent.description
+    }
 
     # First pass: recursively wire children
-    wired_subs = Enum.map(subs, fn
-      %__MODULE__{} = child ->
-        %{child | parent_agent: parent_ref}
-        |> wire_parent()
-      other -> other
-    end)
+    wired_subs =
+      Enum.map(subs, fn
+        %__MODULE__{} = child ->
+          %{child | parent_agent: parent_ref}
+          |> wire_parent()
+
+        other ->
+          other
+      end)
 
     # Second pass: set peer agents (siblings excluding self)
-    wired_subs = Enum.map(wired_subs, fn
-      %__MODULE__{} = child ->
-        peers = Enum.filter(wired_subs, fn
-          %__MODULE__{name: n} -> n != child.name
-          _ -> false
-        end)
-        %{child | _peer_agents: peers}
-      other -> other
-    end)
+    wired_subs =
+      Enum.map(wired_subs, fn
+        %__MODULE__{} = child ->
+          peers =
+            Enum.filter(wired_subs, fn
+              %__MODULE__{name: n} -> n != child.name
+              _ -> false
+            end)
+
+          %{child | _peer_agents: peers}
+
+        other ->
+          other
+      end)
 
     %{agent | sub_agents: wired_subs}
   end
+
   defp wire_parent(agent), do: agent
 
   # ---------- Protocol Implementation ----------
@@ -103,6 +126,7 @@ defmodule ADK.Agent.LlmAgent do
 
     # Run before_model plugins
     plugins = ctx.plugins || []
+
     {plugin_skip, request} =
       case ADK.Plugin.run_before_model(plugins, ctx, request) do
         {:skip, response} -> {true, response}
@@ -117,8 +141,11 @@ defmodule ADK.Agent.LlmAgent do
           if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
           ADK.Context.emit_event(ctx, event)
           [event]
+
         {:error, reason} ->
-          error_event = ADK.Event.error(reason, invocation_id: ctx.invocation_id, author: agent.name)
+          error_event =
+            ADK.Event.error(reason, invocation_id: ctx.invocation_id, author: agent.name)
+
           ADK.Context.emit_event(ctx, error_event)
           [error_event]
       end
@@ -126,171 +153,210 @@ defmodule ADK.Agent.LlmAgent do
       # Run before_model callbacks
       callbacks = ctx.callbacks || []
       cb_ctx = %{agent: agent, context: ctx, request: request}
+
       case ADK.Callback.run_before(callbacks, :before_model, cb_ctx) do
-      {:halt, {:ok, response}} ->
-        event = event_from_response(response, ctx, agent)
-        event = maybe_save_output_to_state(event, agent)
-        if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
-        ADK.Context.emit_event(ctx, event)
-        [event]
+        {:halt, {:ok, response}} ->
+          event = event_from_response(response, ctx, agent)
+          event = maybe_save_output_to_state(event, agent)
+          if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
+          ADK.Context.emit_event(ctx, event)
+          [event]
 
-      {:halt, {:error, reason}} ->
-        error_event = ADK.Event.error(reason, invocation_id: ctx.invocation_id, author: agent.name)
-        ADK.Context.emit_event(ctx, error_event)
-        [error_event]
+        {:halt, {:error, reason}} ->
+          error_event =
+            ADK.Event.error(reason, invocation_id: ctx.invocation_id, author: agent.name)
 
-      {:cont, _cb_ctx} ->
-    # Call the LLM
-    case ADK.LLM.generate(agent.model, request) do
-      {:ok, %{content: nil}} ->
-        # Empty/nil content response — emit nothing (filtered out)
-        []
+          ADK.Context.emit_event(ctx, error_event)
+          [error_event]
 
-      {:ok, %{partial: true} = response} ->
-        # Partial (streaming chunk) response — emit and break the loop
-        event = event_from_response(response, ctx, agent)
-        ADK.Context.emit_event(ctx, event)
-        [event]
+        {:cont, _cb_ctx} ->
+          # Call the LLM
+          case ADK.LLM.generate(agent.model, request) do
+            {:ok, %{content: nil}} ->
+              # Empty/nil content response — emit nothing (filtered out)
+              []
 
-      {:ok, raw_response} ->
-        # Run after_model plugins
-        response_from_plugin = ADK.Plugin.run_after_model(plugins, ctx, {:ok, raw_response})
-        # Run after_model callbacks (can modify response)
-        after_cb_ctx = %{agent: agent, context: ctx}
-        response = ADK.Callback.run_after(callbacks, :after_model, response_from_plugin, after_cb_ctx)
-        response = case response do
-          {:ok, r} -> r
-          other -> other
-        end
-        event = event_from_response(response, ctx, agent)
+            {:ok, %{partial: true} = response} ->
+              # Partial (streaming chunk) response — emit and break the loop
+              event = event_from_response(response, ctx, agent)
+              ADK.Context.emit_event(ctx, event)
+              [event]
 
-        case extract_function_calls(response) do
-          [] ->
-            # No tool calls — this is the final response
-            event = maybe_save_output_to_state(event, agent)
-            if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
-            ADK.Context.emit_event(ctx, event)
-            [event]
+            {:ok, raw_response} ->
+              # Run after_model plugins
+              response_from_plugin = ADK.Plugin.run_after_model(plugins, ctx, {:ok, raw_response})
+              # Run after_model callbacks (can modify response)
+              after_cb_ctx = %{agent: agent, context: ctx}
 
-          calls ->
-            # Tool calls — execute them and loop
-            ADK.Context.emit_event(ctx, event)
-            tool_results = execute_tools(ctx, agent, calls)
+              response =
+                ADK.Callback.run_after(
+                  callbacks,
+                  :after_model,
+                  response_from_plugin,
+                  after_cb_ctx
+                )
 
-            # Check for exit_loop, transfer, or normal continuation
-            exit_loop = Enum.find(tool_results, &Map.get(&1, :exit_loop))
-            transfer = Enum.find(tool_results, &Map.get(&1, :transfer_to_agent))
-
-            cond do
-              exit_loop ->
-                exit_reason = exit_loop[:result] || "Exiting loop"
-                escalate_event = ADK.Event.new(%{
-                  invocation_id: ctx.invocation_id,
-                  author: agent.name,
-                  content: %{role: :model, parts: [%{text: exit_reason}]},
-                  actions: %ADK.EventActions{escalate: true}
-                })
-                ADK.Context.emit_event(ctx, escalate_event)
-                [event, escalate_event]
-
-              transfer ->
-              target_name = transfer.transfer_to_agent
-
-              transfer_event =
-                ADK.Event.new(%{
-                  invocation_id: ctx.invocation_id,
-                  author: agent.name,
-                  content: %{role: :model, parts: [%{text: "Transferring to #{target_name}"}]},
-                  actions: %ADK.EventActions{transfer_to_agent: target_name}
-                })
-
-              ADK.Context.emit_event(ctx, transfer_event)
-
-              # Execute the target agent within the same invocation
-              target_events =
-                case find_transfer_target(agent, target_name) do
-                  nil -> []
-                  target_agent ->
-                    target_ctx = %{ctx | agent: target_agent}
-                    do_run(target_ctx, target_agent, 0)
+              response =
+                case response do
+                  {:ok, r} -> r
+                  other -> other
                 end
 
-              [event, transfer_event | target_events]
+              event = event_from_response(response, ctx, agent)
 
-              true ->
-              # Build tool response and loop
-              response_parts =
-                Enum.map(tool_results, fn tr ->
-                  %{
-                    function_response: %{
-                      name: tr.name,
-                      response: wrap_tool_response(tr[:result] || tr[:error] || "")
-                    }
-                  }
-                end)
+              case extract_function_calls(response) do
+                [] ->
+                  # No tool calls — this is the final response
+                  event = maybe_save_output_to_state(event, agent)
+                  if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
+                  ADK.Context.emit_event(ctx, event)
+                  [event]
 
-              response_event =
-                ADK.Event.new(%{
-                  invocation_id: ctx.invocation_id,
-                  author: agent.name,
-                  content: %{role: :user, parts: response_parts}
-                })
+                calls ->
+                  # Tool calls — execute them and loop
+                  ADK.Context.emit_event(ctx, event)
+                  tool_results = execute_tools(ctx, agent, calls)
 
-              ADK.Context.emit_event(ctx, response_event)
+                  # Check for exit_loop, transfer, or normal continuation
+                  exit_loop = Enum.find(tool_results, &Map.get(&1, :exit_loop))
+                  transfer = Enum.find(tool_results, &Map.get(&1, :transfer_to_agent))
 
-              if ctx.session_pid do
-                ADK.Session.append_event(ctx.session_pid, event)
-                ADK.Session.append_event(ctx.session_pid, response_event)
+                  cond do
+                    exit_loop ->
+                      exit_reason = exit_loop[:result] || "Exiting loop"
+
+                      escalate_event =
+                        ADK.Event.new(%{
+                          invocation_id: ctx.invocation_id,
+                          author: agent.name,
+                          content: %{role: :model, parts: [%{text: exit_reason}]},
+                          actions: %ADK.EventActions{escalate: true}
+                        })
+
+                      ADK.Context.emit_event(ctx, escalate_event)
+                      [event, escalate_event]
+
+                    transfer ->
+                      target_name = transfer.transfer_to_agent
+
+                      transfer_event =
+                        ADK.Event.new(%{
+                          invocation_id: ctx.invocation_id,
+                          author: agent.name,
+                          content: %{
+                            role: :model,
+                            parts: [%{text: "Transferring to #{target_name}"}]
+                          },
+                          actions: %ADK.EventActions{transfer_to_agent: target_name}
+                        })
+
+                      ADK.Context.emit_event(ctx, transfer_event)
+
+                      # Execute the target agent within the same invocation
+                      target_events =
+                        case find_transfer_target(agent, target_name) do
+                          nil ->
+                            []
+
+                          target_agent ->
+                            target_ctx = %{ctx | agent: target_agent}
+                            do_run(target_ctx, target_agent, 0)
+                        end
+
+                      [event, transfer_event | target_events]
+
+                    true ->
+                      # Build tool response and loop
+                      response_parts =
+                        Enum.map(tool_results, fn tr ->
+                          %{
+                            function_response: %{
+                              name: tr.name,
+                              response: wrap_tool_response(tr[:result] || tr[:error] || "")
+                            }
+                          }
+                        end)
+
+                      response_event =
+                        ADK.Event.new(%{
+                          invocation_id: ctx.invocation_id,
+                          author: agent.name,
+                          content: %{role: :user, parts: response_parts}
+                        })
+
+                      ADK.Context.emit_event(ctx, response_event)
+
+                      if ctx.session_pid do
+                        ADK.Session.append_event(ctx.session_pid, event)
+                        ADK.Session.append_event(ctx.session_pid, response_event)
+                      end
+
+                      [event, response_event | do_run(ctx, agent, iteration + 1)]
+                  end
+
+                  # cond
               end
 
-              [event, response_event | do_run(ctx, agent, iteration + 1)]
-            end # cond
-        end
+            {:error, reason} ->
+              # Run on_model_error plugins
+              plugin_error_res = ADK.Plugin.run_on_model_error(plugins, ctx, {:error, reason})
 
-      {:error, reason} ->
-        # Run on_model_error plugins
-        plugin_error_res = ADK.Plugin.run_on_model_error(plugins, ctx, {:error, reason})
-        
-        case plugin_error_res do
-          {:ok, response} ->
-            # Plugin handled the error and provided a fake response, proceed as if LLM returned it
-            event = event_from_response(response, ctx, agent)
-            event = maybe_save_output_to_state(event, agent)
-            if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
-            ADK.Context.emit_event(ctx, event)
-            [event]
-            
-          {:error, final_reason} ->
-            # Run on_model_error callbacks
-            cb_ctx_err = %{agent: agent, context: ctx}
-            case ADK.Callback.run_on_error(callbacks, {:error, final_reason}, cb_ctx_err) do
-          {:retry, _new_cb_ctx} ->
-            do_run(ctx, agent, iteration + 1)
+              case plugin_error_res do
+                {:ok, response} ->
+                  # Plugin handled the error and provided a fake response, proceed as if LLM returned it
+                  event = event_from_response(response, ctx, agent)
+                  event = maybe_save_output_to_state(event, agent)
+                  if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
+                  ADK.Context.emit_event(ctx, event)
+                  [event]
 
-          {:fallback, {:ok, response}} ->
-            event = event_from_response(response, ctx, agent)
-            event = maybe_save_output_to_state(event, agent)
-            if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
-            ADK.Context.emit_event(ctx, event)
-            [event]
+                {:error, final_reason} ->
+                  # Run on_model_error callbacks
+                  cb_ctx_err = %{agent: agent, context: ctx}
 
-          {:error, final_reason} ->
-            error_event =
-              ADK.Event.new(%{
-                invocation_id: ctx.invocation_id,
-                author: agent.name,
-                content: %{role: :model, parts: [%{text: "Error: #{inspect(final_reason)}"}]},
-                error: final_reason
-              })
+                  case ADK.Callback.run_on_error(callbacks, {:error, final_reason}, cb_ctx_err) do
+                    {:retry, _new_cb_ctx} ->
+                      do_run(ctx, agent, iteration + 1)
 
-            if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, error_event)
-            ADK.Context.emit_event(ctx, error_event)
-            [error_event]
-            end # closes Callback.run_on_error
-        end # closes plugin_error_res case
-    end  # end LLM generate case
-    end  # end before_model callback case
-    end  # end plugin_skip else
+                    {:fallback, {:ok, response}} ->
+                      event = event_from_response(response, ctx, agent)
+                      event = maybe_save_output_to_state(event, agent)
+                      if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
+                      ADK.Context.emit_event(ctx, event)
+                      [event]
+
+                    {:error, final_reason} ->
+                      error_event =
+                        ADK.Event.new(%{
+                          invocation_id: ctx.invocation_id,
+                          author: agent.name,
+                          content: %{
+                            role: :model,
+                            parts: [%{text: "Error: #{inspect(final_reason)}"}]
+                          },
+                          error: final_reason
+                        })
+
+                      if ctx.session_pid,
+                        do: ADK.Session.append_event(ctx.session_pid, error_event)
+
+                      ADK.Context.emit_event(ctx, error_event)
+                      [error_event]
+                  end
+
+                  # closes Callback.run_on_error
+              end
+
+              # closes plugin_error_res case
+          end
+
+          # end LLM generate case
+      end
+
+      # end before_model callback case
+    end
+
+    # end plugin_skip else
   end
 
   @doc """
@@ -366,6 +432,7 @@ defmodule ADK.Agent.LlmAgent do
   """
   def effective_tools(agent) do
     targets = transfer_targets(agent)
+
     transfer_tools =
       case targets do
         [] -> []
@@ -378,15 +445,17 @@ defmodule ADK.Agent.LlmAgent do
   @doc false
   def find_transfer_target(agent, target_name) do
     # Check sub-agents
-    result = Enum.find(agent.sub_agents || [], fn a ->
-      is_struct(a) && Map.get(a, :name) == target_name
-    end)
+    result =
+      Enum.find(agent.sub_agents || [], fn a ->
+        is_struct(a) && Map.get(a, :name) == target_name
+      end)
 
     if result do
       result
     else
       # Check parent
       parent = agent.parent_agent
+
       if parent && is_struct(parent) && Map.get(parent, :name) == target_name do
         parent
       else
@@ -530,7 +599,11 @@ defmodule ADK.Agent.LlmAgent do
 
       event.author != agent.name ->
         require Logger
-        Logger.debug("Skipping output save for agent #{agent.name}: event authored by #{event.author}")
+
+        Logger.debug(
+          "Skipping output save for agent #{agent.name}: event authored by #{event.author}"
+        )
+
         event
 
       true ->
@@ -607,7 +680,44 @@ defmodule ADK.Agent.LlmAgent do
     Enum.map(calls, fn call ->
       case Map.get(tools_map, call.name) do
         nil ->
-          %{name: call.name, error: "Unknown tool: #{call.name}"}
+          err_msg = "Unknown tool: #{call.name}"
+          callbacks = ctx.callbacks || []
+
+          tool_cb_ctx = %{
+            agent: agent,
+            context: ctx,
+            tool: %{name: call.name},
+            tool_args: call.args || %{}
+          }
+
+          # Agent functional callback
+          func_res =
+            if agent.on_tool_error_callback do
+              agent.on_tool_error_callback.(
+                %{name: call.name},
+                call.args || %{},
+                %{},
+                {:error, err_msg}
+              )
+            else
+              {:error, err_msg}
+            end
+
+          case func_res do
+            {:fallback, {:ok, fallback_res}} ->
+              %{name: call.name, result: fallback_res}
+            {:fallback, fallback_res} ->
+              %{name: call.name, result: fallback_res}
+            {:ok, fallback_res} ->
+              %{name: call.name, result: fallback_res}
+
+            _ ->
+              # Module callbacks
+              case ADK.Callback.run_on_tool_error(callbacks, {:error, err_msg}, tool_cb_ctx) do
+                {:fallback, fallback_res} -> fallback_res
+                _ -> %{name: call.name, error: err_msg}
+              end
+          end
 
         tool ->
           tool_ctx = ADK.ToolContext.new(ctx, call[:id] || "call-1", tool)
@@ -621,36 +731,133 @@ defmodule ADK.Agent.LlmAgent do
               {:ok, modified_args} -> {false, nil, modified_args}
             end
 
-          result = if plugin_skip do
-            plugin_res
-          else
-            tool_cb_ctx = %{tool_cb_ctx | tool_args: call_args}
-            case ADK.Callback.run_before(callbacks, :before_tool, tool_cb_ctx) do
-              {:halt, halted_result} -> halted_result
-              {:cont, _} ->
-                res = ADK.Telemetry.Contract.tool_span(%{tool_name: tool.name, agent_name: agent.name}, fn ->
-                  run_tool(tool, tool_ctx, call_args)
-                end)
-                case res do
-                  {:error, reason} ->
-                    # Let plugins try to recover first
-                    case ADK.Plugin.run_on_tool_error(plugins, ctx, tool.name, {:error, reason}) do
-                      {:ok, recovered} -> {:ok, recovered}
-                      plugin_err ->
-                        # Fallback to callbacks
-                        case ADK.Callback.run_on_tool_error(callbacks, plugin_err, tool_cb_ctx) do
-                          {:retry, _} ->
-                            ADK.Telemetry.Contract.tool_span(%{tool_name: tool.name, agent_name: agent.name}, fn ->
-                              run_tool(tool, tool_ctx, call_args)
-                            end)
-                          {:fallback, fallback_res} -> fallback_res
-                          err -> err
-                        end
-                    end
-                  other -> other
+          result =
+            if plugin_skip do
+              plugin_res
+            else
+              # 1. Agent functional before_tool_callback
+              {skip_func, call_args} =
+                if agent.before_tool_callback do
+                  case agent.before_tool_callback.(tool, call_args, tool_ctx) do
+                    nil -> {false, call_args}
+                    %{} = modified_args -> {false, modified_args}
+                    {:cont, modified_args} -> {false, modified_args}
+                    {:halt, {:ok, _} = res} -> {true, res}
+                    {:halt, res} -> {true, {:ok, res}}
+                    # return dict short-circuits in Python
+                    {:ok, _} = res -> {true, res}
+                    res -> {true, {:ok, res}}
+                  end
+                else
+                  {false, call_args}
                 end
+
+              if skip_func do
+                # call_args actually holds the short-circuited response here
+                call_args
+              else
+                tool_cb_ctx = %{tool_cb_ctx | tool_args: call_args}
+
+                case ADK.Callback.run_before(callbacks, :before_tool, tool_cb_ctx) do
+                  {:halt, halted_result} ->
+                    halted_result
+
+                  {:cont, modified_ctx} ->
+                    call_args = Map.get(modified_ctx, :tool_args, call_args)
+
+                    res =
+                      ADK.Telemetry.Contract.tool_span(
+                        %{tool_name: tool.name, agent_name: agent.name},
+                        fn ->
+                          run_tool(tool, tool_ctx, call_args)
+                        end
+                      )
+
+                    case res do
+                      {:error, reason} ->
+                        # functional on_tool_error
+                        func_err_res =
+                          if agent.on_tool_error_callback do
+                            case agent.on_tool_error_callback.(
+                                   tool,
+                                   call_args,
+                                   tool_ctx,
+                                   {:error, reason}
+                                 ) do
+                              nil -> res
+                              {:fallback, {:ok, _} = fb} -> fb
+                              {:fallback, fb} -> {:ok, fb}
+                              {:ok, _} = fb -> fb
+                              %{} = fb -> {:ok, fb}
+                              _ -> res
+                            end
+                          else
+                            res
+                          end
+
+                        if func_err_res != res do
+                          func_err_res
+                        else
+                          # Plugins
+                          case ADK.Plugin.run_on_tool_error(
+                                 plugins,
+                                 ctx,
+                                 tool.name,
+                                 {:error, reason}
+                               ) do
+                            {:ok, recovered} ->
+                              {:ok, recovered}
+
+                            plugin_err ->
+                              # Module callbacks
+                              case ADK.Callback.run_on_tool_error(
+                                     callbacks,
+                                     plugin_err,
+                                     tool_cb_ctx
+                                   ) do
+                                {:retry, ret_ctx} ->
+                                  ret_args = Map.get(ret_ctx, :tool_args, call_args)
+
+                                  ADK.Telemetry.Contract.tool_span(
+                                    %{tool_name: tool.name, agent_name: agent.name},
+                                    fn ->
+                                      run_tool(tool, tool_ctx, ret_args)
+                                    end
+                                  )
+
+                                {:fallback, fallback_res} ->
+                                  fallback_res
+
+                                err ->
+                                  err
+                              end
+                          end
+                        end
+
+                      other ->
+                        other
+                    end
+                end
+              end
             end
-          end
+
+          # functional after_tool_callback
+          result =
+            if agent.after_tool_callback do
+              # We unwrap result for the callback, then rewrap
+              unwrapped_res = case result do
+                {:ok, val} -> val
+                other -> other
+              end
+              case agent.after_tool_callback.(tool, call_args, tool_ctx, unwrapped_res) do
+                nil -> result
+                {:ok, _} = new_res -> new_res
+                %{} = new_res -> {:ok, new_res}
+                new_res -> {:ok, new_res}
+              end
+            else
+              result
+            end
 
           result = ADK.Callback.run_after(callbacks, :after_tool, result, tool_cb_ctx)
           result = ADK.Plugin.run_after_tool(plugins, ctx, tool.name, result)

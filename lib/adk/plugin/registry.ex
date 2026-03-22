@@ -23,6 +23,8 @@ defmodule ADK.Plugin.Registry do
   def register(plugin) do
     {mod, config} = normalize(plugin)
 
+    Code.ensure_loaded(mod)
+
     state =
       if function_exported?(mod, :init, 1) do
         {:ok, st} = mod.init(config)
