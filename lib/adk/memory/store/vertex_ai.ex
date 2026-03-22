@@ -113,25 +113,49 @@ defmodule ADK.Memory.Store.VertexAI do
   """
   @impl ADK.Memory.Store
   def add(app_name, user_id, entries) when is_list(entries) do
-    config = build_config([])
-    scope = scope_for(app_name, user_id)
+    with :ok <- validate_entries(entries) do
+      config = build_config([])
+      scope = scope_for(app_name, user_id)
 
-    results =
-      Enum.map(entries, fn entry ->
-        body = %{
-          fact: entry.content,
-          scope: scope
-        }
+      results =
+        Enum.map(entries, fn entry ->
+          body = %{
+            fact: entry.content,
+            scope: scope
+          }
 
-        request(:post, memories_url(config), body, config)
-      end)
+          request(:post, memories_url(config), body, config)
+        end)
 
-    errors = Enum.filter(results, &match?({:error, _}, &1))
+      errors = Enum.filter(results, &match?({:error, _}, &1))
 
-    case errors do
-      [] -> :ok
-      [{:error, reason} | _] -> {:error, reason}
+      case errors do
+        [] -> :ok
+        [{:error, reason} | _] -> {:error, reason}
+      end
+    else
+      {:error, _} = err -> err
     end
+  end
+
+  defp validate_entries([]) do
+    {:error, :empty_entries}
+  end
+
+  defp validate_entries(entries) do
+    Enum.reduce_while(entries, :ok, fn entry, _acc ->
+      case entry.content do
+        content when not is_binary(content) ->
+          {:halt, {:error, :invalid_content_type}}
+
+        content ->
+          if String.trim(content) == "" do
+            {:halt, {:error, :empty_content}}
+          else
+            {:cont, :ok}
+          end
+      end
+    end)
   end
 
   @doc """
@@ -391,7 +415,7 @@ defmodule ADK.Memory.Store.VertexAI do
       )
 
     case resp.status do
-      200 -> {:ok, resp.body["access_token"] }
+      200 -> {:ok, resp.body["access_token"]}
       s -> {:error, {:metadata_token_error, s}}
     end
   rescue

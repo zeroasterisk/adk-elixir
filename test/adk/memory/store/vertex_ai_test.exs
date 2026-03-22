@@ -219,9 +219,22 @@ defmodule ADK.Memory.Store.VertexAITest do
       assert :ok = VertexAI.add("shopping_app", "bob", [entry])
     end
 
-    test "returns ok for empty entry list" do
-      # No HTTP calls should be made
-      assert :ok = VertexAI.add("myapp", "user1", [])
+    test "returns error for empty entry list" do
+      # Parity with python: must have at least one entry
+      assert {:error, :empty_entries} = VertexAI.add("myapp", "user1", [])
+    end
+
+    test "returns error if entry content is empty or whitespace" do
+      entries = [Entry.new(content: "   ")]
+      assert {:error, :empty_content} = VertexAI.add("myapp", "user1", entries)
+
+      entries = [Entry.new(content: "")]
+      assert {:error, :empty_content} = VertexAI.add("myapp", "user1", entries)
+    end
+
+    test "returns error if entry content is not text" do
+      entries = [Entry.new(content: %{image: "binary_data"})]
+      assert {:error, :invalid_content_type} = VertexAI.add("myapp", "user1", entries)
     end
 
     test "returns error if any create request fails" do
@@ -369,7 +382,9 @@ defmodule ADK.Memory.Store.VertexAITest do
     test "returns error on server failure" do
       stub(500, %{"error" => "server error"})
 
-      full_name = "projects/test-project/locations/us-central1/reasoningEngines/engine-123/memories/bad"
+      full_name =
+        "projects/test-project/locations/us-central1/reasoningEngines/engine-123/memories/bad"
+
       assert {:error, {:api_error, 500, _}} = VertexAI.delete("myapp", "user1", full_name)
     end
   end
@@ -493,8 +508,7 @@ defmodule ADK.Memory.Store.VertexAITest do
         "memories" => [
           %{
             "memory" => %{
-              "name" =>
-                "projects/p/locations/l/reasoningEngines/r/memories/xyz",
+              "name" => "projects/p/locations/l/reasoningEngines/r/memories/xyz",
               "fact" => "User is a software engineer",
               "scope" => %{"agent_name" => "myapp", "user_id" => "user1"},
               "createTime" => "2025-03-11T10:00:00Z"
