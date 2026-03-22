@@ -158,6 +158,12 @@ defmodule ADK.Event do
     attrs =
       case attrs[:actions] do
         m when is_map(m) and not is_struct(m) ->
+          compaction =
+            case Map.get(m, "compaction") || Map.get(m, :compaction) do
+              nil -> nil
+              comp_map -> ADK.EventCompaction.from_map(comp_map)
+            end
+
           ea =
             struct(ADK.EventActions, %{
               state_delta: Map.get(m, "state_delta") || Map.get(m, :state_delta) || %{},
@@ -169,7 +175,8 @@ defmodule ADK.Event do
               escalate: Map.get(m, "escalate") || Map.get(m, :escalate) || false,
               skip_summarization:
                 Map.get(m, "skip_summarization") || Map.get(m, :skip_summarization) || false,
-              end_of_agent: Map.get(m, "end_of_agent") || Map.get(m, :end_of_agent) || false
+              end_of_agent: Map.get(m, "end_of_agent") || Map.get(m, :end_of_agent) || false,
+              compaction: compaction
             })
 
           Map.put(attrs, :actions, ea)

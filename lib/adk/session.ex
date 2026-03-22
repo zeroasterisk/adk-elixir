@@ -262,7 +262,8 @@ defmodule ADK.Session do
           %ADK.EventActions{
             state_delta: a[:state_delta] || %{},
             transfer_to_agent: a[:transfer_to_agent],
-            escalate: a[:escalate] || false
+            escalate: a[:escalate] || false,
+            compaction: ADK.EventCompaction.from_map(a[:compaction] || a["compaction"])
           }
         _ -> %ADK.EventActions{}
       end

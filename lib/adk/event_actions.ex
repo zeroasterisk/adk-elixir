@@ -14,6 +14,7 @@ defmodule ADK.EventActions do
     * `:end_of_agent` — If `true`, the current agent has finished its run within
       this invocation. May appear multiple times for the same agent when loops
       are involved. Set by the ADK workflow, not by user code.
+    * `:compaction` — Compaction details if the event is a compaction event.
   """
 
   @type t :: %__MODULE__{
@@ -23,7 +24,8 @@ defmodule ADK.EventActions do
           transfer_to_agent: String.t() | nil,
           escalate: boolean(),
           skip_summarization: boolean(),
-          end_of_agent: boolean()
+          end_of_agent: boolean(),
+          compaction: ADK.EventCompaction.t() | nil
         }
 
   @derive Jason.Encoder
@@ -33,5 +35,6 @@ defmodule ADK.EventActions do
             transfer_to_agent: nil,
             escalate: false,
             skip_summarization: false,
-            end_of_agent: false
+            end_of_agent: false,
+            compaction: nil
 end
