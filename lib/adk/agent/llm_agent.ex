@@ -64,6 +64,16 @@ defmodule ADK.Agent.LlmAgent do
   def new(opts) do
     opts = ADK.Skill.apply_to_opts(opts, Keyword.get(opts, :skills, []))
     opts = Keyword.drop(opts, [:skills])
+
+    unless Keyword.get(opts, :name),
+      do: raise(ArgumentError, "LlmAgent requires :name")
+
+    unless Keyword.get(opts, :model),
+      do: raise(ArgumentError, "LlmAgent requires :model")
+
+    unless Keyword.get(opts, :instruction),
+      do: raise(ArgumentError, "LlmAgent requires :instruction")
+
     agent = struct!(__MODULE__, opts)
     wire_parent(agent)
   end

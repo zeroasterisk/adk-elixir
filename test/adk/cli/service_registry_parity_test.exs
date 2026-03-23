@@ -143,6 +143,7 @@ defmodule ADK.CLI.ServiceRegistryParityTest do
     test "GCS artifact store exposes save/load/list/delete callbacks" do
       # Python: mock_gcs_artifact.assert_called_once_with(bucket_name="my-bucket", ...)
       # Elixir: verify the behaviour contract is fully implemented
+      Code.ensure_loaded!(ADK.Artifact.GCS)
       assert function_exported?(ADK.Artifact.GCS, :save, 6)
       assert function_exported?(ADK.Artifact.GCS, :load, 5)
       assert function_exported?(ADK.Artifact.GCS, :list, 4)
@@ -203,6 +204,7 @@ defmodule ADK.CLI.ServiceRegistryParityTest do
     test "VertexAI memory store exposes search/add callbacks" do
       # Python: mock_rag_memory / mock_agentengine_memory verified via assert_called_once_with
       # Elixir: verify behaviour callbacks are exported
+      Code.ensure_loaded!(ADK.Memory.Store.VertexAI)
       assert function_exported?(ADK.Memory.Store.VertexAI, :search, 4)
       assert function_exported?(ADK.Memory.Store.VertexAI, :add, 3)
     end

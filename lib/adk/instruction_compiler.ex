@@ -91,19 +91,33 @@ defmodule ADK.InstructionCompiler do
   """
   @spec substitute_vars(String.t(), map()) :: String.t()
   def substitute_vars(instruction, state) when is_binary(instruction) and is_map(state) do
-    Regex.replace(~r/\{(\w+)\}/, instruction, fn full_match, key ->
-      atom_value =
-        try do
-          Map.get(state, String.to_existing_atom(key))
-        rescue
-          ArgumentError -> nil
+    # First pass: replace {{key}} double-brace variables (Python ADK style)
+    result =
+      Regex.replace(~r/\{\{(\w+)\}\}/, instruction, fn full_match, key ->
+        case lookup_var(key, state) do
+          nil -> full_match
+          value -> to_string(value)
         end
+      end)
 
-      case Map.get(state, key) || atom_value do
+    # Second pass: replace {key} single-brace variables
+    Regex.replace(~r/\{(\w+)\}/, result, fn full_match, key ->
+      case lookup_var(key, state) do
         nil -> full_match
         value -> to_string(value)
       end
     end)
+  end
+
+  defp lookup_var(key, state) do
+    atom_value =
+      try do
+        Map.get(state, String.to_existing_atom(key))
+      rescue
+        ArgumentError -> nil
+      end
+
+    Map.get(state, key) || atom_value
   end
 
   def substitute_vars(instruction, _state), do: instruction
