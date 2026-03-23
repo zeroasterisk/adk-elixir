@@ -13,6 +13,10 @@ defmodule ADK.Plugin.GlobalInstructionTest do
       start_supervised!(ADK.Plugin.Registry)
     end
 
+    on_exit(fn ->
+      if Process.whereis(ADK.Plugin.Registry), do: ADK.Plugin.Registry.clear()
+    end)
+
     :ok
   end
 

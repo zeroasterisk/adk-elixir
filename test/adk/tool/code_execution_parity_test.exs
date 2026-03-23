@@ -105,7 +105,7 @@ defmodule ADK.Tool.CodeExecutionParityTest do
       ctx = %Context{
         invocation_id: "inv-1",
         session_pid: nil,
-        agent: LlmAgent.new(name: "dummy"),
+        agent: LlmAgent.new(name: "dummy", model: "test"),
         user_content: %{text: "hi"}
       }
       

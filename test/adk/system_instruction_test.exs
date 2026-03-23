@@ -1,5 +1,5 @@
 defmodule ADK.SystemInstructionTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias ADK.Context
   alias ADK.InstructionCompiler

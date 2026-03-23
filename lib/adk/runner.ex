@@ -121,7 +121,13 @@ defmodule ADK.Runner do
     }
 
     # Gather global plugins, combine with runner-specific plugins
-    plugins = get_plugins() ++ Map.get(runner, :plugins, [])
+    plugins =
+      (get_plugins() ++ Map.get(runner, :plugins, []))
+      |> Enum.map(fn
+        {mod, st} when is_atom(mod) -> {mod, st}
+        mod when is_atom(mod) -> {mod, []}
+      end)
+      |> Enum.uniq_by(fn {mod, _} -> mod end)
 
     telemetry_meta = %{
   agent_name: ADK.Agent.name(runner.agent),

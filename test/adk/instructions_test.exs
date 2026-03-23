@@ -544,12 +544,11 @@ defmodule ADK.InstructionsTest do
       assert result == "{ spaced }"
     end
 
-    test "double braces are left intact" do
+    test "double braces are substituted like single braces" do
       result = InstructionCompiler.substitute_vars("{{literal}}", %{"literal" => "replaced"})
-      # The regex matches {literal} inside the double braces, but the outer
-      # braces remain since they're not part of the match
-      # Actual behavior: {{literal}} -> {replaced}
-      assert result == "{replaced}"
+      # Double-brace syntax {{var}} is treated the same as {var} for substitution
+      # (Python ADK uses double braces as the primary template syntax)
+      assert result == "replaced"
     end
 
     test "nil instruction returns nil" do
