@@ -43,7 +43,7 @@ defmodule ADK.Tool.Toolset do
   @callback get_auth_config() :: Config.t() | nil
 
   @doc "Returns the list of tools provided by this toolset."
-  @callback get_tools(context :: map() | nil) :: [ADK.Tool.t()]
+  @callback get_tools(context :: map() | nil) :: [map()]
 
   @doc "Clean up resources held by the toolset."
   @callback close() :: :ok

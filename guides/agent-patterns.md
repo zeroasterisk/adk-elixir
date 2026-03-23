@@ -95,7 +95,7 @@ events = ADK.Runner.run(runner, "user1", "s1", "What's the weather in Tokyo?")
 - The LLM decides when and which tools to call based on your instruction + tool descriptions
 - Tool functions receive `(tool_ctx, args)` — use `tool_ctx` for state, artifacts, credentials
 
-📁 **See**: [`examples/tool_use/`](../examples/tool_use/)
+📁 **See**: [`examples/tool_use/`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/tool_use/)
 
 ---
 
@@ -143,7 +143,7 @@ router = ADK.Agent.LlmAgent.new(
 parameter. Elixir creates one tool *per* sub-agent — the LLM picks the tool by
 name, eliminating parameter hallucination.
 
-📁 **See**: [`examples/multi_agent/`](../examples/multi_agent/)
+📁 **See**: [`examples/multi_agent/`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/multi_agent/)
 
 ---
 
@@ -193,7 +193,7 @@ pipeline = ADK.Agent.SequentialAgent.new(
 - All sub-agents share the same session state — data flows through state keys
 - Append `?` to optional variables: `{maybe_context?}` won't error if missing
 
-📁 **See**: [`examples/sequential_agent/`](../examples/sequential_agent/)
+📁 **See**: [`examples/sequential_agent/`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/sequential_agent/)
 
 ---
 
@@ -347,7 +347,7 @@ agent = ADK.Agent.LlmAgent.new(
 4. If `{:error, feedback}`, the feedback is appended to the conversation and the agent retries
 5. After `max_retries`, the last response is returned regardless
 
-📁 **See**: [`examples/reflect_retry/`](../examples/reflect_retry/)
+📁 **See**: [`examples/reflect_retry/`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/reflect_retry/)
 
 ---
 
@@ -396,7 +396,7 @@ router = ADK.Agent.LlmAgent.new(
 - Each agent in the hierarchy gets its own instruction context
 - Use `description` liberally — it's what the parent LLM uses to decide routing
 
-📁 **See**: [`examples/claw/`](../examples/claw/)
+📁 **See**: [`examples/claw/`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/claw/)
 
 ---
 
@@ -536,7 +536,7 @@ and await the user's click — see the [Phoenix Integration](phoenix-integration
 **Python comparison**: Python ADK documents HITL as a pattern; ADK Elixir provides
 `ADK.Policy.HumanApproval` as a first-class API.
 
-📁 **See**: [`examples/claw/`](../examples/claw/) (uses `delete_file` with HITL)
+📁 **See**: [`examples/claw/`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/claw/) (uses `delete_file` with HITL)
 
 ---
 
@@ -655,7 +655,7 @@ research_tool = ADK.Tool.LongRunningTool.new(:research,
 **Python comparison**: Python uses `is_long_running = True` + async/await. Elixir uses
 OTP processes — crash isolation and supervision come free.
 
-📁 **See**: [`examples/claw/`](../examples/claw/) (`research` tool)
+📁 **See**: [`examples/claw/`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/claw/) (`research` tool)
 
 ---
 
@@ -694,8 +694,8 @@ agent = ADK.Agent.LlmAgent.new(
 2. When the agent uses `search_memory`, it queries the store
 3. Results are returned as tool output for the LLM to incorporate
 
-📁 **See**: [`examples/rag_agent/`](../examples/rag_agent/) (in-memory RAG),
-[`examples/claw/`](../examples/claw/) (memory integration)
+📁 **See**: [`examples/rag_agent/`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/rag_agent/) (in-memory RAG),
+[`examples/claw/`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/claw/) (memory integration)
 
 ---
 
@@ -736,7 +736,7 @@ list_notes = ADK.Tool.FunctionTool.new(:list_notes,
 - `ADK.Artifact.InMemory` — started by `ADK.Application`, good for dev
 - `ADK.Artifact.GCS` — Google Cloud Storage, for production
 
-📁 **See**: [`examples/claw/`](../examples/claw/)
+📁 **See**: [`examples/claw/`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/claw/)
 
 ---
 
@@ -775,7 +775,7 @@ call_api = ADK.Tool.FunctionTool.new(:call_api,
 **Elixir difference**: Python uses an `AuthRequestProcessor` in its 12-step pipeline.
 Elixir handles auth inline with `{:error, {:auth_required, config}}` return values — simpler control flow.
 
-📁 **See**: [`examples/claw/`](../examples/claw/) (`call_mock_api` tool)
+📁 **See**: [`examples/claw/`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/claw/) (`call_mock_api` tool)
 
 ---
 
@@ -834,7 +834,7 @@ agent = ADK.Agent.LlmAgent.new(
 **Elixir difference**: Python ADK has A2A as a separate package. ADK Elixir bundles
 `ADK.A2A` as a first-class module.
 
-📁 **See**: [`examples/claw/`](../examples/claw/) (A2A controller)
+📁 **See**: [`examples/claw/`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/claw/) (A2A controller)
 
 ---
 
@@ -901,7 +901,7 @@ agent = ADK.Agent.LlmAgent.new(
 **Elixir-only**: Python ADK has token-budget compaction only. ADK Elixir provides
 four strategies out of the box.
 
-📁 **See**: [`examples/context_compilation/`](../examples/context_compilation/),
+📁 **See**: [`examples/context_compilation/`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/context_compilation/),
 [Context Compilation guide](context-compilation.md)
 
 ---
@@ -942,7 +942,7 @@ end
 - `ResponseLength` — min/max length bounds
 - `ToolUsed` — verifies a specific tool was called
 
-📁 **See**: [`examples/claw/test/claw_eval_test.exs`](../examples/claw/test/claw_eval_test.exs),
+📁 **See**: [`examples/claw/test/claw_eval_test.exs`](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/claw/test/claw_eval_test.exs),
 [Evaluations guide](evaluations.md)
 
 ---

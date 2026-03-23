@@ -1,3 +1,3 @@
 defmodule Adk.Agents.InstructionProvider do
-  @callback invoke(provider :: any(), context :: Adk.Agents.ReadonlyContext.t()) :: String.t()
+  @callback invoke(provider :: any(), context :: map()) :: String.t()
 end

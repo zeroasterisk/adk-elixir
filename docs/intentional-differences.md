@@ -4,7 +4,7 @@ This document catalogs the ways ADK Elixir intentionally diverges from the Pytho
 implementation. Each difference was reviewed during design and behavioral parity audits
 (2026-03-09, 2026-03-12) and confirmed as either equivalent or superior to the Python approach.
 
-**For unintentional gaps / known missing features, see [`docs/review/`](review/).**
+**For unintentional gaps / known missing features, see [`docs/review/`](https://github.com/zeroasterisk/adk-elixir/tree/main/docs/review/).**
 
 ---
 
@@ -49,7 +49,7 @@ implementation. Each difference was reviewed during design and behavioral parity
 
 **Rationale**: The processor pipeline is an implementation detail of Python's class-based architecture. Elixir's functional approach achieves the same data assembly in ~100 lines vs ~600 across 12 files. Adding new processing steps means adding lines to `build_request/2`, not creating new classes.
 
-**Code**: [`lib/adk/agent/llm_agent.ex`](../lib/adk/agent/llm_agent.ex), [`lib/adk/instruction_compiler.ex`](../lib/adk/instruction_compiler.ex)
+**Code**: [`lib/adk/agent/llm_agent.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/agent/llm_agent.ex), [`lib/adk/instruction_compiler.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/instruction_compiler.ex)
 
 ---
 
@@ -61,7 +61,7 @@ implementation. Each difference was reviewed during design and behavioral parity
 
 **Rationale**: Per-invocation callbacks should take priority over global plugins. A specific callback saying "skip this model call" should override a general plugin that wants to log it. This ordering is more intuitive for the common case.
 
-**Code**: [`lib/adk/callback.ex`](../lib/adk/callback.ex), [`lib/adk/plugin.ex`](../lib/adk/plugin.ex)
+**Code**: [`lib/adk/callback.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/callback.ex), [`lib/adk/plugin.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/plugin.ex)
 
 ---
 
@@ -77,7 +77,7 @@ implementation. Each difference was reviewed during design and behavioral parity
 
 **Rationale**: Safety and authorization deserve a dedicated abstraction, not ad-hoc callbacks. Policies are composable and declarative. The distinction between "what the agent is allowed to do" (policy) and "how the agent reacts to events" (callback) makes both clearer.
 
-**Code**: [`lib/adk/policy.ex`](../lib/adk/policy.ex), [`lib/adk/policy/`](../lib/adk/policy/)
+**Code**: [`lib/adk/policy.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/policy.ex), [`lib/adk/policy/`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/policy/)
 
 ---
 
@@ -96,7 +96,7 @@ end
 
 **Rationale**: Elixir doesn't have inheritance — protocols are the idiomatic polymorphism mechanism. They are open (third-party libraries can implement an agent protocol for existing structs) and avoid the "fragile base class" problem. Compile-time dispatch is also faster.
 
-**Code**: [`lib/adk/agent.ex`](../lib/adk/agent.ex)
+**Code**: [`lib/adk/agent.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/agent.ex)
 
 ---
 
@@ -118,7 +118,7 @@ end
 
 **Rationale**: Behaviours enforce the contract at compile time. Any struct can be a tool without inheriting from a base class. This allows existing Elixir modules to be adapted as tools without modification (via wrapper structs).
 
-**Code**: [`lib/adk/tool.ex`](../lib/adk/tool.ex), [`lib/adk/tool/function_tool.ex`](../lib/adk/tool/function_tool.ex)
+**Code**: [`lib/adk/tool.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/tool.ex), [`lib/adk/tool/function_tool.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/tool/function_tool.ex)
 
 ---
 
@@ -139,7 +139,7 @@ tool = FunctionTool.new(:greet, {MyTools, :greet, []}, ...)
 
 **Rationale**: MFA tuples are verified at compile time (module + function + arity must exist). They also survive hot code reloading because they resolve to the latest version of the function. Anonymous functions capture a closure snapshot and don't reload.  This matters in production Elixir systems where hot upgrades are common.
 
-**Code**: [`lib/adk/tool/function_tool.ex`](../lib/adk/tool/function_tool.ex)
+**Code**: [`lib/adk/tool/function_tool.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/tool/function_tool.ex)
 
 ---
 
@@ -153,7 +153,7 @@ tool = FunctionTool.new(:greet, {MyTools, :greet, []}, ...)
 
 **Rationale**: Direct mutation through GenServer message passing is idiomatic Elixir and provides immediate consistency. The state_delta pattern adds indirection that's unnecessary when you have actor-model concurrency. Concurrent reads are safe because each session is a single process — no race conditions.
 
-**Code**: [`lib/adk/session.ex`](../lib/adk/session.ex), [`lib/adk/tool_context.ex`](../lib/adk/tool_context.ex)
+**Code**: [`lib/adk/session.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/session.ex), [`lib/adk/tool_context.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/tool_context.ex)
 
 ---
 
@@ -165,7 +165,7 @@ tool = FunctionTool.new(:greet, {MyTools, :greet, []}, ...)
 
 **Rationale**: Elixir maps commonly use atom keys. Supporting both avoids surprising failures when state was set with atoms (common in Elixir) but a template uses string keys (common in Python-style usage). Atoms are interned — `String.to_existing_atom` only succeeds if the atom already exists in the VM, so it's safe against atom table exhaustion.
 
-**Code**: [`lib/adk/state/`](../lib/adk/state/)
+**Code**: [`lib/adk/state/`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/state/)
 
 ---
 
@@ -179,7 +179,7 @@ tool = FunctionTool.new(:greet, {MyTools, :greet, []}, ...)
 
 **Rationale**: `AsyncGenerator` is Python-specific. Elixir's OTP patterns (message passing, supervised tasks, GenServer callbacks) are the natural equivalent. The callback model integrates seamlessly with Phoenix Channels and LiveView — consumers just implement an `on_event` handler rather than owning the generator loop. `Runner.run_async/5` also gives the supervisor full fault-isolation over the agent task.
 
-**Code**: [`lib/adk/runner.ex`](../lib/adk/runner.ex), [`lib/adk/runner/async.ex`](../lib/adk/runner/async.ex), [`lib/adk/phoenix/web_router.ex`](../lib/adk/phoenix/web_router.ex)
+**Code**: [`lib/adk/runner.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/runner.ex), [`lib/adk/runner/async.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/runner/async.ex), [`lib/adk/phoenix/web_router.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/phoenix/web_router.ex)
 
 ---
 
@@ -193,7 +193,7 @@ tool = FunctionTool.new(:greet, {MyTools, :greet, []}, ...)
 
 **Rationale**: Simpler control flow. Python's processor approach is necessitated by its pipeline architecture. Elixir can handle it directly because tool execution is a regular function call, not part of a pipeline. The auth handshake is a natural multi-turn conversation — no need for special pipeline interception.
 
-**Code**: [`lib/adk/auth/`](../lib/adk/auth/), [`lib/adk/agent/llm_agent.ex`](../lib/adk/agent/llm_agent.ex)
+**Code**: [`lib/adk/auth/`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/auth/), [`lib/adk/agent/llm_agent.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/agent/llm_agent.ex)
 
 ---
 
@@ -205,7 +205,7 @@ tool = FunctionTool.new(:greet, {MyTools, :greet, []}, ...)
 
 **Rationale**: Framework-internal events in the session history are a form of coupling that leaks implementation details into the data model. Elixir avoids this entirely by keeping auth as control flow, not data.
 
-**Code**: [`lib/adk/auth/`](../lib/adk/auth/)
+**Code**: [`lib/adk/auth/`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/auth/)
 
 ---
 
@@ -219,7 +219,7 @@ tool = FunctionTool.new(:greet, {MyTools, :greet, []}, ...)
 
 **Rationale**: Same semantics, cleaner API. Returning `None` in Python to mean "pass" is implicit; tagged tuples in Elixir make the caller's intent explicit and eliminate nil-check bugs.
 
-**Code**: [`lib/adk/callback.ex`](../lib/adk/callback.ex)
+**Code**: [`lib/adk/callback.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/callback.ex)
 
 ---
 
@@ -233,7 +233,7 @@ tool = FunctionTool.new(:greet, {MyTools, :greet, []}, ...)
 
 **Rationale**: Explicit separation makes it trivial to use with Gemini's context caching API. The caller decides whether to use the split; no heuristic guessing needed. Static content can be cached at the API level for significant latency and cost reduction.
 
-**Code**: [`lib/adk/instruction_compiler.ex`](../lib/adk/instruction_compiler.ex)
+**Code**: [`lib/adk/instruction_compiler.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/instruction_compiler.ex)
 
 ---
 
@@ -245,7 +245,7 @@ tool = FunctionTool.new(:greet, {MyTools, :greet, []}, ...)
 
 **Rationale**: Modern LLMs (Gemini 2.0+, Claude 4+) don't need verbose prompting for tool usage. Shorter instructions save tokens and reduce confusion. The enum constraint on the tool parameter is the real guard against hallucinating agent names.
 
-**Code**: [`lib/adk/instruction_compiler.ex`](../lib/adk/instruction_compiler.ex), [`lib/adk/agent/llm_agent.ex`](../lib/adk/agent/llm_agent.ex)
+**Code**: [`lib/adk/instruction_compiler.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/instruction_compiler.ex), [`lib/adk/agent/llm_agent.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/agent/llm_agent.ex)
 
 ---
 
@@ -259,7 +259,7 @@ tool = FunctionTool.new(:greet, {MyTools, :greet, []}, ...)
 
 **Rationale**: For in-memory sessions, the compressed message list IS the result — no need to store ranges and re-filter on every request. Timestamp ranges become important for persistent sessions with rehydration across processes (documented as a future enhancement for the Ecto store).
 
-**Code**: [`lib/adk/context/compressor.ex`](../lib/adk/context/compressor.ex)
+**Code**: [`lib/adk/context/compressor.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/context/compressor.ex)
 
 ---
 
@@ -278,7 +278,7 @@ tool = FunctionTool.new(:greet, {MyTools, :greet, []}, ...)
 
 **Rationale**: Different agent use cases have different compaction needs. A customer service bot wants sliding window; a research agent wants summarization. Making the strategy pluggable and providing four built-in options gives developers control without boilerplate.
 
-**Code**: [`lib/adk/context/compressor/`](../lib/adk/context/compressor/)
+**Code**: [`lib/adk/context/compressor/`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/context/compressor/)
 
 ---
 
@@ -305,7 +305,7 @@ Session processes start under `DynamicSupervisor` with `restart: :temporary` (on
 
 **Rationale**: Production systems need fault tolerance. OTP supervision provides automatic restart, graceful degradation, and process isolation for free. A crashing session doesn't take down the Runner; a crashing LLM backend call doesn't take down other agents.
 
-**Code**: [`lib/adk/application.ex`](../lib/adk/application.ex), [`guides/supervision.md`](../guides/supervision.md)
+**Code**: [`lib/adk/application.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/application.ex), [`guides/supervision.md`](https://github.com/zeroasterisk/adk-elixir/tree/main/guides/supervision.md)
 
 ---
 
@@ -320,7 +320,7 @@ Session processes start under `DynamicSupervisor` with `restart: :temporary` (on
 
 **Rationale**: LLM APIs experience transient failures, rate limits, and regional outages. A circuit breaker prevents cascade failures where one slow API call blocks all agent runs. BEAM processes make this trivial — the breaker is a GenServer that tracks state per model name.
 
-**Code**: [`lib/adk/llm/circuit_breaker.ex`](../lib/adk/llm/circuit_breaker.ex)
+**Code**: [`lib/adk/llm/circuit_breaker.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/llm/circuit_breaker.ex)
 
 ---
 
@@ -336,7 +336,7 @@ Session processes start under `DynamicSupervisor` with `restart: :temporary` (on
 
 **Rationale**: Phoenix LiveView is Elixir's native real-time UI layer. Shipping a built-in LiveView component eliminates the need for a separate frontend project for most use cases. SSE streaming works out of the box with the same Runner architecture — no bridging required.
 
-**Code**: [`lib/adk/phoenix/`](../lib/adk/phoenix/), [`guides/phoenix-integration.md`](../guides/phoenix-integration.md)
+**Code**: [`lib/adk/phoenix/`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/phoenix/), [`guides/phoenix-integration.md`](https://github.com/zeroasterisk/adk-elixir/tree/main/guides/phoenix-integration.md)
 
 ---
 
@@ -362,7 +362,7 @@ Features:
 
 **Rationale**: Oban is the de-facto Elixir background job library. Tight integration means agent tasks benefit from Oban's guarantees (at-least-once delivery, observability, queue management) without any glue code.
 
-**Code**: [`lib/adk/oban/agent_worker.ex`](../lib/adk/oban/agent_worker.ex), [`guides/oban-integration.md`](../guides/oban-integration.md)
+**Code**: [`lib/adk/oban/agent_worker.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/oban/agent_worker.ex), [`guides/oban-integration.md`](https://github.com/zeroasterisk/adk-elixir/tree/main/guides/oban-integration.md)
 
 ---
 
@@ -380,7 +380,7 @@ Features:
 
 **Rationale**: Agent interoperability should be a first-class concern, not an afterthought. Bundling A2A means any ADK Elixir agent is immediately network-addressable and composable without additional dependencies.
 
-**Code**: [`lib/adk/a2a/`](../lib/adk/a2a/)
+**Code**: [`lib/adk/a2a/`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/a2a/)
 
 ---
 
@@ -396,7 +396,7 @@ Features:
 
 **Rationale**: HITL is a critical safety pattern for production agents. Making it a first-class policy rather than a custom callback pattern ensures consistency and reduces boilerplate.
 
-**Code**: [`lib/adk/policy/`](../lib/adk/policy/), [`lib/adk/tool/approval.ex`](../lib/adk/tool/approval.ex)
+**Code**: [`lib/adk/policy/`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/policy/), [`lib/adk/tool/approval.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/tool/approval.ex)
 
 ---
 
@@ -411,7 +411,7 @@ Features:
 
 **Rationale**: `:telemetry` is the BEAM ecosystem standard — it integrates with Phoenix, Ecto, Broadway, and every major Elixir library. Consumers attach their own handlers; they can route to OpenTelemetry, StatsD, Prometheus, or log aggregators. The ADK doesn't force a telemetry backend.
 
-**Code**: [`lib/adk/telemetry.ex`](../lib/adk/telemetry.ex)
+**Code**: [`lib/adk/telemetry.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/telemetry.ex)
 
 ---
 
@@ -431,9 +431,9 @@ State is per-invocation, not global. Global state lives in a supervised GenServe
 
 **Rationale**: Explicit state threading makes data flow visible and eliminates shared mutable state bugs. Each invocation gets a fresh plugin state slice; concurrent invocations can't corrupt each other. For truly global state (e.g., a rate limiter), plugins use a named GenServer — which is visible and explicit.
 
-**Code**: [`lib/adk/plugin.ex`](../lib/adk/plugin.ex), [`lib/adk/plugin/`](../lib/adk/plugin/)
+**Code**: [`lib/adk/plugin.ex`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/plugin.ex), [`lib/adk/plugin/`](https://github.com/zeroasterisk/adk-elixir/tree/main/lib/adk/plugin/)
 
 ---
 
 *Last updated: 2026-03-13*
-*Audits: [behavioral-parity-2026-03-12.md](review/behavioral-parity-2026-03-12.md), [design-review-vs-python.md](design-review-vs-python.md), [python-adk-v1.27.0-comparison-v4.md](review/python-adk-v1.27.0-comparison-v4.md)*
+*Audits: [behavioral-parity-2026-03-12.md](https://github.com/zeroasterisk/adk-elixir/tree/main/docs/review/behavioral-parity-2026-03-12.md), [design-review-vs-python.md](https://github.com/zeroasterisk/adk-elixir/tree/main/docs/design-review-vs-python.md), [python-adk-v1.27.0-comparison-v4.md](https://github.com/zeroasterisk/adk-elixir/tree/main/docs/review/python-adk-v1.27.0-comparison-v4.md)*

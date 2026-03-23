@@ -1,7 +1,7 @@
 # Deploying ADK Elixir Applications
 
 This guide covers deploying ADK Elixir applications — specifically Phoenix-based agents
-like the [Claw example](../examples/claw/) — to **Cloud Run**, **Fly.io**, and **Gigalixir**.
+like the [Claw example](https://github.com/zeroasterisk/adk-elixir/tree/main/examples/claw/) — to **Cloud Run**, **Fly.io**, and **Gigalixir**.
 
 ## Table of Contents
 
