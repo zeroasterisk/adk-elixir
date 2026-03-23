@@ -1,0 +1,143 @@
+openapi: 3.0.0
+servers:
+  - url: https://www.googleapis.com/calendar/v3
+info:
+  title: Calendar API
+  version: v3
+paths:
+  /calendars:
+    post:
+      description: Creates a secondary calendar.
+      operationId: calendar.calendars.insert
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: Successful response
+      security:
+        - Oauth2:
+            - https://www.googleapis.com/auth/calendar
+  /calendars/{calendarId}:
+    delete:
+      description: Deletes a secondary calendar. Use calendars.clear for clearing all events on primary calendars.
+      operationId: calendar.calendars.delete
+      parameters:
+        - description: Calendar identifier. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the "primary" keyword.
+          in: path
+          name: calendarId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+    get:
+      description: Returns metadata for a calendar.
+      operationId: calendar.calendars.get
+      parameters:
+        - description: Calendar identifier. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the "primary" keyword.
+          in: path
+          name: calendarId
+          required: true
+          schema:
+            type: string
+        - description: Data format for the response.
+          in: query
+          name: alt
+          schema:
+            type: string
+        - description: Selector specifying which fields to include in a partial response.
+          in: query
+          name: fields
+          schema:
+            type: string
+        - description: API key. Your API key identifies your project and provides you with API access, quota, and reports. Required unless you provide an OAuth 2.0 token.
+          in: query
+          name: key
+          schema:
+            type: string
+        - description: OAuth 2.0 token for the current user.
+          in: query
+          name: oauth_token
+          schema:
+            type: string
+        - description: Returns response with indentations and line breaks.
+          in: query
+          name: prettyPrint
+          schema:
+            type: boolean
+        - description: An opaque string that represents a user for quota purposes. Must not exceed 40 characters.
+          in: query
+          name: quotaUser
+          schema:
+            type: string
+        - description: Deprecated. Please use quotaUser instead.
+          in: query
+          name: userIp
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: Successful response
+      security:
+        - Oauth2:
+            - https://www.googleapis.com/auth/calendar
+    patch:
+      description: Updates metadata for a calendar. This method supports patch semantics.
+      operationId: calendar.calendars.patch
+      parameters:
+        - description: Calendar identifier. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the "primary" keyword.
+          in: path
+          name: calendarId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: Successful response
+    put:
+      description: Updates metadata for a calendar.
+      operationId: calendar.calendars.update
+      parameters:
+        - description: Calendar identifier. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the "primary" keyword.
+          in: path
+          name: calendarId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: Successful response
+components:
+  securitySchemes:
+    Oauth2:
+      type: oauth2

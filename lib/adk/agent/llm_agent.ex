@@ -54,8 +54,16 @@ defmodule ADK.Agent.LlmAgent do
           disallow_transfer_to_peers: boolean()
         }
 
+  @doc """
+  Create a new LLM agent.
+
+  Applies any skills from the `:skills` option, builds the struct, and
+  wires parent/peer references for sub-agent transfer.
+  """
+  @spec new(keyword()) :: t()
   def new(opts) do
     opts = ADK.Skill.apply_to_opts(opts, Keyword.get(opts, :skills, []))
+    opts = Keyword.drop(opts, [:skills])
     agent = struct!(__MODULE__, opts)
     wire_parent(agent)
   end
@@ -118,6 +126,7 @@ defmodule ADK.Agent.LlmAgent do
   # ---------- Real Execution Pipeline ----------
 
   @doc false
+  @spec do_run(ADK.Context.t(), t(), non_neg_integer()) :: [ADK.Event.t()]
   def do_run(_ctx, agent, iteration) when iteration >= agent.max_iterations, do: []
 
   def do_run(ctx, agent, iteration) do
@@ -362,6 +371,7 @@ defmodule ADK.Agent.LlmAgent do
   @doc """
   Build the LLM request from the current context and agent config.
   """
+  @spec build_request(ADK.Context.t(), t()) :: map()
   def build_request(ctx, agent) do
     instruction = compile_instruction(ctx, agent)
     messages = build_messages(ctx)
@@ -407,6 +417,7 @@ defmodule ADK.Agent.LlmAgent do
   Compile the instruction string, merging global + agent instruction
   and substituting `{key}` state variables.
   """
+  @spec compile_instruction(ADK.Context.t(), t()) :: String.t()
   def compile_instruction(ctx, agent) do
     base = resolve_instruction(agent.instruction, ctx)
 
@@ -449,6 +460,7 @@ defmodule ADK.Agent.LlmAgent do
   @doc """
   Compute the full tool list including auto-generated transfer tools.
   """
+  @spec effective_tools(t()) :: [map()]
   def effective_tools(agent) do
     targets = transfer_targets(agent)
 
@@ -462,6 +474,7 @@ defmodule ADK.Agent.LlmAgent do
   end
 
   @doc false
+  @spec find_transfer_target(t(), String.t()) :: t() | nil
   def find_transfer_target(agent, target_name) do
     # Check sub-agents
     result =
@@ -491,6 +504,7 @@ defmodule ADK.Agent.LlmAgent do
 
   Includes sub-agents, parent (if not disallowed), and peer siblings (if not disallowed).
   """
+  @spec transfer_targets(t()) :: [t()]
   def transfer_targets(agent) do
     subs = agent.sub_agents || []
 
@@ -514,6 +528,7 @@ defmodule ADK.Agent.LlmAgent do
   @doc """
   Get all agent names in the agent tree for error reporting.
   """
+  @spec get_available_agent_names(t()) :: [String.t()]
   def get_available_agent_names(%__MODULE__{} = root_agent) do
     collect_agent_names(root_agent, [])
   end
@@ -521,6 +536,7 @@ defmodule ADK.Agent.LlmAgent do
   @doc """
   Find an agent by name in the tree, or raise with a helpful error.
   """
+  @spec get_agent_to_run(t(), String.t()) :: {:ok, t()}
   def get_agent_to_run(%__MODULE__{} = root_agent, agent_name) do
     case find_agent(root_agent, agent_name) do
       nil ->
@@ -529,6 +545,15 @@ defmodule ADK.Agent.LlmAgent do
         raise ArgumentError, """
         Agent '#{agent_name}' not found.
         Available agents: #{Enum.join(available, ", ")}
+
+        Possible causes:
+        - Typo in agent name
+        - Agent not registered as a sub_agent
+        - Agent was removed or renamed
+
+        Suggested fixes:
+        - Check spelling matches one of: #{Enum.join(available, ", ")}
+        - Verify the agent is included in the sub_agents list
         """
 
       agent ->
@@ -539,6 +564,7 @@ defmodule ADK.Agent.LlmAgent do
   @doc """
   Clone an agent with optional overrides.
   """
+  @spec clone(t(), map()) :: t()
   def clone(%__MODULE__{} = agent, overrides \\ %{}) do
     agent
     |> Map.from_struct()
@@ -606,6 +632,7 @@ defmodule ADK.Agent.LlmAgent do
   end
 
   @doc false
+  @spec maybe_save_output_to_state(ADK.Event.t(), t()) :: ADK.Event.t()
   def maybe_save_output_to_state(event, agent) do
     output_key = agent.output_key
 

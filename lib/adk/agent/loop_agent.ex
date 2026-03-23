@@ -58,6 +58,7 @@ defmodule ADK.Agent.LoopAgent do
   end
 
   @doc "Clone this agent with optional updates. See `ADK.Agent.Clone`."
+  @spec clone(t(), map() | nil) :: t()
   def clone(agent, update \\ nil), do: ADK.Agent.Clone.clone(agent, update)
 
   defimpl ADK.Agent do
