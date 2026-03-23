@@ -32,6 +32,25 @@ defmodule ADK.Event do
             input_transcription: nil,
             output_transcription: nil
 
+  @type t :: %__MODULE__{
+          type: atom() | nil,
+          data: any(),
+          custom_metadata: map(),
+          error: String.t() | nil,
+          content: map() | nil,
+          id: String.t() | nil,
+          invocation_id: String.t() | nil,
+          author: String.t() | nil,
+          branch: String.t() | nil,
+          timestamp: DateTime.t() | nil,
+          partial: boolean() | nil,
+          actions: ADK.EventActions.t() | nil,
+          input_transcription: map() | nil,
+          output_transcription: map() | nil
+        }
+
+  @doc "Create a new event with auto-generated ID and timestamp."
+  @spec new(map() | keyword()) :: t()
   def new(opts) do
     opts_map = if is_map(opts), do: opts, else: Map.new(opts)
 
@@ -47,6 +66,8 @@ defmodule ADK.Event do
     Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
   end
 
+  @doc "Extract text from the event's content parts, falling back to error."
+  @spec text(t()) :: String.t() | nil
   def text(event) do
     text_part =
       parts(event)
@@ -59,17 +80,23 @@ defmodule ADK.Event do
     text_part || event.error
   end
 
+  @doc "Returns true if this event is a final response (not partial, no transfer, no tool calls)."
+  @spec final_response?(t()) :: boolean()
   def final_response?(event) do
     transfer = get_flex(event.actions, "transfer_to_agent")
     !event.partial && !transfer && !has_function_calls?(event)
   end
 
+  @doc "Create an error event."
+  @spec error(term(), map() | keyword()) :: t()
   def error(reason, opts) do
     error_str = if is_binary(reason), do: reason, else: inspect(reason)
     opts_map = if is_map(opts), do: opts, else: Map.new(opts)
     new(Map.put(opts_map, :error, error_str))
   end
 
+  @doc "Convert an event to a plain map, serializing timestamps and actions."
+  @spec to_map(t()) :: map()
   def to_map(event) do
     event
     |> Map.from_struct()
@@ -85,6 +112,8 @@ defmodule ADK.Event do
     end)
   end
 
+  @doc "Extract function call parts from the event's content."
+  @spec function_calls(t()) :: [map()]
   def function_calls(event) do
     for part <- parts(event),
         call = get_flex(part, "function_call"),
@@ -92,6 +121,8 @@ defmodule ADK.Event do
         do: call
   end
 
+  @doc "Extract function response parts from the event's content."
+  @spec function_responses(t()) :: [map()]
   def function_responses(event) do
     for part <- parts(event),
         response = get_flex(part, "function_response"),
@@ -100,22 +131,27 @@ defmodule ADK.Event do
   end
 
   @doc "Returns true if the event contains at least one function call."
+  @spec has_function_calls?(t()) :: boolean()
   def has_function_calls?(event) do
     function_calls(event) != []
   end
 
   @doc "Returns true if the event contains at least one function response."
+  @spec has_function_responses?(t()) :: boolean()
   def has_function_responses?(event) do
     function_responses(event) != []
   end
 
   @doc "Returns true if the event has text content (not just tool calls)."
+  @spec text?(t()) :: boolean()
   def text?(event), do: text(event) != nil
 
   @doc "Returns true if this is a compaction event."
+  @spec compaction?(t()) :: boolean()
   def compaction?(event), do: event.author == "system:compaction"
 
   @doc "Reconstruct an event from a map (string or atom keys)."
+  @spec from_map(map()) :: t()
   def from_map(map) when is_map(map) do
     fields = [
       :type,
@@ -261,6 +297,8 @@ defmodule ADK.Event do
 
   defp get_flex(_map, _key), do: nil
 
+  @doc "Check if an event is visible on a given branch."
+  @spec on_branch?(t(), String.t() | nil) :: boolean()
   def on_branch?(event, branch) do
     case {event.branch, branch} do
       {nil, _} ->
