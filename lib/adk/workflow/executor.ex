@@ -25,7 +25,7 @@ defmodule ADK.Workflow.Executor do
   - `[:adk, :workflow, :stop]` — workflow execution completes
   """
 
-  alias ADK.Workflow.{Graph, Collaboration, Checkpoint}
+  alias ADK.Workflow.{Graph, Collaboration, Checkpoint, Retry}
 
   @type run_opts :: [
           checkpoint_store: module(),
@@ -274,23 +274,32 @@ defmodule ADK.Workflow.Executor do
   # ── Node Execution ──
 
   defp run_node(%ADK.Workflow.Step{} = step, node_id, ctx) do
-    result =
-      if is_function(step.run, 2) do
-        step.run.(node_id, ctx)
-      else
-        step.run.(ctx)
-      end
+    execute_fn = fn ->
+      result =
+        if is_function(step.run, 2) do
+          step.run.(node_id, ctx)
+        else
+          step.run.(ctx)
+        end
 
-    status =
-      case result do
-        {:error, _} = err -> err
-        {:halt, reason} -> {:error, reason}
-        _ -> :ok
-      end
+      status =
+        case result do
+          {:error, _} = err -> err
+          {:halt, reason} -> {:error, reason}
+          _ -> :ok
+        end
 
-    events = wrap_events(result, node_id)
-    output = extract_output(events)
-    {status, events, output}
+      events = wrap_events(result, node_id)
+      output = extract_output(events)
+      {status, events, output}
+    end
+
+    Retry.with_retry(
+      execute_fn,
+      step.retry_times,
+      step.backoff,
+      %{node_id: node_id}
+    )
   end
 
   defp run_node(node_def, node_id, ctx) when is_function(node_def, 1) do
