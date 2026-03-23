@@ -1,3 +1,4 @@
+if Code.ensure_loaded?(Plug.Router) do
 defmodule ADK.Phoenix.WebRouter do
   @moduledoc """
   Plug router providing Python ADK-compatible HTTP endpoints.
@@ -504,4 +505,5 @@ defmodule ADK.Phoenix.WebRouter do
 
     super(conn, opts)
   end
+end
 end

@@ -1,3 +1,4 @@
+if Code.ensure_loaded?(Plug.Router) do
 defmodule ADK.DevServer.Router do
   @moduledoc """
   Plug router for the ADK development server (`mix adk.server`).
@@ -664,4 +665,5 @@ defmodule ADK.DevServer.Router do
     </html>
     """
   end
+end
 end
