@@ -17,6 +17,7 @@ defmodule ADK.Context do
           credential_service: module() | nil,
           app_name: String.t() | nil,
           user_id: String.t() | nil,
+          memory_store: {module(), keyword()} | nil,
           on_event: (ADK.Event.t() -> any()) | nil
         }
 

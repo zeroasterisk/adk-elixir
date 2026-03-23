@@ -10,7 +10,8 @@ defmodule ADK.Runner do
           agent: ADK.Agent.t(),
           session_store: {module(), keyword()} | nil,
           artifact_service: {module(), keyword()} | nil,
-          memory_store: {module(), keyword()} | nil
+          memory_store: {module(), keyword()} | nil,
+          plugins: [{module(), term()}]
         }
 
   @doc """
