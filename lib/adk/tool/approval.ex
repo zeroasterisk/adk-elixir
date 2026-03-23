@@ -52,6 +52,8 @@ defmodule ADK.Tool.Approval do
     GenServer.start_link(__MODULE__, %__MODULE__{}, name: name)
   end
 
+  @doc false
+  @spec child_spec(keyword()) :: Supervisor.child_spec()
   def child_spec(opts) do
     %{
       id: Keyword.get(opts, :id, __MODULE__),

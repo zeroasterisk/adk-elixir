@@ -31,6 +31,8 @@ defmodule ADK.Tool.Declarative do
     end
   end
 
+  @doc false
+  @spec __on_definition__(Macro.Env.t(), atom(), atom(), list(), list(), term()) :: :ok
   def __on_definition__(env, :def, name, _args, _guards, _body) do
     case Module.get_attribute(env.module, :tool) do
       nil ->
@@ -45,6 +47,8 @@ defmodule ADK.Tool.Declarative do
     end
   end
 
+  @doc false
+  @spec __on_definition__(Macro.Env.t(), atom(), atom(), list(), list(), term()) :: :ok
   def __on_definition__(_env, _kind, _name, _args, _guards, _body), do: :ok
 
   defmacro __before_compile__(env) do

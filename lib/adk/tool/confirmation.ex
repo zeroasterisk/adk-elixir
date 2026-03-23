@@ -28,11 +28,13 @@ defmodule ADK.Tool.Confirmation do
         }
 
   @doc "Create a new ToolConfirmation."
+  @spec new(keyword()) :: t()
   def new(opts \\ []) do
     struct!(__MODULE__, opts)
   end
 
   @doc "Serialize to JSON-compatible map (camelCase for parity)."
+  @spec to_map(t()) :: map()
   def to_map(%__MODULE__{} = conf) do
     %{
       "hint" => conf.hint,
@@ -42,6 +44,7 @@ defmodule ADK.Tool.Confirmation do
   end
 
   @doc "Parse from a map (handles both camelCase and snake_case keys)."
+  @spec from_map(map()) :: t()
   def from_map(map) when is_map(map) do
     %__MODULE__{
       hint: map["hint"] || map[:hint] || "",
