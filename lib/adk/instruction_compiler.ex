@@ -109,6 +109,8 @@ defmodule ADK.InstructionCompiler do
     end)
   end
 
+  def substitute_vars(instruction, _state), do: instruction
+
   defp lookup_var(key, state) do
     atom_value =
       try do
@@ -119,8 +121,6 @@ defmodule ADK.InstructionCompiler do
 
     Map.get(state, key) || atom_value
   end
-
-  def substitute_vars(instruction, _state), do: instruction
 
   # --- Private helpers ---
 

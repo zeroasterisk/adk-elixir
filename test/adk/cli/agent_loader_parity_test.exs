@@ -356,9 +356,9 @@ defmodule ADK.CLI.AgentLoaderParityTest do
         ADK.Agent.LlmAgent.new(name: "test", instruction: "hi")
       end
 
-      assert_raise ArgumentError, fn ->
-        ADK.Agent.LlmAgent.new(name: "test", model: "gemini")
-      end
+      # instruction is optional (some agents use tools-only without instruction)
+      agent = ADK.Agent.LlmAgent.new(name: "test", model: "gemini")
+      assert agent.name == "test"
     end
 
     test "valid llm agent creation" do

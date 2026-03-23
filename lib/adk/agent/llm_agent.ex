@@ -71,9 +71,6 @@ defmodule ADK.Agent.LlmAgent do
     unless Keyword.get(opts, :model),
       do: raise(ArgumentError, "LlmAgent requires :model")
 
-    unless Keyword.get(opts, :instruction),
-      do: raise(ArgumentError, "LlmAgent requires :instruction")
-
     agent = struct!(__MODULE__, opts)
     wire_parent(agent)
   end
@@ -414,14 +411,51 @@ defmodule ADK.Agent.LlmAgent do
         request 
       end 
 
-    case agent.generate_config do
-      config when is_map(config) and map_size(config) > 0 ->
-        Map.put(request, :generate_config, config)
+    request =
+      case agent.generate_config do
+        config when is_map(config) and map_size(config) > 0 ->
+          Map.put(request, :generate_config, config)
 
-      _ ->
-        request
-    end
+        _ ->
+          request
+      end
+
+    # Apply planner if present
+    apply_planner(request, agent.planner)
   end
+
+  defp apply_planner(request, nil), do: request
+
+  defp apply_planner(request, %ADK.Planner.BuiltIn{} = planner) do
+    ADK.Planner.BuiltIn.apply_thinking_config(planner, request)
+  end
+
+  defp apply_planner(request, %ADK.Planner.PlanReAct{} = _planner) do
+    planning_instruction = ADK.Planner.PlanReAct.build_planning_instruction(nil, request)
+
+    request =
+      if planning_instruction do
+        base = request[:instruction] || ""
+        combined = base <> "\n\n" <> planning_instruction
+
+        request
+        |> Map.put(:instruction, combined)
+        |> Map.put(:dynamic_system_instruction, combined)
+      else
+        request
+      end
+
+    # Strip :thought from message parts (thought parts are internal planning artifacts)
+    messages =
+      Enum.map(request[:messages] || [], fn msg ->
+        parts = Enum.map(msg.parts || [], fn part -> Map.delete(part, :thought) end)
+        %{msg | parts: parts}
+      end)
+
+    Map.put(request, :messages, messages)
+  end
+
+  defp apply_planner(request, _planner), do: request
 
   @doc """
   Compile the instruction string, merging global + agent instruction

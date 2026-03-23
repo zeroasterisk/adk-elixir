@@ -78,7 +78,7 @@ defmodule ADK.PluginTest do
 
     test "register module without config" do
       Registry.register(NoCallbacksPlugin)
-      assert [{NoCallbacksPlugin, %{}}] = Registry.list()
+      assert [{NoCallbacksPlugin, []}] = Registry.list()
     end
   end
 

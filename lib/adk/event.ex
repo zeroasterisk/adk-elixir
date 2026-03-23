@@ -28,7 +28,7 @@ defmodule ADK.Event do
             branch: nil,
             timestamp: nil,
             partial: nil,
-            actions: nil,
+            actions: %ADK.EventActions{},
             input_transcription: nil,
             output_transcription: nil
 
