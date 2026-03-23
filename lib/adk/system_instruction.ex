@@ -17,6 +17,15 @@ defmodule ADK.SystemInstruction do
   Renders a system instruction template.
   """
 
+  @doc """
+  Render a template string, replacing `{var}` placeholders with values from context.
+
+  ## Examples
+
+      iex> ADK.SystemInstruction.render("Hello {name}", %{name: "world"})
+      "Hello world"
+  """
+  @spec render(String.t(), map()) :: String.t()
   def render(template, context) do
     Regex.replace(~r/\{([^}]+)\}/, template, fn _, var ->
       val = get_in(context, [Access.key(String.to_atom(var))])

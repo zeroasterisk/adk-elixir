@@ -15,8 +15,11 @@ defmodule ADK.EventCompaction do
             compacted_content: %{}
 
   @doc """
-  Constructs an EventCompaction from a map.
+  Constructs an EventCompaction from a map (string or atom keys).
+
+  Returns `nil` for `nil` input, passes through existing structs.
   """
+  @spec from_map(map() | t() | nil) :: t() | nil
   def from_map(nil), do: nil
   def from_map(%__MODULE__{} = compaction), do: compaction
 
