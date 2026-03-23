@@ -27,6 +27,7 @@ defmodule ADK.Workflow.Step do
   - `:retry_times` — max retry attempts on failure (default: 0)
   - `:backoff` — backoff strategy: `:exponential`, `:linear`, or fixed ms (default: `:exponential`)
   """
+  @spec new(atom() | String.t(), function(), function() | nil, function() | nil) :: t()
   def new(name, run_fun, compensate_fun \\ nil, validate_fun \\ nil) do
     %__MODULE__{
       name: name,
@@ -44,6 +45,7 @@ defmodule ADK.Workflow.Step do
       Step.new_with_opts(:fetch, &fetch/1, retry_times: 3, backoff: :exponential)
       Step.new_with_opts(:save, &save/1, retry_times: 2, backoff: 500)
   """
+  @spec new_with_opts(atom() | String.t(), function(), keyword()) :: t()
   def new_with_opts(name, run_fun, opts \\ []) do
     %__MODULE__{
       name: name,

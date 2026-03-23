@@ -81,18 +81,23 @@ defmodule ADK.Telemetry.Contract do
   # ── Event Name Accessors ───────────────────────────────────────────────
 
   @doc "Runner event names."
+  @spec runner_events() :: [list(atom())]
   def runner_events, do: [@runner_start, @runner_stop, @runner_exception]
 
   @doc "Agent event names."
+  @spec agent_events() :: [list(atom())]
   def agent_events, do: [@agent_start, @agent_stop, @agent_exception]
 
   @doc "Tool event names."
+  @spec tool_events() :: [list(atom())]
   def tool_events, do: [@tool_start, @tool_stop, @tool_exception]
 
   @doc "LLM event names."
+  @spec llm_events() :: [list(atom())]
   def llm_events, do: [@llm_start, @llm_stop, @llm_exception]
 
   @doc "Session event names."
+  @spec session_events() :: [list(atom())]
   def session_events, do: [@session_start, @session_stop]
 
   @doc """

@@ -26,6 +26,7 @@ defmodule ADK.Agent.RemoteA2aAgent do
         }
 
   @doc "Create a new RemoteA2aAgent."
+  @spec new(keyword()) :: t()
   def new(opts) do
     struct!(__MODULE__, opts)
   end
