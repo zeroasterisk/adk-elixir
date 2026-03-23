@@ -1,3 +1,4 @@
+if Code.ensure_loaded?(Ecto) do
 defmodule ADK.Session.Store.Ecto.DynamicTermType do
   @moduledoc """
   Parity for Python's DynamicPickleType.
@@ -35,4 +36,5 @@ defmodule ADK.Session.Store.Ecto.DynamicTermType do
   def dump(term) do
     {:ok, :erlang.term_to_binary(term)}
   end
+end
 end
