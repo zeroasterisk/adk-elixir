@@ -1,17 +1,3 @@
-# Copyright 2026 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 defmodule ADK.Auth.Exchanger.OAuth2 do
   @moduledoc """
   Exchanges OAuth2 credentials from authorization responses.
@@ -24,16 +10,64 @@ defmodule ADK.Auth.Exchanger.OAuth2 do
   alias ADK.Auth.OAuth2
 
   @impl true
+  def exchange(nil, _scheme) do
+    {:error, "auth_credential is empty"}
+  end
+
   def exchange(%Credential{} = _cred, nil) do
     {:error, "auth_scheme is required for OAuth2 credential exchange"}
   end
 
-  def exchange(%Credential{access_token: token} = cred, _scheme)
-      when is_binary(token) and token != "" do
+  def exchange(%Credential{} = cred, scheme) do
+    case check_scheme_credential_type(scheme, cred) do
+      :ok ->
+        if cred.type == :http_bearer do
+          {:ok, cred}
+        else
+          do_exchange(cred, scheme)
+        end
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  @doc """
+  Validates that the scheme and credential types are valid for OAuth2 exchange.
+  Mirrors Python's `_check_scheme_credential_type`.
+  """
+  def check_scheme_credential_type(_scheme, nil) do
+    {:error, "auth_credential is empty. Please create AuthCredential using OAuth2Auth."}
+  end
+
+  def check_scheme_credential_type(%{type: type}, _cred) when type not in ["openIdConnect", "oauth2"] do
+    {:error, "Invalid security scheme, expect AuthSchemeType.openIdConnect or AuthSchemeType.oauth2 auth scheme, but got #{type}"}
+  end
+
+  def check_scheme_credential_type(%{}, %Credential{type: type}) when type not in [:oauth2, :http_bearer, :open_id_connect] do
+    {:error, "auth_credential is not configured with oauth2. Please create AuthCredential and set OAuth2Auth."}
+  end
+
+  def check_scheme_credential_type(_scheme, _cred) do
+    :ok
+  end
+
+  @doc """
+  Generates an HTTP Bearer credential from an OAuth2 credential with an access token.
+  Mirrors Python's `generate_auth_token`.
+  """
+  def generate_auth_token(%Credential{access_token: token} = cred) when is_binary(token) and token != "" do
+    Credential.http_bearer(token, metadata: cred.metadata)
+  end
+
+  def generate_auth_token(cred), do: cred
+
+  defp do_exchange(%Credential{access_token: token} = cred, _scheme)
+       when is_binary(token) and token != "" do
     {:ok, cred}
   end
 
-  def exchange(%Credential{} = cred, scheme) do
+  defp do_exchange(%Credential{} = cred, scheme) do
     case determine_grant_type(scheme) do
       :client_credentials ->
         exchange_client_credentials(cred, scheme)

@@ -367,7 +367,7 @@ defmodule ADK.Auth.OAuth2CredentialUtilTest do
       assert {:error, _msg} = ExchangerOAuth2.exchange(cred, nil)
     end
 
-    test "returns credential unchanged for unknown scheme type" do
+    test "returns error for unknown scheme type" do
       cred = %Credential{
         type: :oauth2,
         access_token: nil,
@@ -375,11 +375,10 @@ defmodule ADK.Auth.OAuth2CredentialUtilTest do
         client_secret: "test_client_secret"
       }
 
-      # Unknown scheme type → determine_grant_type returns nil → no-op
       scheme = %{type: "http"}
 
-      assert {:ok, result} = ExchangerOAuth2.exchange(cred, scheme)
-      assert result == cred
+      assert {:error, msg} = ExchangerOAuth2.exchange(cred, scheme)
+      assert msg =~ "Invalid security scheme"
     end
   end
 

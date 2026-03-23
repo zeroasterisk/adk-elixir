@@ -224,4 +224,42 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
       assert OAuth2.determine_grant_type(%{}) == nil
     end
   end
+
+  describe "check_scheme_credential_type/2 (parity with test_oauth2_exchanger.py)" do
+    test "success when scheme and credential match" do
+      cred = %Credential{type: :oauth2}
+      scheme = %{type: "openIdConnect"}
+      assert OAuth2.check_scheme_credential_type(scheme, cred) == :ok
+    end
+
+    test "missing credential returns error" do
+      scheme = %{type: "openIdConnect"}
+      assert {:error, msg} = OAuth2.check_scheme_credential_type(scheme, nil)
+      assert msg =~ "auth_credential is empty"
+    end
+
+    test "invalid scheme type returns error" do
+      cred = %Credential{type: :oauth2}
+      scheme = %{type: "apiKey"}
+      assert {:error, msg} = OAuth2.check_scheme_credential_type(scheme, cred)
+      assert msg =~ "Invalid security scheme"
+    end
+
+    test "missing openid connect config in credential returns error" do
+      cred = %Credential{type: :api_key}
+      scheme = %{type: "openIdConnect"}
+      assert {:error, msg} = OAuth2.check_scheme_credential_type(scheme, cred)
+      assert msg =~ "auth_credential is not configured with oauth2"
+    end
+  end
+
+  describe "generate_auth_token/1 (parity with test_oauth2_exchanger.py)" do
+    test "success generates HTTP bearer token from oauth2 credential" do
+      cred = %Credential{type: :oauth2, access_token: "test_access_token"}
+      updated_credential = OAuth2.generate_auth_token(cred)
+
+      assert updated_credential.type == :http_bearer
+      assert updated_credential.access_token == "test_access_token"
+    end
+  end
 end
