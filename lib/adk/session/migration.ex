@@ -27,11 +27,13 @@ defmodule ADK.Session.Migration do
   @doc """
   Returns the schema version key used in the metadata table.
   """
+  @spec schema_version_key() :: String.t()
   def schema_version_key, do: @schema_version_key
 
   @doc """
   Returns the version string for the v1 JSON schema.
   """
+  @spec schema_version_1_json() :: String.t()
   def schema_version_1_json, do: @schema_version_1
 
   @doc """
@@ -40,6 +42,7 @@ defmodule ADK.Session.Migration do
   Checks for the `adk_internal_metadata` table first, then falls back to inspecting
   the structure of the `events` table.
   """
+  @spec get_db_schema_version(module()) :: String.t()
   def get_db_schema_version(repo) do
     # Since Ecto doesn't have a direct "inspector" like SQLAlchemy,
     # we use SQL queries to check for table and column existence.
@@ -70,6 +73,7 @@ defmodule ADK.Session.Migration do
 
   Matches the behavior of Python's `to_sync_url`.
   """
+  @spec to_sync_url(String.t() | term()) :: String.t() | term()
   def to_sync_url(url) when is_binary(url) do
     if String.contains?(url, "://") do
       [scheme, rest] = String.split(url, "://", parts: 2)

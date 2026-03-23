@@ -293,10 +293,12 @@ defmodule ADK.Auth.Preprocessor do
   @doc """
   The canonical name for the request-credential function call.
   """
+  @spec request_euc_function_call_name() :: String.t()
   def request_euc_function_call_name, do: @request_euc_function_call_name
 
   @doc """
   Prefix for toolset auth credential IDs (excluded from tool resumption).
   """
+  @spec toolset_auth_prefix() :: String.t()
   def toolset_auth_prefix, do: @toolset_auth_prefix
 end

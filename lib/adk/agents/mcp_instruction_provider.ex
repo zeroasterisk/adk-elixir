@@ -1,4 +1,8 @@
 defmodule Adk.Agents.McpInstructionProvider do
+  @moduledoc """
+  Instruction provider that fetches a prompt from an MCP server.
+  """
+
   @behaviour Adk.Agents.InstructionProvider
 
   alias Adk.Agents.ReadonlyContext
@@ -8,6 +12,14 @@ defmodule Adk.Agents.McpInstructionProvider do
             prompt_name: nil,
             mcp_session_manager_mod: nil
 
+  @type t :: %__MODULE__{
+          connection_params: term(),
+          prompt_name: String.t() | nil,
+          mcp_session_manager_mod: module()
+        }
+
+  @doc "Create a new MCP instruction provider."
+  @spec new(term(), String.t()) :: t()
   def new(connection_params, prompt_name) do
     %__MODULE__{
       connection_params: connection_params,

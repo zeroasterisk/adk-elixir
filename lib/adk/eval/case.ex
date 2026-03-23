@@ -29,6 +29,7 @@ defmodule ADK.Eval.Case do
 
   defstruct [:name, :input, scorers: [], metadata: %{}]
 
+  @doc "Create a new eval case."
   @spec new(keyword()) :: t()
   def new(opts) do
     %__MODULE__{

@@ -30,6 +30,7 @@ defmodule ADK.Agents.ContextCacheConfig do
   @doc """
   Creates a new ContextCacheConfig.
   """
+  @spec new(keyword()) :: t()
   def new(opts \\ []) do
     struct(__MODULE__, opts)
     |> validate()
@@ -56,6 +57,7 @@ defmodule ADK.Agents.ContextCacheConfig do
   @doc """
   Returns the TTL as a string with "s" appended.
   """
+  @spec ttl_string(t()) :: String.t()
   def ttl_string(%{ttl_seconds: ttl}) do
     "#{ttl}s"
   end
