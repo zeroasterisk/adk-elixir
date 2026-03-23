@@ -23,6 +23,7 @@ defmodule ADK.Auth.InMemoryStore do
   end
 
   @impl true
+  @spec get(String.t(), keyword()) :: {:ok, ADK.Auth.Credential.t()} | :not_found
   def get(name, opts \\ []) do
     server = Keyword.get(opts, :server, __MODULE__)
 
@@ -33,12 +34,14 @@ defmodule ADK.Auth.InMemoryStore do
   end
 
   @impl true
+  @spec put(String.t(), ADK.Auth.Credential.t(), keyword()) :: :ok
   def put(name, credential, opts \\ []) do
     server = Keyword.get(opts, :server, __MODULE__)
     Agent.update(server, &Map.put(&1, name, credential))
   end
 
   @impl true
+  @spec delete(String.t(), keyword()) :: :ok
   def delete(name, opts \\ []) do
     server = Keyword.get(opts, :server, __MODULE__)
     Agent.update(server, &Map.delete(&1, name))
