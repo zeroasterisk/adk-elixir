@@ -19,6 +19,7 @@ defmodule ADK.Plugin.ReflectRetryToolParityTest do
 
     on_exit(fn ->
       ReflectRetryTool.after_run([], ctx, %{})
+      if Process.whereis(ADK.Plugin.Registry), do: ADK.Plugin.Registry.clear()
     end)
 
     %{ctx: ctx, setup_plugin: setup_plugin}

@@ -19,6 +19,10 @@ defmodule ADK.Plugin.ReflectRetryToolTest do
 
     ADK.Plugin.Registry.clear()
 
+    on_exit(fn ->
+      if Process.whereis(ADK.Plugin.Registry), do: ADK.Plugin.Registry.clear()
+    end)
+
     {:ok, context: context}
   end
 

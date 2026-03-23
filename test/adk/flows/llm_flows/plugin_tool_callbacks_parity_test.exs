@@ -68,9 +68,12 @@ defmodule ADK.Flows.LlmFlows.PluginToolCallbacksParityTest do
       ADK.Plugin.Registry.clear()
     else
       {:ok, _} = ADK.Plugin.Registry.start_link()
-      on_exit(fn -> if Process.whereis(ADK.Plugin.Registry), do: Agent.stop(ADK.Plugin.Registry) end)
     end
-    
+
+    on_exit(fn ->
+      if Process.whereis(ADK.Plugin.Registry), do: ADK.Plugin.Registry.clear()
+    end)
+
     :ok
   end
 
