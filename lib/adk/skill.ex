@@ -42,14 +42,17 @@ defmodule ADK.Skill do
   """
 
   @enforce_keys [:name, :instruction, :dir]
-  defstruct [:name, :description, :instruction, :tools, :dir]
+  defstruct [:name, :description, :instruction, :tools, :dir, :mcp_toolsets, :auth_requirements, :supervisor]
 
   @type t :: %__MODULE__{
           name: String.t(),
           description: String.t() | nil,
           instruction: String.t(),
           tools: [map()] | nil,
-          dir: Path.t()
+          dir: Path.t(),
+          mcp_toolsets: [pid()] | nil,
+          auth_requirements: [map()] | nil,
+          supervisor: pid() | nil
         }
 
   @doc """
@@ -191,7 +194,11 @@ defmodule ADK.Skill do
 
     skill_tools =
       skills
-      |> Enum.flat_map(fn s -> s.tools || [] end)
+      |> Enum.flat_map(fn s ->
+        local_tools = s.tools || []
+        mcp_tools = fetch_mcp_tools(s)
+        local_tools ++ mcp_tools
+      end)
 
     opts
     |> Keyword.update(:instruction, skill_instructions, fn existing ->
@@ -206,19 +213,66 @@ defmodule ADK.Skill do
     end)
   end
 
+  @doc """
+  Stop all supervised processes for this skill (MCP servers, etc).
+  """
+  @spec stop(t()) :: :ok
+  def stop(%__MODULE__{supervisor: nil}), do: :ok
+
+  def stop(%__MODULE__{supervisor: sup}) do
+    ADK.Skill.Supervisor.stop(sup)
+  end
+
   # --- Private helpers ---
 
+  defp fetch_mcp_tools(%__MODULE__{mcp_toolsets: toolsets}) when is_list(toolsets) do
+    Enum.flat_map(toolsets, fn pid ->
+      if Process.alive?(pid) do
+        case ADK.MCP.Toolset.get_tools(pid) do
+          {:ok, tools} -> tools
+          _ -> []
+        end
+      else
+        []
+      end
+    end)
+  end
+
+  defp fetch_mcp_tools(_), do: []
+
   defp parse_skill(content, dir) do
-    name = extract_name(content) || Path.basename(dir)
-    description = extract_description(content)
+    {fm, body} = extract_frontmatter(content)
+    name = fm["name"] || extract_name(body) || Path.basename(dir)
+    description = fm["description"] || extract_description(body)
+    loaded = ADK.Skill.Loader.load(dir)
+    script_tools = ADK.Skill.Script.discover(dir).tools
 
     %__MODULE__{
       name: name,
       description: description,
       instruction: String.trim(content),
-      tools: [],
-      dir: dir
+      tools: (loaded.tools || []) ++ script_tools,
+      dir: dir,
+      mcp_toolsets: loaded.mcp_toolsets,
+      auth_requirements: loaded.auth_requirements,
+      supervisor: loaded.supervisor
     }
+  end
+
+  defp extract_frontmatter(content) do
+    case Regex.run(~r/\A---\s*\n(.*?)\n---\s*\n(.*)\z/s, content) do
+      [_, yaml_block, body] ->
+        fm =
+          Regex.scan(~r/^(\w+):\s*(.+)$/m, yaml_block)
+          |> Enum.reduce(%{}, fn [_, key, val], acc ->
+            Map.put(acc, key, String.trim(val))
+          end)
+
+        {fm, body}
+
+      nil ->
+        {%{}, content}
+    end
   end
 
   defp extract_name(content) do
