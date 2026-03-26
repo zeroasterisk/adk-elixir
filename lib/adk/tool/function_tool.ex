@@ -60,7 +60,7 @@ defmodule ADK.Tool.FunctionTool do
 
   @doc "Execute the function tool."
   @spec run(t(), ADK.ToolContext.t(), map()) :: ADK.Tool.result()
-  def run(%__MODULE__{func: func}, ctx, args) do
+  def run(%__MODULE__{func: func, name: name}, ctx, args) do
     case apply_func(func, ctx, args) do
       {:ok, _} = ok -> ok
       {:error, _} = err -> err
@@ -68,6 +68,9 @@ defmodule ADK.Tool.FunctionTool do
       {:exit_loop, _} = exit -> exit
       other -> {:ok, other}
     end
+  rescue
+    e ->
+      {:error, "Tool #{name} raised: #{Exception.message(e)}"}
   end
 
   defp apply_func(func, ctx, args) when is_function(func, 2), do: func.(ctx, args)

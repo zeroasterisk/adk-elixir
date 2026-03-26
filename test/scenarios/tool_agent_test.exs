@@ -151,11 +151,7 @@ defmodule ADK.Scenarios.ToolAgentTest do
                last_text(events) != nil
     end
 
-    @tag :pending
     test "tool raises exception, error is propagated to LLM" do
-      # TODO: Tool exceptions currently bubble up as crashes.
-      # This should be caught and returned as an error result to the LLM.
-      # Filed as a real-world gap to fix in ADK.
       explosive_tool =
         make_tool(:boom, "A tool that crashes", fn _ctx, _args ->
           raise "kaboom!"
