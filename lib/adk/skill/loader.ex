@@ -124,10 +124,27 @@ defmodule ADK.Skill.Loader do
     ext = Path.extname(path)
 
     case ext do
-      ".py" -> [ExecTool.new(path)]
-      ".sh" -> [ExecTool.new(path)]
-      ".ex" -> load_elixir_tool(path)
-      _ -> []
+      ".py" ->
+        if ADK.Skill.Deps.available?("python3") do
+          [ExecTool.new(path)]
+        else
+          Logger.warning("Skipping #{Path.basename(path)}: python3 not found")
+          []
+        end
+
+      ".sh" ->
+        if ADK.Skill.Deps.available?("bash") do
+          [ExecTool.new(path)]
+        else
+          Logger.warning("Skipping #{Path.basename(path)}: bash not found")
+          []
+        end
+
+      ".ex" ->
+        load_elixir_tool(path)
+
+      _ ->
+        []
     end
   end
 

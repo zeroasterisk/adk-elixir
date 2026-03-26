@@ -41,8 +41,20 @@ defmodule ADK.Skill do
       )
   """
 
+  require Logger
+
   @enforce_keys [:name, :instruction, :dir]
-  defstruct [:name, :description, :instruction, :tools, :dir, :mcp_toolsets, :auth_requirements, :supervisor]
+  defstruct [
+    :name,
+    :description,
+    :instruction,
+    :tools,
+    :dir,
+    :mcp_toolsets,
+    :auth_requirements,
+    :supervisor,
+    missing_deps: []
+  ]
 
   @type t :: %__MODULE__{
           name: String.t(),
@@ -52,7 +64,8 @@ defmodule ADK.Skill do
           dir: Path.t(),
           mcp_toolsets: [pid()] | nil,
           auth_requirements: [map()] | nil,
-          supervisor: pid() | nil
+          supervisor: pid() | nil,
+          missing_deps: [String.t()]
         }
 
   @doc """
@@ -244,6 +257,8 @@ defmodule ADK.Skill do
     {fm, body} = extract_frontmatter(content)
     name = fm["name"] || extract_name(body) || Path.basename(dir)
     description = fm["description"] || extract_description(body)
+    deps = parse_deps(fm["deps"])
+    missing_deps = check_skill_deps(name, deps)
     loaded = ADK.Skill.Loader.load(dir)
     script_tools = ADK.Skill.Script.discover(dir).tools
 
@@ -255,23 +270,68 @@ defmodule ADK.Skill do
       dir: dir,
       mcp_toolsets: loaded.mcp_toolsets,
       auth_requirements: loaded.auth_requirements,
-      supervisor: loaded.supervisor
+      supervisor: loaded.supervisor,
+      missing_deps: missing_deps
     }
+  end
+
+  defp parse_deps(list) when is_list(list), do: list
+  defp parse_deps(str) when is_binary(str), do: String.split(str, ~r/[,\s]+/, trim: true)
+  defp parse_deps(_), do: []
+
+  defp check_skill_deps(_name, []), do: []
+
+  defp check_skill_deps(name, deps) do
+    {_available, missing} = ADK.Skill.Deps.check(deps)
+
+    if missing != [] do
+      Logger.warning(
+        "Skill \"#{name}\" has missing dependencies: #{inspect(missing)}. Some tools may be unavailable."
+      )
+    end
+
+    missing
   end
 
   defp extract_frontmatter(content) do
     case Regex.run(~r/\A---\s*\n(.*?)\n---\s*\n(.*)\z/s, content) do
       [_, yaml_block, body] ->
-        fm =
-          Regex.scan(~r/^(\w+):\s*(.+)$/m, yaml_block)
-          |> Enum.reduce(%{}, fn [_, key, val], acc ->
-            Map.put(acc, key, String.trim(val))
-          end)
-
+        fm = parse_yaml_block(yaml_block)
         {fm, body}
 
       nil ->
         {%{}, content}
+    end
+  end
+
+  defp parse_yaml_block(block) do
+    block
+    |> String.split("\n")
+    |> parse_yaml_lines(nil, %{})
+  end
+
+  defp parse_yaml_lines([], _current_list_key, acc), do: acc
+
+  defp parse_yaml_lines([line | rest], current_list_key, acc) do
+    cond do
+      # YAML list item: "  - value" (only when following a list key)
+      current_list_key != nil && Regex.match?(~r/^\s+-\s+/, line) ->
+        [_, item] = Regex.run(~r/^\s+-\s+(.+)$/, line)
+        existing = Map.get(acc, current_list_key, [])
+        parse_yaml_lines(rest, current_list_key, Map.put(acc, current_list_key, existing ++ [String.trim(item)]))
+
+      # Key with inline value: "key: value"
+      Regex.match?(~r/^(\w+):\s+(.+)$/, line) ->
+        [_, key, val] = Regex.run(~r/^(\w+):\s+(.+)$/, line)
+        parse_yaml_lines(rest, nil, Map.put(acc, key, String.trim(val)))
+
+      # Key with no value (list follows): "key:"
+      Regex.match?(~r/^(\w+):\s*$/, line) ->
+        [_, key] = Regex.run(~r/^(\w+):\s*$/, line)
+        parse_yaml_lines(rest, key, acc)
+
+      true ->
+        parse_yaml_lines(rest, nil, acc)
     end
   end
 
