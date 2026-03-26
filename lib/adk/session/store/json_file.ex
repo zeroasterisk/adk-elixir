@@ -66,6 +66,55 @@ defmodule ADK.Session.Store.JsonFile do
     end
   end
 
+  @doc """
+  List all sessions across all apps and users.
+  Returns `{:ok, [%{id: ..., app_name: ..., user_id: ...}]}`.
+
+  Used by `ADK.Session.Recovery` to find sessions to restore after restart.
+  """
+  @spec list_all(keyword()) :: {:ok, [map()]} | {:error, term()}
+  def list_all(_opts \\ []) do
+    base = base_path()
+
+    if File.dir?(base) do
+      sessions =
+        base
+        |> File.ls!()
+        |> Enum.flat_map(fn app_name ->
+          app_dir = Path.join(base, app_name)
+
+          if File.dir?(app_dir) do
+            app_dir
+            |> File.ls!()
+            |> Enum.flat_map(fn user_id ->
+              user_dir = Path.join(app_dir, user_id)
+
+              if File.dir?(user_dir) do
+                user_dir
+                |> File.ls!()
+                |> Enum.filter(&String.ends_with?(&1, ".json"))
+                |> Enum.map(fn file ->
+                  %{
+                    id: String.replace_suffix(file, ".json", ""),
+                    app_name: app_name,
+                    user_id: user_id
+                  }
+                end)
+              else
+                []
+              end
+            end)
+          else
+            []
+          end
+        end)
+
+      {:ok, sessions}
+    else
+      {:ok, []}
+    end
+  end
+
   # --- Helpers ---
 
   defp base_path do
