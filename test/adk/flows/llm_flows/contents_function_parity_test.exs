@@ -559,7 +559,8 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
       request = LlmAgent.build_request(ctx, agent)
       messages = request[:messages]
 
-      assert length(messages) == 2
+      # 3 messages: user, model (with function_call), synthetic repair response
+      assert length(messages) == 3
 
       model_msg = Enum.at(messages, 1)
       assert model_msg.role == :model
@@ -573,6 +574,12 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
 
       assert length(fc_parts) == 1
       assert hd(fc_parts).function_call.name == "processor"
+
+      # Transcript repair appends a synthetic function_response for the orphaned call
+      synthetic = Enum.at(messages, 2)
+      assert synthetic.role == :user
+      assert [%{function_response: fr}] = synthetic.parts
+      assert fr.name == "processor"
     end
   end
 

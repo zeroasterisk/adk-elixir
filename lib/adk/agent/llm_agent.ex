@@ -672,7 +672,8 @@ defmodule ADK.Agent.LlmAgent do
         _ -> []
       end
 
-    history ++ user_msg
+    (history ++ user_msg)
+    |> ADK.Transcript.Repair.repair()
   end
 
   @doc false
