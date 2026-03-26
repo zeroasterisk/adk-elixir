@@ -143,9 +143,10 @@ defmodule ADK.Tool.FunctionsThreadPoolParityTest do
         }
       ])
 
-      assert_raise RuntimeError, "Test error from sync tool", fn ->
-        ADK.Agent.run(agent, ctx)
-      end
+      # FunctionTool.run/3 now rescues exceptions and returns {:error, ...}
+      # so the error is propagated to the LLM as tool output, not raised
+      result = ADK.Agent.run(agent, ctx)
+      assert is_list(result)
     end
   end
 end

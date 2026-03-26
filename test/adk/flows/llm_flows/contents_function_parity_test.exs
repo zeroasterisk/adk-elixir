@@ -607,10 +607,9 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
       assert fr_part.function_response.response != nil
     end
 
-    test "tool that raises propagates error through runner" do
-      # Unlike Python which catches tool exceptions and wraps them in
-      # function_response, Elixir's runner lets tool exceptions propagate.
-      # This is a valid design divergence — the caller handles the error.
+    test "tool that raises propagates error to LLM as function response" do
+      # FunctionTool.run/3 now rescues exceptions and returns {:error, ...}
+      # matching Python ADK behavior — error is wrapped in function_response.
       fc = %{name: "crashing_tool", args: %{}}
 
       ADK.LLM.Mock.set_responses([
@@ -624,9 +623,9 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
 
       agent = build_agent(tools: [tool])
 
-      assert_raise RuntimeError, "Boom!", fn ->
-        run_agent(agent, "Run the crashing tool")
-      end
+      events = run_agent(agent, "Run the crashing tool")
+      assert is_list(events)
+      assert length(events) >= 1
     end
   end
 end
