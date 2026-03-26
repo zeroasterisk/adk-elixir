@@ -130,6 +130,53 @@ defmodule ADK.Agent.LlmAgentTest do
 
     GenServer.stop(session_pid)
   end
+
+  test "tool returning oversized result gets truncated by ResultGuard" do
+    huge_payload = String.duplicate("Z", 60_000)
+
+    tool =
+      ADK.Tool.FunctionTool.new(:big_tool,
+        description: "Returns a huge result",
+        func: fn _ctx, _args -> {:ok, huge_payload} end,
+        parameters: %{}
+      )
+
+    ADK.LLM.Mock.set_responses([
+      %{function_call: %{name: "big_tool", args: %{}, id: "fc-big"}},
+      "Done."
+    ])
+
+    agent =
+      ADK.Agent.LlmAgent.new(
+        name: "big_bot",
+        model: "test",
+        instruction: "Run the tool.",
+        tools: [tool]
+      )
+
+    {:ok, session_pid} =
+      ADK.Session.start_link(app_name: "test", user_id: "u1", session_id: "s-big")
+
+    ctx = %ADK.Context{
+      invocation_id: "inv-big",
+      session_pid: session_pid,
+      agent: agent,
+      user_content: %{text: "go"}
+    }
+
+    events = ADK.Agent.run(agent, ctx)
+
+    # Find the function_response event
+    response_event = Enum.at(events, 1)
+    [result] = ADK.Event.function_responses(response_event)
+    assert result.name == "big_tool"
+    # The result should have been truncated — response is wrapped as %{"result" => string}
+    result_text = result.response["result"] || result.response[:result]
+    assert result_text =~ "[TRUNCATED:"
+    assert byte_size(result_text) < 60_000
+
+    GenServer.stop(session_pid)
+  end
 end
 
 # Helper mock that always returns errors

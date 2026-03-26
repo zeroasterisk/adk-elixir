@@ -38,6 +38,12 @@ This document tracks features, patterns, and architectural advantages that are u
 - **Feature:** Seamless clustering of ADK nodes.
 - **Rationale:** Scaling an agentic application in Python usually requires microservices and external state stores. In Elixir, you can connect multiple nodes to form a cluster, allowing agents on Node A to transparently call tools or communicate with agents on Node B.
 
+### 9. Tool Result Size Guard
+
+- **Feature:** Automatic truncation of oversized tool results before they reach the LLM.
+- **Module:** `ADK.Tool.ResultGuard`
+- **Rationale:** A single tool returning a massive payload (e.g. a full database dump or large file) can blow past the LLM's context window, wasting tokens and causing failures. `ResultGuard` transparently truncates any tool result that exceeds a configurable byte limit (default 50 KB), keeping the first 80% and appending a clear `[TRUNCATED]` marker so the LLM knows data was omitted. The limit is configurable via `config :adk, :max_tool_result_bytes`.
+
 ## Roadmap & Tracking
 
 | Feature | Status | Priority | Notes |
@@ -47,6 +53,7 @@ This document tracks features, patterns, and architectural advantages that are u
 | PubSub Integration | In Progress | Medium | For agent-to-agent (A2A) protocol |
 | Livebook Kino Widgets | Planned | Medium | Visualizing agent state/memory |
 | Telemetry Hooks | Planned | High | Standardized observability |
+| Tool Result Size Guard | Done | High | Protects LLM context from oversized tool output |
 | Broadway Pipelines | Idea | Low | For bulk processing agents |
 
 ---

@@ -968,7 +968,7 @@ defmodule ADK.Agent.LlmAgent do
               %{name: call.name, result: reason, exit_loop: true}
 
             {:ok, value} ->
-              %{name: call.name, result: value}
+              %{name: call.name, result: ADK.Tool.ResultGuard.maybe_truncate(value)}
 
             {:error, reason} ->
               %{name: call.name, error: inspect(reason)}
