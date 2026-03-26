@@ -211,6 +211,72 @@ defmodule ADK.SkillTest do
     end
   end
 
+  # --- Frontmatter deps parsing ---
+
+  describe "deps frontmatter" do
+    test "parses comma-separated deps and populates missing_deps" do
+      dir = tmp_dir("deps_csv")
+
+      write_skill_md(dir, """
+      ---
+      name: Dep Skill
+      deps: nonexistent_dep_aaa, nonexistent_dep_bbb
+      ---
+
+      # Dep Skill
+
+      Instructions.
+      """)
+
+      assert {:ok, skill} = Skill.from_dir(dir)
+      assert "nonexistent_dep_aaa" in skill.missing_deps
+      assert "nonexistent_dep_bbb" in skill.missing_deps
+    end
+
+    test "parses list-style deps in frontmatter" do
+      dir = tmp_dir("deps_list")
+
+      write_skill_md(dir, """
+      ---
+      name: List Dep Skill
+      deps:
+        - nonexistent_dep_ccc
+        - nonexistent_dep_ddd
+      ---
+
+      Instructions.
+      """)
+
+      assert {:ok, skill} = Skill.from_dir(dir)
+      assert "nonexistent_dep_ccc" in skill.missing_deps
+      assert "nonexistent_dep_ddd" in skill.missing_deps
+    end
+
+    test "missing_deps is empty when deps are available" do
+      dir = tmp_dir("deps_ok")
+
+      write_skill_md(dir, """
+      ---
+      name: Good Dep Skill
+      deps: ls
+      ---
+
+      Instructions.
+      """)
+
+      assert {:ok, skill} = Skill.from_dir(dir)
+      assert skill.missing_deps == []
+    end
+
+    test "missing_deps defaults to empty when no deps declared" do
+      dir = tmp_dir("no_deps")
+      write_skill_md(dir, "# No Deps Skill\n\nInstructions.")
+
+      assert {:ok, skill} = Skill.from_dir(dir)
+      assert skill.missing_deps == []
+    end
+  end
+
   # --- LlmAgent integration ---
 
   describe "LlmAgent with skills" do

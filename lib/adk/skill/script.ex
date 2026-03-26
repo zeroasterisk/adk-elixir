@@ -17,6 +17,8 @@ defmodule ADK.Skill.Script do
 
   alias ADK.Tool.FunctionTool
 
+  require Logger
+
   @type discovery :: %{tools: [FunctionTool.t()], mcp_configs: [map()]}
 
   @doc """
@@ -44,7 +46,14 @@ defmodule ADK.Skill.Script do
               end
 
             Path.extname(filename) in [".sh", ".py", ".exs"] ->
-              {[build_tool(path, filename) | tools_acc], mcp_acc}
+              case check_script_executable(filename) do
+                :ok ->
+                  {[build_tool(path, filename) | tools_acc], mcp_acc}
+
+                {:skip, reason} ->
+                  Logger.warning("Skipping script #{filename}: #{reason}")
+                  {tools_acc, mcp_acc}
+              end
 
             true ->
               {tools_acc, mcp_acc}
@@ -54,6 +63,19 @@ defmodule ADK.Skill.Script do
       %{tools: Enum.reverse(tools), mcp_configs: Enum.reverse(mcp_configs)}
     else
       %{tools: [], mcp_configs: []}
+    end
+  end
+
+  defp check_script_executable(filename) do
+    case Path.extname(filename) do
+      ".sh" ->
+        if ADK.Skill.Deps.available?("bash"), do: :ok, else: {:skip, "bash not found"}
+
+      ".py" ->
+        if ADK.Skill.Deps.available?("python3"), do: :ok, else: {:skip, "python3 not found"}
+
+      _ ->
+        :ok
     end
   end
 
