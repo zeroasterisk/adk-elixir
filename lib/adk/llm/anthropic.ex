@@ -2,12 +2,32 @@ defmodule ADK.LLM.Anthropic do
   @moduledoc """
   Anthropic Claude LLM backend using the Messages API via Req.
 
-  ## Configuration
+  ## Authentication
 
-      config :adk, :anthropic_api_key, "sk-ant-..."
+  Supports two auth modes, checked in this order:
 
-      # Or via environment variable
-      ANTHROPIC_API_KEY=sk-ant-...
+  ### OAuth Token (Claude Code CLI / Claude Pro)
+
+  Uses `Authorization: Bearer` header. Sources checked in order:
+
+      # Application config
+      config :adk, :anthropic_oauth_token, "sk-ant-sid02-..."
+
+      # Environment variable
+      ANTHROPIC_OAUTH_TOKEN=sk-ant-sid02-...
+
+      # Auto-detected from Claude Code CLI session
+      CLAUDE_AI_SESSION_KEY=sk-ant-sid02-...
+
+  ### API Key
+
+  Uses `x-api-key` header. Sources checked in order:
+
+      # Application config
+      config :adk, :anthropic_api_key, "sk-ant-api03-..."
+
+      # Environment variable
+      ANTHROPIC_API_KEY=sk-ant-api03-...
 
   ## Usage
 
@@ -31,23 +51,20 @@ defmodule ADK.LLM.Anthropic do
   def generate(model, request) do
     model = if model in [nil, ""], do: @default_model, else: model
 
-    case api_key() do
-      {:ok, key} -> do_generate(model, key, request)
+    case resolve_auth() do
+      {:ok, auth} -> do_generate(model, auth, request)
       {:error, _} = err -> err
     end
   end
 
-  defp do_generate(model, api_key, request) do
+  defp do_generate(model, auth, request) do
     url = "#{@base_url}/messages"
     body = build_request_body(model, request)
 
     req_options = [
       url: url,
       json: body,
-      headers: [
-        {"x-api-key", api_key},
-        {"anthropic-version", @anthropic_version}
-      ]
+      headers: auth_headers(auth)
     ]
 
     req_options = req_options ++ req_test_options()
@@ -340,16 +357,93 @@ defmodule ADK.LLM.Anthropic do
 
   defp parse_block(other), do: other
 
-  defp api_key do
-    case Application.get_env(:adk, :anthropic_api_key) do
-      nil ->
-        case System.get_env("ANTHROPIC_API_KEY") do
-          nil -> {:error, :missing_api_key}
-          key -> {:ok, key}
-        end
+  # --- Auth resolution ---
+  # Supports two auth modes:
+  # 1. OAuth token (from Claude Code CLI) — uses Authorization: Bearer header
+  # 2. API key — uses x-api-key header
+  #
+  # OAuth token sources (checked in order):
+  # - Application config :anthropic_oauth_token
+  # - ANTHROPIC_OAUTH_TOKEN env var
+  # - Claude Code CLI's ~/.claude.json (oauthAccount + session key)
+  #
+  # API key sources (checked in order):
+  # - Application config :anthropic_api_key
+  # - ANTHROPIC_API_KEY env var
 
-      key ->
-        {:ok, key}
+  @type auth :: {:oauth, String.t()} | {:api_key, String.t()}
+
+  @doc false
+  @spec resolve_auth() :: {:ok, auth()} | {:error, :missing_credentials}
+  def resolve_auth do
+    with :skip <- check_oauth_config(),
+         :skip <- check_oauth_env(),
+         :skip <- check_claude_code_session(),
+         :skip <- check_api_key_config(),
+         :skip <- check_api_key_env() do
+      # Return :missing_api_key for backward compatibility
+      {:error, :missing_api_key}
     end
   end
+
+  defp check_oauth_config do
+    case Application.get_env(:adk, :anthropic_oauth_token) do
+      nil -> :skip
+      "" -> :skip
+      token -> {:ok, {:oauth, token}}
+    end
+  end
+
+  defp check_oauth_env do
+    case System.get_env("ANTHROPIC_OAUTH_TOKEN") do
+      nil -> :skip
+      "" -> :skip
+      token -> {:ok, {:oauth, token}}
+    end
+  end
+
+  defp check_claude_code_session do
+    # Check CLAUDE_AI_SESSION_KEY env var (set by Claude Code CLI)
+    # Only when auto-discovery is enabled (default: false — opt-in)
+    if Application.get_env(:adk, :anthropic_auto_discover, false) do
+      case System.get_env("CLAUDE_AI_SESSION_KEY") do
+        nil -> :skip
+        "" -> :skip
+        key -> {:ok, {:oauth, key}}
+      end
+    else
+      :skip
+    end
+  end
+
+  defp check_api_key_config do
+    case Application.get_env(:adk, :anthropic_api_key) do
+      nil -> :skip
+      "" -> :skip
+      key -> {:ok, {:api_key, key}}
+    end
+  end
+
+  defp check_api_key_env do
+    case System.get_env("ANTHROPIC_API_KEY") do
+      nil -> :skip
+      "" -> :skip
+      key -> {:ok, {:api_key, key}}
+    end
+  end
+
+  defp auth_headers({:oauth, token}) do
+    [
+      {"authorization", "Bearer #{token}"},
+      {"anthropic-version", @anthropic_version}
+    ]
+  end
+
+  defp auth_headers({:api_key, key}) do
+    [
+      {"x-api-key", key},
+      {"anthropic-version", @anthropic_version}
+    ]
+  end
+
 end
