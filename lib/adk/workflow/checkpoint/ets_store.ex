@@ -33,6 +33,7 @@ defmodule ADK.Workflow.Checkpoint.EtsStore do
   end
 
   @impl GenServer
+  @spec init(:ok) :: {:ok, %{table: :ets.table()}}
   def init(:ok) do
     table = :ets.new(@table_name, [:named_table, :public, :set, {:write_concurrency, true}, {:read_concurrency, true}])
     {:ok, %{table: table}}
@@ -66,6 +67,7 @@ defmodule ADK.Workflow.Checkpoint.EtsStore do
   # ── Checkpoint Behaviour ──
 
   @impl ADK.Workflow.Checkpoint
+  @spec save(String.t(), atom() | String.t(), atom(), any()) :: :ok
   def save(workflow_id, node_id, status, output) do
     ensure_table()
     checkpoint = ADK.Workflow.Checkpoint.new(workflow_id, node_id, status, output)
@@ -80,6 +82,7 @@ defmodule ADK.Workflow.Checkpoint.EtsStore do
   end
 
   @impl ADK.Workflow.Checkpoint
+  @spec load(String.t(), atom() | String.t()) :: {:ok, map()} | :not_found
   def load(workflow_id, node_id) do
     ensure_table()
 
@@ -90,6 +93,7 @@ defmodule ADK.Workflow.Checkpoint.EtsStore do
   end
 
   @impl ADK.Workflow.Checkpoint
+  @spec load_all(String.t()) :: [map()]
   def load_all(workflow_id) do
     ensure_table()
 
@@ -98,6 +102,7 @@ defmodule ADK.Workflow.Checkpoint.EtsStore do
   end
 
   @impl ADK.Workflow.Checkpoint
+  @spec completed_nodes(String.t()) :: [atom() | String.t()]
   def completed_nodes(workflow_id) do
     load_all(workflow_id)
     |> Enum.filter(fn cp -> cp.status == :completed end)
@@ -105,6 +110,7 @@ defmodule ADK.Workflow.Checkpoint.EtsStore do
   end
 
   @impl ADK.Workflow.Checkpoint
+  @spec clear(String.t()) :: :ok
   def clear(workflow_id) do
     ensure_table()
     :ets.match_delete(@table_name, {{workflow_id, :_}, :_})
