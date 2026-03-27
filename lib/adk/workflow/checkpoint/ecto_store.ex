@@ -34,26 +34,31 @@ defmodule ADK.Workflow.Checkpoint.EctoStore do
   end
 
   @impl true
+  @spec save(String.t(), atom() | String.t(), atom(), any()) :: no_return()
   def save(_workflow_id, _node_id, _status, _output) do
     raise "EctoStore.save/4 requires a repo. Use save_with_repo/5 or configure via ADK.Workflow options."
   end
 
   @impl true
+  @spec load(String.t(), atom() | String.t()) :: no_return()
   def load(_workflow_id, _node_id) do
     raise "EctoStore.load/2 requires a repo. Use load_with_repo/3."
   end
 
   @impl true
+  @spec load_all(String.t()) :: no_return()
   def load_all(_workflow_id) do
     raise "EctoStore.load_all/1 requires a repo. Use load_all_with_repo/2."
   end
 
   @impl true
+  @spec completed_nodes(String.t()) :: no_return()
   def completed_nodes(_workflow_id) do
     raise "EctoStore.completed_nodes/1 requires a repo."
   end
 
   @impl true
+  @spec clear(String.t()) :: no_return()
   def clear(_workflow_id) do
     raise "EctoStore.clear/1 requires a repo."
   end

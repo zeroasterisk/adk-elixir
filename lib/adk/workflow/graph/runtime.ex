@@ -54,11 +54,13 @@ defmodule ADK.Workflow.Graph.Runtime do
   # ── Server Callbacks ──
 
   @impl true
+  @spec init(Graph.t()) :: {:ok, %{current: Graph.t(), history: [Graph.t()]}}
   def init(%Graph{} = graph) do
     {:ok, %{current: graph, history: []}}
   end
 
   @impl true
+  @spec handle_call(term(), GenServer.from(), map()) :: {:reply, term(), map()}
   def handle_call(:get, _from, state) do
     {:reply, state.current, state}
   end
