@@ -295,6 +295,246 @@ defmodule ADK.LLM.Gateway.Auth do
 end
 ```
 
+## Gateway.Scheduler — Priority Queuing & Token Budgets
+
+### Problem
+
+Not all LLM requests are equal. An interactive agent responding to a user needs
+sub-second dispatch. A background summarization job can wait minutes. An eval
+pipeline processing 10k examples should use the cheapest path possible.
+
+Today, all requests hit `generate/3` with equal priority. When keys approach
+rate limits, *everyone* gets 429'd — including the interactive user who should
+have been served first.
+
+### Design
+
+`Gateway.Scheduler` sits in front of `generate/3` as an optional scheduling
+layer. It manages a priority queue per backend, tracks quota consumption, and
+dispatches requests based on priority level and available capacity.
+
+```
+  Agent A (interactive)  ──┐
+  Agent B (background)   ──┼──▶  Gateway.Scheduler  ──▶  generate/3  ──▶  KeyPool
+  Eval pipeline (batch)  ──┘        ↕ quota tracker
+```
+
+### Priority Levels
+
+| Priority | Atom | Behavior | Use Case |
+|----------|------|----------|----------|
+| Interactive | `:interactive` | Immediate dispatch, never queued | User-facing agents, real-time chat |
+| Background | `:background` | Queued when near rate limits, dispatched during low-usage windows | Summarization, memory consolidation, async tasks |
+| Batch | `:batch` | Buffered and submitted via Batch API or during off-peak | Eval pipelines, bulk processing, dataset generation |
+
+Priority is set per-request via opts:
+
+```elixir
+# Interactive — default for agent-initiated requests
+Gateway.generate(model, request, priority: :interactive)
+
+# Background — can tolerate delay
+Gateway.generate(model, request, priority: :background)
+
+# Batch — cheapest, async
+Gateway.generate(model, request, priority: :batch)
+```
+
+Or configured at the agent level:
+
+```elixir
+agent = ADK.Agent.LlmAgent.new(
+  name: "summarizer",
+  model: "gemini-2.5-flash",
+  gateway: %{
+    priority: :background,
+    token_budget: 100_000
+  }
+)
+```
+
+### Quota-Aware Queuing
+
+The Scheduler tracks per-key RPM/TPM consumption (via `Gateway.Stats`) and
+makes dispatch decisions based on remaining capacity:
+
+```elixir
+defmodule ADK.LLM.Gateway.Scheduler do
+  use GenServer
+
+  defstruct [:queues, :quota_tracker, :dispatch_timer]
+
+  @doc "Submit a request through the scheduler."
+  def submit(scheduler, model, request, opts \\ []) do
+    priority = Keyword.get(opts, :priority, :interactive)
+    budget_ref = Keyword.get(opts, :budget)
+
+    case priority do
+      :interactive ->
+        # Always dispatch immediately — interactive never waits
+        Gateway.generate(model, request, opts)
+
+      :background ->
+        # Check quota headroom
+        if quota_available?(model, request) do
+          Gateway.generate(model, request, opts)
+        else
+          enqueue(scheduler, priority, {model, request, opts})
+        end
+
+      :batch ->
+        # Always enqueue — dispatched via batch strategy
+        enqueue(scheduler, priority, {model, request, opts})
+    end
+  end
+
+  defp quota_available?(model, request) do
+    # Check if dispatching this request would push any key
+    # past 80% of its RPM/TPM limit
+    stats = Gateway.Stats.for_model(model)
+    estimated_tokens = estimate_tokens(request)
+
+    stats.rpm_used < stats.rpm_limit * 0.8 and
+      stats.tpm_used + estimated_tokens < stats.tpm_limit * 0.8
+  end
+end
+```
+
+When a key's usage drops below the threshold, the Scheduler drains queued
+background requests. The 80% threshold is configurable:
+
+```elixir
+%{
+  scheduler: %{
+    background_threshold: 0.8,  # queue background when key > 80% RPM/TPM
+    drain_interval_ms: 5_000,   # check queue every 5s
+    batch_flush_interval_ms: 60_000  # flush batch queue every 60s
+  }
+}
+```
+
+### Token Budgets
+
+Token budgets enforce per-agent or per-session caps on total token consumption.
+This prevents a runaway background job from burning through an entire quota:
+
+```elixir
+# Per-agent budget
+agent = ADK.Agent.LlmAgent.new(
+  name: "background_indexer",
+  gateway: %{
+    priority: :background,
+    token_budget: %{
+      max_input_tokens: 500_000,
+      max_output_tokens: 100_000,
+      max_total_tokens: 600_000,
+      period: :session  # or :hourly, :daily, :lifetime
+    }
+  }
+)
+
+# Per-session budget (via opts)
+Gateway.Scheduler.submit(scheduler, model, request,
+  priority: :background,
+  budget: %{ref: session_id, max_total_tokens: 100_000}
+)
+```
+
+Budget tracking lives in `Gateway.Stats`:
+
+```elixir
+defmodule ADK.LLM.Gateway.Budget do
+  @moduledoc "Token budget enforcement."
+
+  def check_budget(budget_ref, estimated_tokens) do
+    used = Stats.tokens_used(budget_ref)
+    remaining = budget_ref.max_total_tokens - used
+
+    cond do
+      remaining <= 0 -> {:error, :budget_exhausted}
+      estimated_tokens > remaining -> {:error, :would_exceed_budget}
+      true -> :ok
+    end
+  end
+
+  def record_usage(budget_ref, actual_tokens) do
+    Stats.record_budget_usage(budget_ref, actual_tokens)
+  end
+end
+```
+
+Telemetry events for budget tracking:
+
+```
+[:adk, :llm, :gateway, :budget, :check]     — budget check with ref, remaining, estimated
+[:adk, :llm, :gateway, :budget, :exhausted]  — budget exhausted event
+[:adk, :llm, :gateway, :budget, :warning]    — budget > 80% consumed
+```
+
+### Scheduling Strategies
+
+| Priority | Strategy | Details |
+|----------|----------|---------|
+| `:interactive` | Immediate dispatch | Bypasses queue entirely. If all keys are rate-limited, retries with backoff (existing Retry module). |
+| `:background` | Drain during low-usage windows | Queued when keys are near limits. Drained when RPM/TPM usage drops below threshold. FIFO within priority. |
+| `:batch` | Batch API or off-peak bulk | Buffered and submitted via provider Batch API (Vertex AI, OpenAI) when available. Falls back to sequential dispatch during lowest-usage periods. |
+
+The Scheduler runs a periodic drain loop:
+
+```elixir
+def handle_info(:drain_queues, state) do
+  # 1. Check current quota usage across all keys
+  # 2. If headroom available, dequeue background requests (FIFO)
+  # 3. If significant headroom, also dequeue batch requests
+  # 4. Reschedule drain timer
+
+  state = drain_background_queue(state)
+  state = maybe_drain_batch_queue(state)
+
+  Process.send_after(self(), :drain_queues, state.drain_interval_ms)
+  {:noreply, state}
+end
+```
+
+### Module Structure
+
+The Scheduler adds to the existing Gateway module tree:
+
+```
+lib/adk/llm/
+  gateway/
+    scheduler.ex       # Priority queue + dispatch logic
+    budget.ex          # Token budget tracking + enforcement
+    # existing:
+    config.ex
+    key_pool.ex
+    stats.ex
+    batch.ex
+```
+
+### Config Example
+
+Full Scheduler configuration in application env:
+
+```elixir
+config :adk, ADK.LLM.Gateway,
+  backends: [...],  # existing backend configs
+  scheduler: %{
+    enabled: true,
+    background_threshold: 0.8,
+    drain_interval_ms: 5_000,
+    batch_flush_interval_ms: 60_000,
+    default_priority: :interactive,
+    budgets: %{
+      # Global default budget (optional)
+      default: %{max_total_tokens: 1_000_000, period: :daily},
+      # Named budgets for specific agents/sessions
+      background_indexer: %{max_total_tokens: 100_000, period: :session},
+      eval_pipeline: %{max_total_tokens: 10_000_000, period: :lifetime}
+    }
+  }
+```
+
 ## Unresolved Design Questions
 
 ### UQ1: Gateway as GenServer vs module?
