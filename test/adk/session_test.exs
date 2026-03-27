@@ -105,4 +105,18 @@ defmodule ADK.SessionTest do
     assert ADK.Session.get_state(pid, :a) == 10
     assert ADK.Session.get_state(pid, :b) == 2
   end
+
+  test "append_event returns {:error, :noproc} for dead session" do
+    {:ok, pid} =
+      ADK.Session.start_link(
+        app_name: "test",
+        user_id: "user_dead",
+        session_id: "sess_dead"
+      )
+
+    GenServer.stop(pid)
+
+    event = ADK.Event.new(%{author: "agent", content: %{parts: [%{text: "hi"}]}})
+    assert {:error, :noproc} = ADK.Session.append_event(pid, event)
+  end
 end
