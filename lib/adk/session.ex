@@ -98,9 +98,19 @@ defmodule ADK.Session do
   @spec unsubscribe(pid() | atom()) :: :ok
   def unsubscribe(pid), do: GenServer.call(pid, {:unsubscribe, self()})
 
-  @doc "Append an event to the session."
-  @spec append_event(pid() | atom(), ADK.Event.t()) :: :ok
-  def append_event(pid, event), do: GenServer.call(pid, {:append_event, event})
+  @doc """
+  Append an event to the session.
+
+  Returns `:ok` on success, `{:error, :noproc}` if the session process
+  is no longer alive (e.g., stopped by a concurrent runner).
+  """
+  @spec append_event(pid() | atom(), ADK.Event.t()) :: :ok | {:error, :noproc}
+  def append_event(pid, event) do
+    GenServer.call(pid, {:append_event, event})
+  catch
+    :exit, {:noproc, _} -> {:error, :noproc}
+    :exit, {:normal, _} -> {:error, :noproc}
+  end
 
   @doc "Get all events from the session."
   @spec get_events(pid() | atom()) :: [ADK.Event.t()]
