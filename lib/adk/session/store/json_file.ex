@@ -149,7 +149,7 @@ defmodule ADK.Session.Store.JsonFile do
       content: event.content,
       partial: event.partial,
       actions: serialize_actions(event.actions),
-      error: event.error
+      error: sanitize_for_json(event.error)
     }
   end
 
@@ -164,4 +164,22 @@ defmodule ADK.Session.Store.JsonFile do
   end
 
   defp serialize_actions(other), do: other
+
+  # Sanitize values that may not be JSON-encodable (tuples, pids, etc.)
+  defp sanitize_for_json(nil), do: nil
+  defp sanitize_for_json(val) when is_binary(val), do: val
+  defp sanitize_for_json(val) when is_number(val), do: val
+  defp sanitize_for_json(val) when is_boolean(val), do: val
+  defp sanitize_for_json(val) when is_atom(val), do: to_string(val)
+  defp sanitize_for_json(val) when is_list(val), do: Enum.map(val, &sanitize_for_json/1)
+
+  defp sanitize_for_json(val) when is_map(val) do
+    Map.new(val, fn {k, v} -> {to_string(k), sanitize_for_json(v)} end)
+  end
+
+  defp sanitize_for_json(val) when is_tuple(val) do
+    val |> Tuple.to_list() |> Enum.map(&sanitize_for_json/1)
+  end
+
+  defp sanitize_for_json(val), do: inspect(val)
 end
