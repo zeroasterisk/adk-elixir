@@ -432,10 +432,17 @@ defmodule ADK.LLM.Anthropic do
     end
   end
 
+  # OAuth headers for Claude Code tokens (sk-ant-oat01-*).
+  # NOTE: When using OAuth, the system instruction MUST start with
+  # "You are Claude Code, Anthropic's official CLI for Claude."
+  # This is an API requirement — the caller is responsible for ensuring it.
   defp auth_headers({:oauth, token}) do
     [
       {"authorization", "Bearer #{token}"},
-      {"anthropic-version", @anthropic_version}
+      {"anthropic-version", @anthropic_version},
+      {"anthropic-beta", "claude-code-20250219,oauth-2025-04-20"},
+      {"user-agent", "claude-cli/2.1.2 (external, cli)"},
+      {"x-app", "cli"}
     ]
   end
 
