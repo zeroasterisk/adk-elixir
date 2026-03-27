@@ -230,4 +230,104 @@ defmodule ADK.Workflow do
         |> Enum.map(fn [a, b] -> {a, b} end)
     end
   end
+
+  @doc """
+  Compile an agent-generated plan into an executable workflow DAG.
+
+  The plan is a map with a `"steps"` key containing a list of step
+  definitions. Each step has an `"id"` and optional `"depends_on"` list.
+
+  Returns `{:ok, workflow}` or `{:error, reason}`.
+
+  ADK Elixir extension — no Python ADK equivalent exists.
+
+  ## Examples
+
+      iex> plan = %{"steps" => [
+      ...>   %{"id" => "a", "action" => "execute"},
+      ...>   %{"id" => "b", "action" => "execute", "depends_on" => ["a"]}
+      ...> ]}
+      iex> {:ok, workflow} = ADK.Workflow.from_plan(plan)
+      iex> workflow.name
+      "plan"
+  """
+  @spec from_plan(map()) :: {:ok, t()} | {:error, String.t()}
+  def from_plan(%{"steps" => steps}) when is_list(steps) do
+    ids = Enum.map(steps, & &1["id"])
+
+    # Check for duplicates
+    case ids -- Enum.uniq(ids) do
+      [dup | _] ->
+        {:error, "Duplicate step id: #{dup}"}
+
+      [] ->
+        # Check for undefined dependencies
+        id_set = MapSet.new(ids)
+
+        undefined =
+          Enum.find_value(steps, fn step ->
+            deps = step["depends_on"] || []
+            bad = Enum.find(deps, &(not MapSet.member?(id_set, &1)))
+            if bad, do: {step["id"], bad}
+          end)
+
+        case undefined do
+          {step_id, dep_id} ->
+            {:error, "Step #{step_id} depends on undefined step: #{dep_id}"}
+
+          nil ->
+            # Build edges: for each step, create edges from its dependencies
+            # Steps with no deps get an edge from :START
+            # Steps that nothing depends on get an edge to :END
+            dep_edges =
+              Enum.flat_map(steps, fn step ->
+                deps = step["depends_on"] || []
+                step_atom = String.to_atom(step["id"])
+
+                if deps == [] do
+                  [{:START, step_atom}]
+                else
+                  Enum.map(deps, &{String.to_atom(&1), step_atom})
+                end
+              end)
+
+            # Find terminal steps (not depended on by anything)
+            all_deps =
+              steps
+              |> Enum.flat_map(fn s -> s["depends_on"] || [] end)
+              |> MapSet.new()
+
+            terminal_edges =
+              steps
+              |> Enum.filter(fn s -> not MapSet.member?(all_deps, s["id"]) end)
+              |> Enum.map(fn s -> {String.to_atom(s["id"]), :END} end)
+
+            edges = dep_edges ++ terminal_edges
+
+            # Create placeholder nodes (Custom agents with passthrough handlers)
+            nodes =
+              Map.new(steps, fn step ->
+                atom = String.to_atom(step["id"])
+
+                {atom,
+                 ADK.Agent.Custom.new(
+                   name: step["id"],
+                   run_fn: fn _agent, _ctx ->
+                     [ADK.Event.new(author: step["id"], content: "Executed #{step["id"]}")]
+                   end
+                 )}
+              end)
+
+            {:ok,
+             %__MODULE__{
+               name: "plan",
+               edges: edges,
+               nodes: nodes,
+               graph: Graph.build(edges)
+             }}
+        end
+    end
+  end
+
+  def from_plan(_), do: {:error, "Plan must have a \"steps\" key with a list of steps"}
 end
