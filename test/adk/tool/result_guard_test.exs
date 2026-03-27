@@ -74,7 +74,37 @@ defmodule ADK.Tool.ResultGuardTest do
     end
   end
 
-  describe "custom max size via application env" do
+  describe "max_bytes option parameter" do
+    test "accepts max_bytes as option" do
+      value = String.duplicate("a", 200)
+      result = ResultGuard.maybe_truncate(value, max_bytes: 100)
+
+      assert result =~ "[TRUNCATED: result was 200 bytes, showing first 80 bytes]"
+    end
+
+    test "option overrides application config" do
+      # Default is 50_000, but we pass 50
+      value = String.duplicate("b", 100)
+      result = ResultGuard.maybe_truncate(value, max_bytes: 50)
+
+      assert result =~ "[TRUNCATED: result was 100 bytes, showing first 40 bytes]"
+    end
+
+    test "large max_bytes option lets big values through" do
+      value = String.duplicate("c", 60_000)
+      # Default would truncate at 50k, but we allow 100k
+      assert ResultGuard.maybe_truncate(value, max_bytes: 100_000) == value
+    end
+
+    test "works with maps" do
+      value = %{"data" => String.duplicate("x", 200)}
+      result = ResultGuard.maybe_truncate(value, max_bytes: 50)
+
+      assert result =~ "[TRUNCATED:"
+    end
+  end
+
+  describe "application env fallback" do
     setup do
       original = Application.get_env(:adk, :max_tool_result_bytes)
       Application.put_env(:adk, :max_tool_result_bytes, 100)
@@ -90,15 +120,21 @@ defmodule ADK.Tool.ResultGuardTest do
       :ok
     end
 
-    test "uses configured max size" do
+    test "uses configured max size when no option given" do
       assert ResultGuard.max_bytes() == 100
     end
 
-    test "truncates at custom limit" do
+    test "truncates at app config limit when no option given" do
       value = String.duplicate("a", 200)
       result = ResultGuard.maybe_truncate(value)
 
       assert result =~ "[TRUNCATED: result was 200 bytes, showing first 80 bytes]"
+    end
+
+    test "option overrides app config" do
+      value = String.duplicate("a", 200)
+      # App config is 100, but option says 300 — should not truncate
+      assert ResultGuard.maybe_truncate(value, max_bytes: 300) == value
     end
   end
 end

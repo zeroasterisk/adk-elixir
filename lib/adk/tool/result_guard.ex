@@ -5,7 +5,13 @@ defmodule ADK.Tool.ResultGuard do
   When a tool returns a result larger than the configured maximum, this module
   truncates it and appends a marker indicating the original size.
 
-  ## Configuration
+  ## Options
+
+  All functions accept an optional `max_bytes` parameter:
+
+      ResultGuard.maybe_truncate(value, max_bytes: 10_000)
+
+  When not provided, falls back to application config:
 
       config :adk, :max_tool_result_bytes, 50_000
 
@@ -17,14 +23,20 @@ defmodule ADK.Tool.ResultGuard do
 
   @default_max_bytes 50_000
 
+  @type opts :: [max_bytes: pos_integer()]
+
   @doc """
-  Truncates `value` if its serialized form exceeds the configured maximum bytes.
+  Truncates `value` if its serialized form exceeds the maximum bytes.
+
+  ## Options
+
+    * `:max_bytes` — override the maximum size (default: application config or #{@default_max_bytes})
 
   Returns the value unchanged if it fits within the limit.
   """
-  @spec maybe_truncate(term()) :: term()
-  def maybe_truncate(value) do
-    max = max_bytes()
+  @spec maybe_truncate(term(), opts()) :: term()
+  def maybe_truncate(value, opts \\ []) do
+    max = Keyword.get(opts, :max_bytes) || max_bytes()
     {serialized, original?} = serialize(value)
     size = byte_size(serialized)
 
@@ -44,6 +56,8 @@ defmodule ADK.Tool.ResultGuard do
 
   @doc """
   Returns the configured maximum tool result size in bytes.
+
+  Reads from `Application.get_env(:adk, :max_tool_result_bytes)`, defaulting to #{@default_max_bytes}.
   """
   @spec max_bytes() :: pos_integer()
   def max_bytes do
