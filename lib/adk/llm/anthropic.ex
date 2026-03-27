@@ -245,22 +245,24 @@ defmodule ADK.LLM.Anthropic do
   defp serialize_tool_result(val) when is_binary(val), do: val
   defp serialize_tool_result(val), do: Jason.encode!(val)
 
-  defp format_function_call(%{name: name, args: args, id: id}) do
+  defp format_function_call(%{name: name, args: args} = fc) do
+    id =
+      Map.get(fc, :id) ||
+        Map.get(args, :tool_call_id) ||
+        Map.get(args, "tool_call_id") ||
+        generate_tool_use_id(name)
+
     %{
       type: "tool_use",
-      id: Map.get(args, :tool_call_id, Map.get(args, "tool_call_id", id || name)),
+      id: id,
       name: name,
       input: Map.drop(args, [:tool_call_id, "tool_call_id"])
     }
   end
 
-  defp format_function_call(%{name: name, args: args}) do
-    %{
-      type: "tool_use",
-      id: Map.get(args, :tool_call_id, Map.get(args, "tool_call_id", name)),
-      name: name,
-      input: Map.drop(args, [:tool_call_id, "tool_call_id"])
-    }
+  defp generate_tool_use_id(name) do
+    suffix = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
+    "toolu_#{name}_#{suffix}"
   end
 
   defp format_part(%{text: t}, _role), do: %{type: "text", text: t}
