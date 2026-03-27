@@ -423,21 +423,41 @@ in pipeline mode.
 
 **Leaning:** Pipeline (sequential) by default, with `concurrent: true` opt-in.
 
-### UQ3: Budget sharing across multi-agent
+### UQ3: Budget sharing across multi-agent — RESOLVED
 
-When multiple agents compose in L3, do they share a single budget or each
-get their own? If shared, how is the budget partitioned?
+**Decision:** Shared budget. The Harness owns the budget, all agents within
+draw from it. Per-agent sub-budgets available as opt-in for advanced use.
 
-**Leaning:** Shared budget by default (the Harness owns the budget, all agents
-within draw from it). Per-agent sub-budgets as an opt-in.
+### UQ4: Skill workflow discovery — RESOLVED
 
-### UQ4: Skill workflow discovery
+**Decision:** Proactive dagification. The Harness automatically decomposes any
+skill that declares steps into a DAG. No opt-in behaviour needed.
 
-How does the Harness discover that a Skill has a `workflow/0` callback vs
-a plain `execute/2`? At compile time via behaviour, or runtime inspection?
+Skills declare steps as an ordered list of operations. The Harness analyzes
+dependencies between steps, finds independent ones that can run in parallel,
+and inserts checkpoints between nodes. A skill author writes sequential logic;
+the Harness finds the concurrency.
 
-**Leaning:** Optional `@behaviour ADK.Skill.Workflow` — if implemented,
-Harness decomposes into DAG; otherwise calls `execute/2` as today.
+```elixir
+# Skill author writes this:
+defmodule MyApp.Skills.Ship do
+  use ADK.Skill
+
+  steps do
+    step :sync,    fn ctx -> Git.pull(ctx.repo) end
+    step :test,    fn ctx -> Mix.test(ctx.repo) end,    depends_on: [:sync]
+    step :lint,    fn ctx -> Mix.lint(ctx.repo) end,    depends_on: [:sync]
+    step :review,  fn ctx -> Review.diff(ctx.repo) end, depends_on: [:test, :lint]
+    step :commit,  fn ctx -> Git.commit(ctx.repo) end,  depends_on: [:review]
+    step :push,    fn ctx -> Git.push(ctx.repo) end,    depends_on: [:commit]
+  end
+end
+
+# Harness sees: test + lint are independent → parallel after sync
+# Automatic checkpoints between each node for resume on failure
+```
+
+If a skill has no `steps` block, it's called via `execute/2` as today (single node).
 
 ### UQ5: Plan format standardization
 
