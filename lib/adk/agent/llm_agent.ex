@@ -134,7 +134,28 @@ defmodule ADK.Agent.LlmAgent do
 
   @doc false
   @spec do_run(ADK.Context.t(), t(), non_neg_integer()) :: [ADK.Event.t()]
-  def do_run(_ctx, agent, iteration) when iteration >= agent.max_iterations, do: []
+  def do_run(ctx, agent, iteration) when iteration >= agent.max_iterations do
+    require Logger
+
+    Logger.warning(
+      "[LlmAgent] Max iterations (#{agent.max_iterations}) reached for agent #{agent.name}"
+    )
+
+    error_msg =
+      "Agent reached maximum tool call iterations (#{agent.max_iterations}). The response may be incomplete."
+
+    error_event =
+      ADK.Event.new(%{
+        invocation_id: ctx.invocation_id,
+        author: agent.name,
+        content: %{role: :model, parts: [%{text: error_msg}]},
+        error: error_msg
+      })
+
+    if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, error_event)
+    ADK.Context.emit_event(ctx, error_event)
+    [error_event]
+  end
 
   def do_run(ctx, agent, iteration) do
     # Build LLM request
