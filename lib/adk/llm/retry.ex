@@ -104,7 +104,7 @@ defmodule ADK.LLM.Retry do
     secs_val = :proplists.get_value("retry-after", headers)
 
     with nil <- safe_parse_int(ms_val),
-         nil <- (fn -> case safe_parse_int(secs_val) do nil -> nil; s -> s * 1000 end end).() do
+         nil <- safe_parse_int_as_ms(secs_val) do
       nil
     end
   end
@@ -122,6 +122,13 @@ defmodule ADK.LLM.Retry do
   end
 
   defp parse_header_secs(_), do: nil
+
+  defp safe_parse_int_as_ms(val) do
+    case safe_parse_int(val) do
+      nil -> nil
+      secs -> secs * 1000
+    end
+  end
 
   defp safe_parse_int(nil), do: nil
 
