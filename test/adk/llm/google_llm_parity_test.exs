@@ -21,6 +21,7 @@ defmodule ADK.LLM.GoogleLLMParityTest do
   alias ADK.LLM.Gemini
 
   setup do
+    original_gemini_key = System.get_env("GEMINI_API_KEY")
     Application.put_env(:adk, :gemini_api_key, "test-key")
     Application.put_env(:adk, :gemini_test_plug, true)
 
@@ -29,6 +30,9 @@ defmodule ADK.LLM.GoogleLLMParityTest do
       Application.delete_env(:adk, :gemini_test_plug)
       Application.delete_env(:adk, :gemini_bearer_token)
       System.delete_env("GEMINI_BEARER_TOKEN")
+
+      # Restore GEMINI_API_KEY env var if it was set before the test
+      if original_gemini_key, do: System.put_env("GEMINI_API_KEY", original_gemini_key)
     end)
 
     :ok
@@ -415,6 +419,7 @@ defmodule ADK.LLM.GoogleLLMParityTest do
   describe "bearer token authentication" do
     test "uses bearer token from application config when set" do
       Application.delete_env(:adk, :gemini_api_key)
+      System.delete_env("GEMINI_API_KEY")
       Application.put_env(:adk, :gemini_bearer_token, "my-bearer-token")
 
       Req.Test.stub(Gemini, fn conn ->
