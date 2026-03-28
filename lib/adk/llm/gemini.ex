@@ -23,6 +23,8 @@ defmodule ADK.LLM.Gemini do
 
   @behaviour ADK.LLM
 
+  require Logger
+
   @base_url "https://generativelanguage.googleapis.com/v1beta/models"
   @default_model "gemini-flash-latest"
 
@@ -53,24 +55,31 @@ defmodule ADK.LLM.Gemini do
         {:bearer, token} -> update_in(req_options[:headers], &([{"authorization", "Bearer #{token}"} | &1]))
       end
 
-    req_options = req_options ++ req_test_options()
+    req_options =
+      req_options ++
+        [receive_timeout: 30_000, connect_options: [timeout: 10_000]] ++
+        req_test_options()
 
-    case Req.post(Req.new(req_options)) do
-      {:ok, %Req.Response{status: 200, body: body}} ->
-        {:ok, parse_response(body)}
+    ADK.LLM.Retry.with_retry(fn ->
+      case Req.post(Req.new(req_options)) do
+        {:ok, %Req.Response{status: 200, body: body}} ->
+          {:ok, parse_response(body)}
 
-      {:ok, %Req.Response{status: 429}} ->
-        {:error, :rate_limited}
+        {:ok, %Req.Response{status: 429} = resp} ->
+          retry_ms = ADK.LLM.Retry.extract_retry_after(resp)
+          if retry_ms, do: Logger.warning("[Gemini] Rate limited, retry-after: #{retry_ms}ms")
+          {:retry_after, retry_ms, :rate_limited}
 
-      {:ok, %Req.Response{status: 401}} ->
-        {:error, :unauthorized}
+        {:ok, %Req.Response{status: 401}} ->
+          {:error, :unauthorized}
 
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error, {:api_error, status, body}}
+        {:ok, %Req.Response{status: status, body: body}} ->
+          {:error, {:api_error, status, body}}
 
-      {:error, reason} ->
-        {:error, {:request_failed, reason}}
-    end
+        {:error, reason} ->
+          {:error, {:request_failed, reason}}
+      end
+    end)
   end
 
   defp req_test_options do
