@@ -18,7 +18,13 @@ defmodule ADK.MCP.StdioIntegrationTest do
     setup do
       elixir = System.find_executable("elixir")
       {:ok, toolset} = Toolset.start_link(command: elixir, args: [@mock_server])
-      on_exit(fn -> if Process.alive?(toolset), do: Toolset.close(toolset) end)
+      on_exit(fn ->
+        try do
+          if Process.alive?(toolset), do: Toolset.close(toolset)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
       %{toolset: toolset}
     end
 
@@ -124,7 +130,11 @@ defmodule ADK.MCP.StdioIntegrationTest do
         )
 
       on_exit(fn ->
-        if Process.alive?(filtered_toolset), do: Toolset.close(filtered_toolset)
+        try do
+          if Process.alive?(filtered_toolset), do: Toolset.close(filtered_toolset)
+        catch
+          :exit, _ -> :ok
+        end
       end)
 
       {:ok, tools} = Toolset.get_tools(filtered_toolset)
@@ -163,8 +173,13 @@ defmodule ADK.MCP.StdioIntegrationTest do
       {:ok, toolset_2} = Toolset.start_link(command: elixir, args: [@mock_server])
 
       on_exit(fn ->
-        if Process.alive?(toolset_1), do: Toolset.close(toolset_1)
-        if Process.alive?(toolset_2), do: Toolset.close(toolset_2)
+        for ts <- [toolset_1, toolset_2] do
+          try do
+            if Process.alive?(ts), do: Toolset.close(ts)
+          catch
+            :exit, _ -> :ok
+          end
+        end
       end)
 
       {:ok, tools_1} = Toolset.get_tools(toolset_1)
@@ -193,7 +208,13 @@ defmodule ADK.MCP.StdioIntegrationTest do
     setup do
       elixir = System.find_executable("elixir")
       {:ok, toolset} = Toolset.start_link(command: elixir, args: [@mock_server])
-      on_exit(fn -> if Process.alive?(toolset), do: Toolset.close(toolset) end)
+      on_exit(fn ->
+        try do
+          if Process.alive?(toolset), do: Toolset.close(toolset)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
       %{toolset: toolset}
     end
 

@@ -6,7 +6,13 @@ defmodule ADK.MCP.ClientTest do
   setup do
     elixir = System.find_executable("elixir")
     {:ok, client} = ADK.MCP.Client.start_link(command: elixir, args: [@mock_server])
-    on_exit(fn -> if Process.alive?(client), do: ADK.MCP.Client.close(client) end)
+    on_exit(fn ->
+      try do
+        if Process.alive?(client), do: ADK.MCP.Client.close(client)
+      catch
+        :exit, _ -> :ok
+      end
+    end)
     %{client: client}
   end
 
