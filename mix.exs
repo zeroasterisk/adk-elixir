@@ -65,6 +65,7 @@ defmodule ADK.MixProject do
       {:bandit, "~> 1.5", optional: true},
       {:ecto, "~> 3.10", optional: true},
       {:ecto_sql, "~> 3.10", optional: true},
+      {:exqlite, "~> 0.35", optional: true},
       {:ecto_sqlite3, "~> 0.17", only: :test},
       {:benchee, "~> 1.3", only: :dev, runtime: false},
       {:telemetry, "~> 1.0"},
