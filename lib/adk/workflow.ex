@@ -282,12 +282,12 @@ defmodule ADK.Workflow do
             dep_edges =
               Enum.flat_map(steps, fn step ->
                 deps = step["depends_on"] || []
-                step_atom = String.to_atom(step["id"])
+                step_id = step["id"]
 
                 if deps == [] do
-                  [{:START, step_atom}]
+                  [{:START, step_id}]
                 else
-                  Enum.map(deps, &{String.to_atom(&1), step_atom})
+                  Enum.map(deps, &{&1, step_id})
                 end
               end)
 
@@ -300,16 +300,14 @@ defmodule ADK.Workflow do
             terminal_edges =
               steps
               |> Enum.filter(fn s -> not MapSet.member?(all_deps, s["id"]) end)
-              |> Enum.map(fn s -> {String.to_atom(s["id"]), :END} end)
+              |> Enum.map(fn s -> {s["id"], :END} end)
 
             edges = dep_edges ++ terminal_edges
 
             # Create placeholder nodes (Custom agents with passthrough handlers)
             nodes =
               Map.new(steps, fn step ->
-                atom = String.to_atom(step["id"])
-
-                {atom,
+                {step["id"],
                  ADK.Agent.Custom.new(
                    name: step["id"],
                    run_fn: fn _agent, _ctx ->
