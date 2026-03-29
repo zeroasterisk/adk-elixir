@@ -694,7 +694,8 @@ defmodule ADK.Agent.LlmAgent do
         []
       end
 
-    history = truncate_history(history, ctx.agent.max_history_turns)
+    max_turns = if ctx.agent, do: ctx.agent.max_history_turns, else: nil
+    history = truncate_history(history, max_turns)
 
     user_msg =
       case ctx.user_content do
