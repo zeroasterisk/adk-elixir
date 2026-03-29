@@ -67,9 +67,17 @@ defmodule ADK.PythonParityTest do
 
       events = ADK.Agent.run(agent, ctx)
 
-      # Should have at most 2 iterations worth of events (each iteration = tool_call + tool_response)
-      # 2 iterations * 2 events = 4 events max
-      assert length(events) <= 4
+      # 2 iterations × (tool_call + tool_response) = 4 events + 1 error event when max hit = 5
+      assert length(events) <= 5
+
+      # Verify the last event is the max-iterations error
+      last = List.last(events)
+      assert last.error != nil
+      assert last.error =~ "maximum tool call iterations"
+
+      # The non-error events should be exactly 4 (2 iterations × 2)
+      non_error = Enum.reject(events, & &1.error)
+      assert length(non_error) == 4
 
       GenServer.stop(session_pid)
     end
