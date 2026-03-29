@@ -4,6 +4,13 @@ defmodule ADK.Agent.LlmAgent do
   handles tool calls, and loops until a final text response is produced.
 
   This is the primary agent type in ADK Elixir.
+
+  ## Options
+
+  * `:max_history_turns` - Maximum number of conversation turns (user + model
+    pairs) to keep from session history. When set to a positive integer, only
+    the most recent N turns are included in the prompt. Defaults to `nil`
+    (unlimited).
   """
 
   defstruct [
@@ -19,6 +26,7 @@ defmodule ADK.Agent.LlmAgent do
     :before_tool_callback,
     :after_tool_callback,
     :on_tool_error_callback,
+    :max_history_turns,
     description: "",
     tools: [],
     sub_agents: [],
@@ -45,6 +53,7 @@ defmodule ADK.Agent.LlmAgent do
             (map(), map(), map(), term() ->
                {:retry, any()} | {:fallback, any()} | {:error, any()})
             | nil,
+          max_history_turns: pos_integer() | nil,
           description: String.t(),
           tools: [map()],
           sub_agents: [map()],
@@ -685,6 +694,8 @@ defmodule ADK.Agent.LlmAgent do
         []
       end
 
+    history = truncate_history(history, ctx.agent.max_history_turns)
+
     user_msg =
       case ctx.user_content do
         %{text: text} -> [%{role: :user, parts: [%{text: text}]}]
@@ -695,6 +706,18 @@ defmodule ADK.Agent.LlmAgent do
 
     (history ++ user_msg)
     |> ADK.Transcript.Repair.repair()
+  end
+
+  defp truncate_history(history, nil), do: history
+  defp truncate_history(history, n) when is_integer(n) and n > 0 do
+    max_messages = n * 2
+    len = length(history)
+
+    if len <= max_messages do
+      history
+    else
+      Enum.drop(history, len - max_messages)
+    end
   end
 
   @doc false
