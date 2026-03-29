@@ -154,10 +154,17 @@ defmodule ADK.Tool.OpenApiTool.RestApiTool do
   """
   def prepare_request_params(%__MODULE__{} = tool, parameters, kwargs) do
     method =
-      (tool.endpoint.method || "GET")
-      |> to_string()
-      |> String.downcase()
-      |> String.to_atom()
+      try do
+        (tool.endpoint.method || "GET")
+        |> to_string()
+        |> String.downcase()
+        |> String.to_existing_atom()
+      rescue
+        ArgumentError ->
+          (tool.endpoint.method || "GET")
+          |> to_string()
+          |> String.downcase()
+      end
 
     params_map = Map.new(parameters || [], fn p -> {p.py_name, p} end)
 

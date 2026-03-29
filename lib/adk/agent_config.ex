@@ -219,6 +219,14 @@ defmodule ADK.AgentConfig do
   defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
 
   defp atomize(nil), do: nil
-  defp atomize(s) when is_binary(s), do: String.to_atom(s)
+
+  defp atomize(s) when is_binary(s) do
+    try do
+      String.to_existing_atom(s)
+    rescue
+      ArgumentError -> s
+    end
+  end
+
   defp atomize(a) when is_atom(a), do: a
 end

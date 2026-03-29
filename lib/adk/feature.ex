@@ -155,7 +155,12 @@ defmodule ADK.Feature do
       |> Enum.map(&String.trim/1)
       |> Enum.reject(&(&1 == ""))
       |> Enum.reduce(0, fn raw_name, acc ->
-        atom_name = raw_name |> String.downcase() |> String.to_atom()
+        atom_name =
+          try do
+            raw_name |> String.downcase() |> String.to_existing_atom()
+          rescue
+            ArgumentError -> raw_name |> String.downcase()
+          end
 
         if Map.has_key?(@registry, atom_name) do
           case action do

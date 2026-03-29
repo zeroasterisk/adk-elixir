@@ -28,7 +28,16 @@ defmodule ADK.SystemInstruction do
   @spec render(String.t(), map()) :: String.t()
   def render(template, context) do
     Regex.replace(~r/\{([^}]+)\}/, template, fn _, var ->
-      val = get_in(context, [Access.key(String.to_atom(var))])
+      val =
+        case Map.fetch(context, var) do
+          {:ok, v} -> v
+          :error ->
+            try do
+              Map.get(context, String.to_existing_atom(var))
+            rescue
+              ArgumentError -> nil
+            end
+        end
       serialize(val)
     end)
   end

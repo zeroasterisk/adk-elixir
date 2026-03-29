@@ -85,7 +85,7 @@ defmodule ADK.Auth.OAuth2Discovery do
         try do
           {String.to_existing_atom(k), v}
         rescue
-          ArgumentError -> {String.to_atom(k), v}
+          ArgumentError -> {k, v}
         end
       {k, v} -> {k, v}
     end)
