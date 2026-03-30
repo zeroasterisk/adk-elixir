@@ -230,6 +230,14 @@ defmodule ADK.LLM.Gemini do
     }
   end
 
+  defp parse_content(%{"role" => _role}) do
+    %{role: :model, parts: [%{text: ""}]}
+  end
+
+  defp parse_content(_other) do
+    %{role: :model, parts: [%{text: ""}]}
+  end
+
   defp parse_response_part(%{"text" => text}), do: %{text: text}
 
   defp parse_response_part(%{"functionCall" => %{"name" => name, "args" => args}}) do
