@@ -234,7 +234,8 @@ defmodule ADK.LLM.Gemini do
     %{role: :model, parts: [%{text: ""}]}
   end
 
-  defp parse_content(_other) do
+  defp parse_content(other) do
+    Logger.warning("[Gemini] parse_content: unexpected shape: #{inspect(other)}")
     %{role: :model, parts: [%{text: ""}]}
   end
 
