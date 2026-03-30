@@ -217,7 +217,8 @@ defmodule ADK.Session.Store.SQLite do
   # --- Internal Operations ---
 
   defp do_load(conn, app_name, user_id, session_id) do
-    sql = "SELECT state_json FROM sessions WHERE app_name = ?1 AND user_id = ?2 AND session_id = ?3"
+    sql =
+      "SELECT state_json FROM sessions WHERE app_name = ?1 AND user_id = ?2 AND session_id = ?3"
 
     case query_one(conn, sql, [app_name, user_id, session_id]) do
       {:ok, [state_json]} ->
@@ -444,7 +445,9 @@ defmodule ADK.Session.Store.SQLite do
          :ok <- Exqlite.Sqlite3.release(conn, stmt) do
       :ok
     else
-      {:error, reason} -> {:error, reason}
+      {:error, reason} ->
+        {:error, reason}
+
       # step can return :row for PRAGMA etc — that's fine
       {:row, _} ->
         :ok

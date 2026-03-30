@@ -49,7 +49,13 @@ defmodule ADK.Scenarios.ToolAgentTest do
         # Turn 1: agent decides to search
         %{function_call: %{name: "web_search", args: %{"query" => "elixir otp"}, id: "fc-1"}},
         # Turn 2: agent decides to fetch a result URL
-        %{function_call: %{name: "web_fetch", args: %{"url" => "https://elixir-lang.org"}, id: "fc-2"}},
+        %{
+          function_call: %{
+            name: "web_fetch",
+            args: %{"url" => "https://elixir-lang.org"},
+            id: "fc-2"
+          }
+        },
         # Turn 3: agent synthesizes and responds
         "Elixir is a functional language built on the BEAM VM. Here's what I found..."
       ])

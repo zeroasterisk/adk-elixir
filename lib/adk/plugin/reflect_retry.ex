@@ -117,7 +117,9 @@ defmodule ADK.Plugin.ReflectRetry do
         attempt = current_count + 1
         new_state = put_in(state.retry_counts[invocation_id], attempt)
 
-        reflection_text = format_template(state.reflection_template, attempt, state.max_retries, reason)
+        reflection_text =
+          format_template(state.reflection_template, attempt, state.max_retries, reason)
+
         reflection_event = build_reflection_event(reflection_text)
 
         # Re-run the agent with reflection context
@@ -168,7 +170,11 @@ defmodule ADK.Plugin.ReflectRetry do
       |> Enum.map(fn e -> e.error || "unknown error" end)
       |> Enum.join("; ")
 
-    [build_reflection_event(format_template(@default_template, attempt, @default_max_retries, reason))]
+    [
+      build_reflection_event(
+        format_template(@default_template, attempt, @default_max_retries, reason)
+      )
+    ]
   end
 
   defp build_reflection_event(text) do

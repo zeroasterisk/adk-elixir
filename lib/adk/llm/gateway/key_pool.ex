@@ -23,7 +23,8 @@ defmodule ADK.LLM.Gateway.KeyPool do
     GenServer.start_link(__MODULE__, {keys, strategy}, gen_opts)
   end
 
-  @spec next_key(GenServer.server()) :: {:ok, {non_neg_integer(), Auth.t()}} | {:error, :all_keys_rate_limited}
+  @spec next_key(GenServer.server()) ::
+          {:ok, {non_neg_integer(), Auth.t()}} | {:error, :all_keys_rate_limited}
   def next_key(pool), do: GenServer.call(pool, :next_key)
 
   @spec record_usage(GenServer.server(), non_neg_integer(), map()) :: :ok
@@ -49,15 +50,16 @@ defmodule ADK.LLM.Gateway.KeyPool do
       keys
       |> Enum.with_index()
       |> Enum.map(fn {auth, idx} ->
-        {idx, %{
-          auth: auth,
-          request_count: 0,
-          token_count: 0,
-          rate_limit_count: 0,
-          last_used_at: nil,
-          available_at: nil,
-          backoff_ms: @default_backoff_ms
-        }}
+        {idx,
+         %{
+           auth: auth,
+           request_count: 0,
+           token_count: 0,
+           rate_limit_count: 0,
+           last_used_at: nil,
+           available_at: nil,
+           backoff_ms: @default_backoff_ms
+         }}
       end)
       |> Map.new()
 
@@ -74,53 +76,87 @@ defmodule ADK.LLM.Gateway.KeyPool do
         {:reply, {:error, :all_keys_rate_limited}, state}
 
       {idx, key_state} ->
-        new_keys = Map.update!(state.keys, idx, fn k ->
-          %{k | request_count: k.request_count + 1, last_used_at: now}
-        end)
+        new_keys =
+          Map.update!(state.keys, idx, fn k ->
+            %{k | request_count: k.request_count + 1, last_used_at: now}
+          end)
+
         new_state = %{state | keys: new_keys, rr_index: idx + 1}
         {:reply, {:ok, {idx, key_state.auth}}, new_state}
     end
   end
 
   def handle_call(:stats, _from, state) do
-    stats = Map.new(state.keys, fn {idx, k} ->
-      {idx, Map.take(k, [:request_count, :token_count, :rate_limit_count, :last_used_at, :available_at, :backoff_ms])}
-    end)
+    stats =
+      Map.new(state.keys, fn {idx, k} ->
+        {idx,
+         Map.take(k, [
+           :request_count,
+           :token_count,
+           :rate_limit_count,
+           :last_used_at,
+           :available_at,
+           :backoff_ms
+         ])}
+      end)
+
     {:reply, stats, state}
   end
 
   def handle_call(:reset, _from, state) do
-    new_keys = Map.new(state.keys, fn {idx, k} ->
-      {idx, %{k | request_count: 0, token_count: 0, rate_limit_count: 0,
-               last_used_at: nil, available_at: nil, backoff_ms: @default_backoff_ms}}
-    end)
+    new_keys =
+      Map.new(state.keys, fn {idx, k} ->
+        {idx,
+         %{
+           k
+           | request_count: 0,
+             token_count: 0,
+             rate_limit_count: 0,
+             last_used_at: nil,
+             available_at: nil,
+             backoff_ms: @default_backoff_ms
+         }}
+      end)
+
     {:reply, :ok, %{state | keys: new_keys, rr_index: 0}}
   end
 
   @impl true
   def handle_cast({:usage, key_index, usage}, state) do
     tokens = Map.get(usage, :tokens, 0)
-    new_keys = Map.update!(state.keys, key_index, fn k ->
-      %{k | token_count: k.token_count + tokens}
-    end)
+
+    new_keys =
+      Map.update!(state.keys, key_index, fn k ->
+        %{k | token_count: k.token_count + tokens}
+      end)
+
     {:noreply, %{state | keys: new_keys}}
   end
 
   def handle_cast({:rate_limited, key_index}, state) do
     now = System.monotonic_time(:millisecond)
-    new_keys = Map.update!(state.keys, key_index, fn k ->
-      new_backoff = min(k.backoff_ms * 2, @max_backoff_ms)
-      %{k | rate_limit_count: k.rate_limit_count + 1,
+
+    new_keys =
+      Map.update!(state.keys, key_index, fn k ->
+        new_backoff = min(k.backoff_ms * 2, @max_backoff_ms)
+
+        %{
+          k
+          | rate_limit_count: k.rate_limit_count + 1,
             available_at: now + k.backoff_ms,
-            backoff_ms: new_backoff}
-    end)
+            backoff_ms: new_backoff
+        }
+      end)
+
     {:noreply, %{state | keys: new_keys}}
   end
 
   def handle_cast({:success, key_index}, state) do
-    new_keys = Map.update!(state.keys, key_index, fn k ->
-      %{k | available_at: nil, backoff_ms: max(@default_backoff_ms, div(k.backoff_ms, 2))}
-    end)
+    new_keys =
+      Map.update!(state.keys, key_index, fn k ->
+        %{k | available_at: nil, backoff_ms: max(@default_backoff_ms, div(k.backoff_ms, 2))}
+      end)
+
     {:noreply, %{state | keys: new_keys}}
   end
 

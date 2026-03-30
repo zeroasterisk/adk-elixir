@@ -63,7 +63,9 @@ defmodule ADK.Planner.PlanReAct do
 
       matches ->
         {last_pos, _len} = List.last(matches)
-        {String.slice(text, 0, last_pos + String.length(pattern)), String.slice(text, last_pos + String.length(pattern), String.length(text))}
+
+        {String.slice(text, 0, last_pos + String.length(pattern)),
+         String.slice(text, last_pos + String.length(pattern), String.length(text))}
     end
   end
 

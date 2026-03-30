@@ -5,29 +5,32 @@ defmodule ADK.A2A.ServerTest do
   alias ADK.A2A.Server
 
   setup do
-    agent = ADK.Agent.Custom.new(
-      name: "test_agent",
-      description: "A test agent",
-      run_fn: fn _agent, _ctx ->
-        [
-          ADK.Event.new(%{
-            author: "test_agent",
-            content: %{parts: [%{text: "Hello from agent"}]}
-          })
-        ]
-      end
-    )
+    agent =
+      ADK.Agent.Custom.new(
+        name: "test_agent",
+        description: "A test agent",
+        run_fn: fn _agent, _ctx ->
+          [
+            ADK.Event.new(%{
+              author: "test_agent",
+              content: %{parts: [%{text: "Hello from agent"}]}
+            })
+          ]
+        end
+      )
 
     runner = %ADK.Runner{app_name: "test", agent: agent}
 
     uid = System.unique_integer([:positive])
-    config = Server.init(
-      agent: agent,
-      runner: runner,
-      url: "http://localhost:4000",
-      config_table_name: :"adk_a2a_config_#{uid}",
-      task_table_name: :"adk_a2a_tasks_#{uid}"
-    )
+
+    config =
+      Server.init(
+        agent: agent,
+        runner: runner,
+        url: "http://localhost:4000",
+        config_table_name: :"adk_a2a_config_#{uid}",
+        task_table_name: :"adk_a2a_tasks_#{uid}"
+      )
 
     %{config: config}
   end

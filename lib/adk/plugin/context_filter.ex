@@ -12,6 +12,7 @@ defmodule ADK.Plugin.ContextFilter do
       num_invocations_to_keep: Keyword.get(opts, :num_invocations_to_keep),
       custom_filter: Keyword.get(opts, :custom_filter)
     }
+
     {:ok, config}
   end
 
@@ -68,24 +69,32 @@ defmodule ADK.Plugin.ContextFilter do
     {indices, _, _} =
       Enum.reduce(contents, {[], false, 0}, fn content, {acc_indices, prev_human, idx} ->
         human = is_human_user_content?(content)
-        new_indices = if human and not prev_human do
-          acc_indices ++ [idx]
-        else
-          acc_indices
-        end
+
+        new_indices =
+          if human and not prev_human do
+            acc_indices ++ [idx]
+          else
+            acc_indices
+          end
+
         {new_indices, human, idx + 1}
       end)
+
     indices
   end
 
   defp is_human_user_content?(%{role: "user"} = content) do
     not is_function_response_content?(content)
   end
+
   defp is_human_user_content?(_), do: false
 
   defp is_function_response_content?(%{parts: parts}) when is_list(parts) do
-    Enum.any?(parts, fn part -> Map.has_key?(part, :function_response) and not is_nil(part.function_response) end)
+    Enum.any?(parts, fn part ->
+      Map.has_key?(part, :function_response) and not is_nil(part.function_response)
+    end)
   end
+
   defp is_function_response_content?(_), do: false
 
   defp adjust_split_index_to_avoid_orphaned_responses(contents, split_index) do
@@ -94,31 +103,37 @@ defmodule ADK.Plugin.ContextFilter do
     # We iterate backwards from the end of the list down to 0
     # We collect function_response ids, and remove them when we see the corresponding function_call.
     # If at `i <= split_index` the needed_call_ids is empty, we return `i`.
-    Enum.reduce_while(Enum.reverse(Enum.with_index(contents)), needed_call_ids, fn {content, i}, acc_ids ->
+    Enum.reduce_while(Enum.reverse(Enum.with_index(contents)), needed_call_ids, fn {content, i},
+                                                                                   acc_ids ->
       parts = Map.get(content, :parts, [])
 
-      new_ids = Enum.reduce(Enum.reverse(parts), acc_ids, fn part, ids ->
-        ids1 = if Map.has_key?(part, :function_response) and not is_nil(part.function_response) do
-                 if Map.has_key?(part.function_response, :id) and not is_nil(part.function_response.id) do
-                   MapSet.put(ids, part.function_response.id)
-                 else
-                   ids
-                 end
-               else
-                 ids
-               end
+      new_ids =
+        Enum.reduce(Enum.reverse(parts), acc_ids, fn part, ids ->
+          ids1 =
+            if Map.has_key?(part, :function_response) and not is_nil(part.function_response) do
+              if Map.has_key?(part.function_response, :id) and
+                   not is_nil(part.function_response.id) do
+                MapSet.put(ids, part.function_response.id)
+              else
+                ids
+              end
+            else
+              ids
+            end
 
-        ids2 = if Map.has_key?(part, :function_call) and not is_nil(part.function_call) do
-                 if Map.has_key?(part.function_call, :id) and not is_nil(part.function_call.id) do
-                   MapSet.delete(ids1, part.function_call.id)
-                 else
-                   ids1
-                 end
-               else
-                 ids1
-               end
-        ids2
-      end)
+          ids2 =
+            if Map.has_key?(part, :function_call) and not is_nil(part.function_call) do
+              if Map.has_key?(part.function_call, :id) and not is_nil(part.function_call.id) do
+                MapSet.delete(ids1, part.function_call.id)
+              else
+                ids1
+              end
+            else
+              ids1
+            end
+
+          ids2
+        end)
 
       if i <= split_index and MapSet.size(new_ids) == 0 do
         {:halt, i}

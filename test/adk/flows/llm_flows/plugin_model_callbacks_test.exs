@@ -15,9 +15,12 @@ defmodule ADK.Flows.LlmFlows.PluginModelCallbacksParityTest do
       plugin_state = get_plugin_state(ctx)
 
       if plugin_state[:enable_before_model_callback] do
-        response = {:ok, %{
-          content: %{role: :model, parts: [%{text: plugin_state[:before_model_text]}]}
-        }}
+        response =
+          {:ok,
+           %{
+             content: %{role: :model, parts: [%{text: plugin_state[:before_model_text]}]}
+           }}
+
         {:skip, response}
       else
         {:ok, request}
@@ -32,6 +35,7 @@ defmodule ADK.Flows.LlmFlows.PluginModelCallbacksParityTest do
         response = %{
           content: %{role: :model, parts: [%{text: plugin_state[:on_model_error_text]}]}
         }
+
         {:ok, response}
       else
         error
@@ -48,7 +52,8 @@ defmodule ADK.Flows.LlmFlows.PluginModelCallbacksParityTest do
   defmodule MockCallback do
     @behaviour ADK.Callback
     def before_model(_ctx) do
-      {:halt, {:ok, %{content: %{role: :model, parts: [%{text: "canonical_model_callback_content"}]}}}}
+      {:halt,
+       {:ok, %{content: %{role: :model, parts: [%{text: "canonical_model_callback_content"}]}}}}
     end
   end
 
@@ -75,15 +80,17 @@ defmodule ADK.Flows.LlmFlows.PluginModelCallbacksParityTest do
       enable_before_model_callback: true,
       before_model_text: "before_model_text from MockPlugin"
     ]
+
     ADK.Plugin.Registry.register({MockPlugin, plugin_config})
 
     agent = %LlmAgent{
       name: "root_agent",
       model: "mock"
     }
+
     runner = ADK.Runner.new(app_name: "test", agent: agent)
     events = ADK.Runner.run(runner, "u1", "sess1", "test")
-    
+
     assert [event | _] = events
     assert Event.text(event) == "before_model_text from MockPlugin"
     assert event.author == "root_agent"
@@ -98,15 +105,17 @@ defmodule ADK.Flows.LlmFlows.PluginModelCallbacksParityTest do
       enable_before_model_callback: false,
       before_model_text: "before_model_text from MockPlugin"
     ]
+
     ADK.Plugin.Registry.register({MockPlugin, plugin_config})
 
     agent = %LlmAgent{
       name: "root_agent",
       model: "mock"
     }
+
     runner = ADK.Runner.new(app_name: "test", agent: agent)
     events = ADK.Runner.run(runner, "u1", "sess1", "test", callbacks: [MockCallback])
-    
+
     assert [event | _] = events
     assert Event.text(event) == "canonical_model_callback_content"
     assert event.author == "root_agent"
@@ -120,15 +129,17 @@ defmodule ADK.Flows.LlmFlows.PluginModelCallbacksParityTest do
     plugin_config = [
       enable_before_model_callback: false
     ]
+
     ADK.Plugin.Registry.register({MockPlugin, plugin_config})
 
     agent = %LlmAgent{
       name: "root_agent",
       model: "mock"
     }
+
     runner = ADK.Runner.new(app_name: "test", agent: agent)
     events = ADK.Runner.run(runner, "u1", "sess1", "test")
-    
+
     assert [event | _] = events
     assert Event.text(event) == "model_response"
     assert event.author == "root_agent"
@@ -136,6 +147,7 @@ defmodule ADK.Flows.LlmFlows.PluginModelCallbacksParityTest do
 
   test "on_model_error_callback_with_plugin: plugin handles model error" do
     mock_error = %RuntimeError{message: "Quota exceeded"}
+
     ADK.LLM.Mock.set_responses([
       {:error, mock_error}
     ])
@@ -144,15 +156,17 @@ defmodule ADK.Flows.LlmFlows.PluginModelCallbacksParityTest do
       enable_on_model_error_callback: true,
       on_model_error_text: "on_model_error_text from MockPlugin"
     ]
+
     ADK.Plugin.Registry.register({MockPlugin, plugin_config})
 
     agent = %LlmAgent{
       name: "root_agent",
       model: "mock"
     }
+
     runner = ADK.Runner.new(app_name: "test", agent: agent)
     events = ADK.Runner.run(runner, "u1", "sess1", "test")
-    
+
     assert [event | _] = events
     assert Event.text(event) == "on_model_error_text from MockPlugin"
     assert event.author == "root_agent"
@@ -160,6 +174,7 @@ defmodule ADK.Flows.LlmFlows.PluginModelCallbacksParityTest do
 
   test "on_model_error_callback_fallback_to_runner: error falls back to runner when plugin ignores it" do
     mock_error = %RuntimeError{message: "Quota exceeded"}
+
     ADK.LLM.Mock.set_responses([
       {:error, mock_error}
     ])
@@ -167,15 +182,17 @@ defmodule ADK.Flows.LlmFlows.PluginModelCallbacksParityTest do
     plugin_config = [
       enable_on_model_error_callback: false
     ]
+
     ADK.Plugin.Registry.register({MockPlugin, plugin_config})
 
     agent = %LlmAgent{
       name: "root_agent",
       model: "mock"
     }
+
     runner = ADK.Runner.new(app_name: "test", agent: agent)
     events = ADK.Runner.run(runner, "u1", "sess1", "test")
-    
+
     assert [event | _] = events
     assert event.error == mock_error
     assert Event.text(event) =~ "Error: %RuntimeError"

@@ -318,7 +318,12 @@ defmodule ADK.Skill do
       current_list_key != nil && Regex.match?(~r/^\s+-\s+/, line) ->
         [_, item] = Regex.run(~r/^\s+-\s+(.+)$/, line)
         existing = Map.get(acc, current_list_key, [])
-        parse_yaml_lines(rest, current_list_key, Map.put(acc, current_list_key, existing ++ [String.trim(item)]))
+
+        parse_yaml_lines(
+          rest,
+          current_list_key,
+          Map.put(acc, current_list_key, existing ++ [String.trim(item)])
+        )
 
       # Key with inline value: "key: value"
       Regex.match?(~r/^(\w+):\s+(.+)$/, line) ->

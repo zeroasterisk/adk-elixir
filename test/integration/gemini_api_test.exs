@@ -31,7 +31,10 @@ defmodule ADK.Integration.GeminiApiTest do
         System.get_env("GOOGLE_APPLICATION_CREDENTIALS") != nil ->
           # Auto-generate bearer token from service account (most reliable)
           case System.cmd("python3", ["test/integration/get_bearer_token.py"],
-                 env: [{"GOOGLE_APPLICATION_CREDENTIALS", System.get_env("GOOGLE_APPLICATION_CREDENTIALS")}]
+                 env: [
+                   {"GOOGLE_APPLICATION_CREDENTIALS",
+                    System.get_env("GOOGLE_APPLICATION_CREDENTIALS")}
+                 ]
                ) do
             {token, 0} ->
               Application.put_env(:adk, :gemini_bearer_token, String.trim(token))
@@ -42,7 +45,8 @@ defmodule ADK.Integration.GeminiApiTest do
 
             _ ->
               # Fall back to API key if bearer token generation fails
-              System.get_env("GEMINI_API_KEY") != nil or System.get_env("GEMINI_BEARER_TOKEN") != nil
+              System.get_env("GEMINI_API_KEY") != nil or
+                System.get_env("GEMINI_BEARER_TOKEN") != nil
           end
 
         System.get_env("GEMINI_BEARER_TOKEN") != nil ->
@@ -57,11 +61,20 @@ defmodule ADK.Integration.GeminiApiTest do
 
     on_exit(fn ->
       Application.put_env(:adk, :llm_backend, prev_backend)
-      if prev_key, do: Application.put_env(:adk, :gemini_api_key, prev_key), else: Application.delete_env(:adk, :gemini_api_key)
-      if prev_token, do: Application.put_env(:adk, :gemini_bearer_token, prev_token), else: Application.delete_env(:adk, :gemini_bearer_token)
+
+      if prev_key,
+        do: Application.put_env(:adk, :gemini_api_key, prev_key),
+        else: Application.delete_env(:adk, :gemini_api_key)
+
+      if prev_token,
+        do: Application.put_env(:adk, :gemini_bearer_token, prev_token),
+        else: Application.delete_env(:adk, :gemini_bearer_token)
     end)
 
-    if has_auth, do: :ok, else: {:error, "No GEMINI_API_KEY, GEMINI_BEARER_TOKEN, or GOOGLE_APPLICATION_CREDENTIALS set"}
+    if has_auth,
+      do: :ok,
+      else:
+        {:error, "No GEMINI_API_KEY, GEMINI_BEARER_TOKEN, or GOOGLE_APPLICATION_CREDENTIALS set"}
   end
 
   describe "single-turn" do
@@ -136,10 +149,11 @@ defmodule ADK.Integration.GeminiApiTest do
       assert {:ok, response} = ADK.LLM.Gemini.generate(@model, request)
 
       # Should contain a function call
-      fc_parts = Enum.filter(response.content.parts, fn
-        %{function_call: _} -> true
-        _ -> false
-      end)
+      fc_parts =
+        Enum.filter(response.content.parts, fn
+          %{function_call: _} -> true
+          _ -> false
+        end)
 
       assert length(fc_parts) > 0
       %{function_call: %{name: name, args: args}} = hd(fc_parts)
@@ -152,7 +166,17 @@ defmodule ADK.Integration.GeminiApiTest do
         messages: [
           %{role: :user, parts: [%{text: "What's the weather in Paris?"}]},
           %{role: :model, parts: response.content.parts},
-          %{role: :user, parts: [%{function_response: %{name: "get_weather", response: %{"temperature" => "22°C", "condition" => "sunny"}}}]}
+          %{
+            role: :user,
+            parts: [
+              %{
+                function_response: %{
+                  name: "get_weather",
+                  response: %{"temperature" => "22°C", "condition" => "sunny"}
+                }
+              }
+            ]
+          }
         ],
         tools: tools
       }
@@ -169,7 +193,11 @@ defmodule ADK.Integration.GeminiApiTest do
       weather_tool =
         ADK.Tool.FunctionTool.new("get_weather",
           description: "Get weather",
-          parameters: %{type: "object", properties: %{city: %{type: "string"}}, required: ["city"]},
+          parameters: %{
+            type: "object",
+            properties: %{city: %{type: "string"}},
+            required: ["city"]
+          },
           func: fn _ctx, _args -> {:ok, "Sunny, 25°C"} end
         )
 
@@ -186,12 +214,20 @@ defmodule ADK.Integration.GeminiApiTest do
         ADK.Agent.LlmAgent.new(
           name: "router",
           model: @model,
-          instruction: "You are a router. For weather questions, delegate to weather_agent. Be brief.",
+          instruction:
+            "You are a router. For weather questions, delegate to weather_agent. Be brief.",
           sub_agents: [weather_agent]
         )
 
       runner = %ADK.Runner{app_name: "integration_test", agent: router_agent}
-      events = ADK.Runner.run(runner, "user1", "sess-#{System.unique_integer([:positive])}", "What's the weather?")
+
+      events =
+        ADK.Runner.run(
+          runner,
+          "user1",
+          "sess-#{System.unique_integer([:positive])}",
+          "What's the weather?"
+        )
 
       assert is_list(events)
       assert length(events) > 0
@@ -201,11 +237,14 @@ defmodule ADK.Integration.GeminiApiTest do
         events
         |> Enum.flat_map(fn e ->
           case e.content do
-            %{parts: parts} -> Enum.flat_map(parts, fn
-              %{text: t} when t != "" -> [t]
-              _ -> []
-            end)
-            _ -> []
+            %{parts: parts} ->
+              Enum.flat_map(parts, fn
+                %{text: t} when t != "" -> [t]
+                _ -> []
+              end)
+
+            _ ->
+              []
           end
         end)
 

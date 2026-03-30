@@ -30,7 +30,8 @@ defmodule ADK.Tool.BashTool do
       end
 
     ADK.Tool.FunctionTool.new(@tool_name,
-      description: "Executes a bash command with the working directory set to the workspace. Allowed: #{desc_hint}. All commands require user confirmation.",
+      description:
+        "Executes a bash command with the working directory set to the workspace. Allowed: #{desc_hint}. All commands require user confirmation.",
       func: fn ctx, args -> execute(ctx, args, workspace, allowed_prefixes) end,
       parameters: %{
         type: "object",
@@ -84,7 +85,8 @@ defmodule ADK.Tool.BashTool do
         if Enum.any?(allowed_prefixes, fn prefix -> String.starts_with?(stripped, prefix) end) do
           :ok
         else
-          {:error, "Command blocked. Permitted prefixes are: #{Enum.join(allowed_prefixes, ", ")}"}
+          {:error,
+           "Command blocked. Permitted prefixes are: #{Enum.join(allowed_prefixes, ", ")}"}
         end
       end
     end
@@ -99,7 +101,10 @@ defmodule ADK.Tool.BashTool do
         {:deny, reason} -> {:deny, reason}
       end
     else
-      IO.puts("\n[Confirmation Required] Please approve or reject the bash command: #{args["command"]}")
+      IO.puts(
+        "\n[Confirmation Required] Please approve or reject the bash command: #{args["command"]}"
+      )
+
       answer = IO.gets("Approve? [y/N]: ") || "n"
       answer = answer |> String.trim() |> String.downcase()
 
@@ -121,11 +126,12 @@ defmodule ADK.Tool.BashTool do
           try do
             {output, exit_status} = System.cmd(cmd, args, cd: workspace, stderr_to_stdout: true)
 
-            {:ok, %{
-              stdout: output,
-              stderr: "",
-              returncode: exit_status
-            }}
+            {:ok,
+             %{
+               stdout: output,
+               stderr: "",
+               returncode: exit_status
+             }}
           rescue
             e -> {:error, "Execution failed: #{Exception.message(e)}"}
           end

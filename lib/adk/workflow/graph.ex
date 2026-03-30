@@ -137,7 +137,8 @@ defmodule ADK.Workflow.Graph do
   Return the edge definition for a given source node.
   Returns `{:unconditional, [targets]}` or `{:conditional, route_map}`.
   """
-  @spec outgoing(t(), node_id()) :: {:unconditional, [node_id()]} | {:conditional, %{String.t() => node_id()}} | :none
+  @spec outgoing(t(), node_id()) ::
+          {:unconditional, [node_id()]} | {:conditional, %{String.t() => node_id()}} | :none
   def outgoing(%__MODULE__{edges: edges}, node_id) do
     matching =
       Enum.filter(edges, fn
@@ -175,10 +176,11 @@ defmodule ADK.Workflow.Graph do
   end
 
   defp validate_start(%{edges: edges}) do
-    has_start = Enum.any?(edges, fn
-      {:START, _} -> true
-      _ -> false
-    end)
+    has_start =
+      Enum.any?(edges, fn
+        {:START, _} -> true
+        _ -> false
+      end)
 
     if has_start, do: :ok, else: {:error, "graph must have at least one :START edge"}
   end

@@ -82,7 +82,13 @@ defmodule Mix.Tasks.Adk.NewParityTest do
   describe "generated file content parity" do
     test "agent module references correct model from --model flag" do
       capture_io(fn ->
-        Mix.Tasks.Adk.New.run(["model_test", "--path", @tmp_dir, "--model", "gemini-2.0-flash-001"])
+        Mix.Tasks.Adk.New.run([
+          "model_test",
+          "--path",
+          @tmp_dir,
+          "--model",
+          "gemini-2.0-flash-001"
+        ])
       end)
 
       agent = File.read!(Path.join([@tmp_dir, "model_test", "lib", "model_test", "agent.ex"]))
@@ -115,7 +121,9 @@ defmodule Mix.Tasks.Adk.NewParityTest do
         Mix.Tasks.Adk.New.run(["test_gen", "--path", @tmp_dir])
       end)
 
-      test_file = File.read!(Path.join([@tmp_dir, "test_gen", "test", "test_gen", "agent_test.exs"]))
+      test_file =
+        File.read!(Path.join([@tmp_dir, "test_gen", "test", "test_gen", "agent_test.exs"]))
+
       assert test_file =~ "TestGen"
     end
 

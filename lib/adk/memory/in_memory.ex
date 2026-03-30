@@ -78,7 +78,12 @@ defmodule ADK.Memory.InMemory do
       |> Enum.map(fn event ->
         opts =
           if event.id do
-            [id: event.id, content: extract_text(event), author: event.author, timestamp: event.timestamp]
+            [
+              id: event.id,
+              content: extract_text(event),
+              author: event.author,
+              timestamp: event.timestamp
+            ]
           else
             [content: extract_text(event), author: event.author, timestamp: event.timestamp]
           end

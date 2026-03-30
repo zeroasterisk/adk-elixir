@@ -276,6 +276,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp maybe_show_text(socket, %Event{partial: true} = event) do
       text = Event.text(event)
+
       if text && text != "" do
         update_streaming(socket, event, text)
       else
@@ -285,6 +286,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp maybe_show_text(socket, %Event{} = event) do
       text = Event.text(event)
+
       if text && text != "" do
         socket = finalize_streaming(socket)
 
@@ -555,7 +557,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp format_error({%{message: msg}, _stacktrace}), do: msg
-    defp format_error({exception, _stacktrace}) when is_exception(exception), do: Exception.message(exception)
+
+    defp format_error({exception, _stacktrace}) when is_exception(exception),
+      do: Exception.message(exception)
+
     defp format_error(reason), do: inspect(reason)
 
     defp format_json(data) when is_binary(data), do: data
@@ -648,8 +653,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       "flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:4px;background:#fff;"
     end
 
-    defp msg_row_style("user"), do: "display:flex;flex-direction:column;align-items:flex-end;padding:2px 0;"
-    defp msg_row_style(_), do: "display:flex;flex-direction:column;align-items:flex-start;padding:2px 0;"
+    defp msg_row_style("user"),
+      do: "display:flex;flex-direction:column;align-items:flex-end;padding:2px 0;"
+
+    defp msg_row_style(_),
+      do: "display:flex;flex-direction:column;align-items:flex-start;padding:2px 0;"
 
     defp bubble_style("user") do
       "background:#0084ff;color:#fff;padding:10px 16px;border-radius:18px 18px 4px 18px;max-width:75%;word-wrap:break-word;font-size:14px;line-height:1.45;"
@@ -693,6 +701,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp button_style(disabled) do
       bg = if disabled, do: "#93c5fd", else: "#0084ff"
+
       "padding:10px;background:#{bg};color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;transition:background 0.2s;"
     end
   end

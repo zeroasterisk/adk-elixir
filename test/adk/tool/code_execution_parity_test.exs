@@ -101,18 +101,21 @@ defmodule ADK.Tool.CodeExecutionParityTest do
   describe "Error handling / Argument mapping" do
     test "direct execution of the tool returns an explicit error" do
       tool = BuiltInCodeExecution.new()
-      
+
       ctx = %Context{
         invocation_id: "inv-1",
         session_pid: nil,
         agent: LlmAgent.new(name: "dummy", model: "test"),
         user_content: %{text: "hi"}
       }
-      
+
       # The tool cannot be executed natively within Elixir 
       # as Gemini handles it transparently via the backend.
-      result = BuiltInCodeExecution.run(ADK.ToolContext.new(ctx, "call-1", tool), %{"some_arg" => "ignored"})
-      
+      result =
+        BuiltInCodeExecution.run(ADK.ToolContext.new(ctx, "call-1", tool), %{
+          "some_arg" => "ignored"
+        })
+
       assert {:error, msg} = result
       assert msg =~ "BuiltInCodeExecution is a built-in Gemini tool"
       assert msg =~ "cannot be called directly"

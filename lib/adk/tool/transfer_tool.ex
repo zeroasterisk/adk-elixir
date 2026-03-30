@@ -17,7 +17,8 @@ defmodule ADK.Tool.TransferTool do
     agent_names = Enum.map(sub_agents, &ADK.Agent.name/1)
 
     ADK.Tool.FunctionTool.new(@tool_name,
-      description: "Transfer control to another agent. Available agents: #{Enum.join(agent_names, ", ")}",
+      description:
+        "Transfer control to another agent. Available agents: #{Enum.join(agent_names, ", ")}",
       func: fn ctx, args -> execute(ctx, args, sub_agents) end,
       parameters: %{
         type: "object",
@@ -40,7 +41,8 @@ defmodule ADK.Tool.TransferTool do
   defp execute(ctx, %{"agent_name" => agent_name}, sub_agents) do
     case Enum.find(sub_agents, fn sa -> ADK.Agent.name(sa) == agent_name end) do
       nil ->
-        {:error, "Unknown agent: #{agent_name}. Available: #{Enum.map_join(sub_agents, ", ", &ADK.Agent.name/1)}"}
+        {:error,
+         "Unknown agent: #{agent_name}. Available: #{Enum.map_join(sub_agents, ", ", &ADK.Agent.name/1)}"}
 
       target_agent ->
         # Run the target agent with a child context

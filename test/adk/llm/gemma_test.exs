@@ -254,7 +254,10 @@ defmodule ADK.LLM.GemmaTest do
         model: "gemma-3-1b-it",
         messages: [
           %{role: :user, parts: [%{text: "Hello!"}]},
-          %{role: :model, parts: [%{function_call: %{name: "get_weather", args: %{city: "London"}}}]},
+          %{
+            role: :model,
+            parts: [%{function_call: %{name: "get_weather", args: %{city: "London"}}}]
+          },
           %{
             role: :some_function,
             parts: [%{function_response: %{name: "get_weather", response: %{temp: "15C"}}}]
@@ -397,7 +400,8 @@ defmodule ADK.LLM.GemmaTest do
 
   describe "extract_function_calls_from_response/1 — markdown code blocks" do
     test "extracts function call from markdown json code block" do
-      json_text = "\n```json\n{\"name\": \"search_web\", \"parameters\": {\"query\": \"latest news\"}}\n```"
+      json_text =
+        "\n```json\n{\"name\": \"search_web\", \"parameters\": {\"query\": \"latest news\"}}\n```"
 
       response = %{
         content: %{role: :model, parts: [%{text: json_text}]},
@@ -438,7 +442,8 @@ defmodule ADK.LLM.GemmaTest do
 
   describe "extract_function_calls_from_response/1 — embedded JSON" do
     test "extracts function call JSON embedded in surrounding text" do
-      embedded = ~s(Please call the tool: {"name": "search_web", "parameters": {"query": "new features"}} thanks!)
+      embedded =
+        ~s(Please call the tool: {"name": "search_web", "parameters": {"query": "new features"}} thanks!)
 
       response = %{
         content: %{role: :model, parts: [%{text: embedded}]},
@@ -455,7 +460,8 @@ defmodule ADK.LLM.GemmaTest do
     end
 
     test "uses last valid JSON object when multiple JSON objects appear in text" do
-      multiple = ~s(I thought about {"name": "first_call", "parameters": {"a": 1}} but then decided to call: {"name": "second_call", "parameters": {"b": 2}})
+      multiple =
+        ~s(I thought about {"name": "first_call", "parameters": {"a": 1}} but then decided to call: {"name": "second_call", "parameters": {"b": 2}})
 
       response = %{
         content: %{role: :model, parts: [%{text: multiple}]},

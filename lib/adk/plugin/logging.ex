@@ -93,7 +93,10 @@ defmodule ADK.Plugin.Logging do
     invocation_id = context.invocation_id || "unknown"
     now = System.monotonic_time(:millisecond)
 
-    log(state.level, "[ADK.Plugin.Logging] run start agent=#{agent_id} invocation=#{invocation_id}")
+    log(
+      state.level,
+      "[ADK.Plugin.Logging] run start agent=#{agent_id} invocation=#{invocation_id}"
+    )
 
     # Store config in process dict so stateless model/tool/event hooks can access it.
     # This is safe because all hooks in a Runner.run/5 call execute in the same process.
@@ -176,7 +179,11 @@ defmodule ADK.Plugin.Logging do
     with %{log_tool_calls: true, level: level} <- Process.get(@pdict_key) do
       agent_id = get_agent_id(context)
       status = if match?({:ok, _}, result), do: "ok", else: "error"
-      log(level, "[ADK.Plugin.Logging] tool call end agent=#{agent_id} tool=#{tool_name} status=#{status}")
+
+      log(
+        level,
+        "[ADK.Plugin.Logging] tool call end agent=#{agent_id} tool=#{tool_name} status=#{status}"
+      )
     end
 
     result
@@ -186,7 +193,11 @@ defmodule ADK.Plugin.Logging do
   def on_event(context, event) do
     with %{include_events: true, level: level} <- Process.get(@pdict_key) do
       agent_id = get_agent_id(context)
-      log(level, "[ADK.Plugin.Logging] event agent=#{agent_id} id=#{event.id || "nil"} author=#{event.author || "nil"}")
+
+      log(
+        level,
+        "[ADK.Plugin.Logging] event agent=#{agent_id} id=#{event.id || "nil"} author=#{event.author || "nil"}"
+      )
     end
 
     :ok

@@ -148,7 +148,8 @@ defmodule ADK.Feature do
   The `action` parameter controls whether features are enabled or disabled.
   """
   @spec apply_overrides(String.t(), :enable | :disable) :: {:ok, non_neg_integer()}
-  def apply_overrides(feature_string, action) when is_binary(feature_string) and action in [:enable, :disable] do
+  def apply_overrides(feature_string, action)
+      when is_binary(feature_string) and action in [:enable, :disable] do
     count =
       feature_string
       |> String.split(",")
@@ -170,8 +171,17 @@ defmodule ADK.Feature do
 
           acc + 1
         else
-          valid = @registry |> Map.keys() |> Enum.map(&Atom.to_string/1) |> Enum.map(&String.upcase/1) |> Enum.sort()
-          Logger.warning("WARNING: Unknown feature '#{raw_name}'. Valid names are: #{Enum.join(valid, ", ")}")
+          valid =
+            @registry
+            |> Map.keys()
+            |> Enum.map(&Atom.to_string/1)
+            |> Enum.map(&String.upcase/1)
+            |> Enum.sort()
+
+          Logger.warning(
+            "WARNING: Unknown feature '#{raw_name}'. Valid names are: #{Enum.join(valid, ", ")}"
+          )
+
           acc
         end
       end)
@@ -196,7 +206,8 @@ defmodule ADK.Feature do
 
   defp validate_known!(name) do
     unless Map.has_key?(@registry, name) do
-      raise ArgumentError, "Unknown feature #{inspect(name)}. Known features: #{inspect(Map.keys(@registry))}"
+      raise ArgumentError,
+            "Unknown feature #{inspect(name)}. Known features: #{inspect(Map.keys(@registry))}"
     end
   end
 end

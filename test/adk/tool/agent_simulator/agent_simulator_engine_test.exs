@@ -1,7 +1,8 @@
 defmodule ADK.Tool.AgentSimulator.AgentSimulatorEngineTest do
   use ExUnit.Case, async: true
 
-  @moduletag :skip # Parity gap: missing feature AgentSimulator
+  # Parity gap: missing feature AgentSimulator
+  @moduletag :skip
 
   describe "simulate/3" do
     test "simulate returns nil for a tool not in the config" do

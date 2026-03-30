@@ -6,7 +6,17 @@ defmodule ADK.Policy.HumanApprovalTest do
   alias ADK.Policy
 
   defp make_tool(name), do: %{name: name, description: "test tool"}
-  defp make_ctx, do: %ADK.Context{invocation_id: "test", session_pid: nil, agent: nil, user_content: %{}, callbacks: [], policies: [], plugins: []}
+
+  defp make_ctx,
+    do: %ADK.Context{
+      invocation_id: "test",
+      session_pid: nil,
+      agent: nil,
+      user_content: %{},
+      callbacks: [],
+      policies: [],
+      plugins: []
+    }
 
   describe "new/1" do
     test "creates struct with defaults" do

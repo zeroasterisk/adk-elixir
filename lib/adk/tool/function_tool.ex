@@ -75,6 +75,11 @@ defmodule ADK.Tool.FunctionTool do
 
   defp apply_func(func, ctx, args) when is_function(func, 2), do: func.(ctx, args)
   defp apply_func(func, _ctx, args) when is_function(func, 1), do: func.(args)
-  defp apply_func({mod, fun}, ctx, args) when is_atom(mod) and is_atom(fun), do: apply(mod, fun, [ctx, args])
-  defp apply_func({mod, fun, extra}, ctx, args) when is_atom(mod) and is_atom(fun) and is_list(extra), do: apply(mod, fun, [ctx, args | extra])
+
+  defp apply_func({mod, fun}, ctx, args) when is_atom(mod) and is_atom(fun),
+    do: apply(mod, fun, [ctx, args])
+
+  defp apply_func({mod, fun, extra}, ctx, args)
+       when is_atom(mod) and is_atom(fun) and is_list(extra),
+       do: apply(mod, fun, [ctx, args | extra])
 end

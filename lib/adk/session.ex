@@ -70,6 +70,7 @@ defmodule ADK.Session do
   defp via_tuple(nil, _, _), do: nil
   defp via_tuple(_, nil, _), do: nil
   defp via_tuple(_, _, nil), do: nil
+
   defp via_tuple(app_name, user_id, session_id) do
     {:via, Registry, {ADK.SessionRegistry, {app_name, user_id, session_id}}}
   end
@@ -256,8 +257,12 @@ defmodule ADK.Session do
   defp deserialize_event(data) when is_map(data) do
     timestamp =
       case data[:timestamp] do
-        nil -> nil
-        %DateTime{} = dt -> dt
+        nil ->
+          nil
+
+        %DateTime{} = dt ->
+          dt
+
         ts when is_binary(ts) ->
           case DateTime.from_iso8601(ts) do
             {:ok, dt, _} -> dt
@@ -267,7 +272,9 @@ defmodule ADK.Session do
 
     actions =
       case data[:actions] do
-        %ADK.EventActions{} = a -> a
+        %ADK.EventActions{} = a ->
+          a
+
         a when is_map(a) ->
           %ADK.EventActions{
             state_delta: a[:state_delta] || %{},
@@ -275,7 +282,9 @@ defmodule ADK.Session do
             escalate: a[:escalate] || false,
             compaction: ADK.EventCompaction.from_map(a[:compaction] || a["compaction"])
           }
-        _ -> %ADK.EventActions{}
+
+        _ ->
+          %ADK.EventActions{}
       end
 
     %ADK.Event{

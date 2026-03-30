@@ -26,16 +26,29 @@ defmodule ADK.Memory.InMemoryParityTest do
 
   defp mock_session_1_events do
     [
-      build_event(id: "event-1a", invocation_id: "inv-1", content: %{text: "The ADK is a great toolkit."}),
+      build_event(
+        id: "event-1a",
+        invocation_id: "inv-1",
+        content: %{text: "The ADK is a great toolkit."}
+      ),
       # Event with no content, should be ignored by the service
       build_event(id: "event-1b", invocation_id: "inv-2"),
-      build_event(id: "event-1c", invocation_id: "inv-3", author: "model", content: %{text: "I agree. The Agent Development Kit (ADK) rocks!"})
+      build_event(
+        id: "event-1c",
+        invocation_id: "inv-3",
+        author: "model",
+        content: %{text: "I agree. The Agent Development Kit (ADK) rocks!"}
+      )
     ]
   end
 
   defp mock_session_2_events do
     [
-      build_event(id: "event-2a", invocation_id: "inv-4", content: %{text: "I like to code in Python."})
+      build_event(
+        id: "event-2a",
+        invocation_id: "inv-4",
+        content: %{text: "I like to code in Python."}
+      )
     ]
   end
 
@@ -71,18 +84,19 @@ defmodule ADK.Memory.InMemoryParityTest do
       # Tests that add_events_to_memory appends events rather than replacing.
       InMemory.add_session(@app_name, @user_id, "session-1", mock_session_1_events())
 
-      new_event = build_event(
-        id: "event-1d",
-        invocation_id: "inv-6",
-        content: %{text: "A new fact."}
-      )
-      
+      new_event =
+        build_event(
+          id: "event-1d",
+          invocation_id: "inv-6",
+          content: %{text: "A new fact."}
+        )
+
       InMemory.add_session(@app_name, @user_id, "session-1", [new_event])
 
       {:ok, results} = InMemory.search(@app_name, @user_id, "fact")
       assert length(results) == 1
       assert hd(results).content == "A new fact."
-      
+
       # Original events are still there
       {:ok, adk_results} = InMemory.search(@app_name, @user_id, "ADK")
       assert length(adk_results) == 2
@@ -92,11 +106,12 @@ defmodule ADK.Memory.InMemoryParityTest do
       # Tests that duplicate event IDs are not appended multiple times.
       InMemory.add_session(@app_name, @user_id, "session-1", mock_session_1_events())
 
-      duplicate_event = build_event(
-        id: "event-1a",
-        invocation_id: "inv-7",
-        content: %{text: "Updated duplicate text."}
-      )
+      duplicate_event =
+        build_event(
+          id: "event-1a",
+          invocation_id: "inv-7",
+          content: %{text: "Updated duplicate text."}
+        )
 
       # Attempt to add an event with an existing ID
       InMemory.add_session(@app_name, @user_id, "session-1", [duplicate_event])
@@ -159,7 +174,13 @@ defmodule ADK.Memory.InMemoryParityTest do
     test "test_search_memory_is_scoped_by_user" do
       # Tests that search results are correctly scoped to the user_id.
       InMemory.add_session(@app_name, @user_id, "session-1", mock_session_1_events())
-      InMemory.add_session(@app_name, @other_user_id, "session-3", mock_session_different_user_events())
+
+      InMemory.add_session(
+        @app_name,
+        @other_user_id,
+        "session-3",
+        mock_session_different_user_events()
+      )
 
       # Search for "secret" as user_id
       {:ok, results} = InMemory.search(@app_name, @user_id, "secret")

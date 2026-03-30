@@ -279,7 +279,8 @@ defmodule ADK.Context.CompactionProcessorTest do
   describe "token estimation integration" do
     test "char-based estimation matches Python ADK heuristic (chars/4)" do
       # Python ADK uses chars÷4 for token estimation
-      msgs = [msg(:user, String.duplicate("a", 100))]  # 100 chars → 25 tokens
+      # 100 chars → 25 tokens
+      msgs = [msg(:user, String.duplicate("a", 100))]
       assert TokenBudget.estimate_tokens(msgs) == 25
     end
 

@@ -61,13 +61,16 @@ defmodule ADK.Plugin.MultimodalToolResults do
 
     Enum.any?(valid_keys, &Map.has_key?(map, &1))
   end
+
   defp is_part?(_), do: false
 
   defp check_parts(map) when is_map(map) and not is_struct(map) do
     if is_part?(map), do: {:ok, [map]}, else: :error
   end
+
   defp check_parts(list) when is_list(list) and list != [] do
     if Enum.all?(list, &is_part?/1), do: {:ok, list}, else: :error
   end
+
   defp check_parts(_), do: :error
 end

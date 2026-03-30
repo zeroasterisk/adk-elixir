@@ -37,6 +37,7 @@ defmodule ADK.Tool.SearchMemoryToolTest do
 
   test "returns error when no memory store configured" do
     tc = make_tool_context()
+
     assert {:error, "No memory store configured"} =
              SearchMemoryTool.run(tc, %{"query" => "test"})
   end
@@ -54,12 +55,14 @@ defmodule ADK.Tool.SearchMemoryToolTest do
 
   test "returns message when no memories found" do
     tc = make_tool_context(memory_store: {InMemory, []})
+
     assert {:ok, "No relevant memories found."} =
              SearchMemoryTool.run(tc, %{"query" => "nonexistent"})
   end
 
   test "returns error for empty query" do
     tc = make_tool_context(memory_store: {InMemory, []})
+
     assert {:error, "Query cannot be empty"} =
              SearchMemoryTool.run(tc, %{"query" => ""})
   end

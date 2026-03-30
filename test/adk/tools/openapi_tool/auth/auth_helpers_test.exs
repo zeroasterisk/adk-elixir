@@ -4,54 +4,76 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
   alias ADK.Auth.Credential
 
   test "token_to_scheme_credential_api_key_header" do
-    {scheme, credential} = AuthHelpers.token_to_scheme_credential(
-      "apikey", "header", "X-API-Key", "test_key"
-    )
+    {scheme, credential} =
+      AuthHelpers.token_to_scheme_credential(
+        "apikey",
+        "header",
+        "X-API-Key",
+        "test_key"
+      )
 
     assert scheme == %{"type" => "apiKey", "in" => "header", "name" => "X-API-Key"}
     assert credential == Credential.api_key("test_key")
   end
 
   test "token_to_scheme_credential_api_key_query" do
-    {scheme, credential} = AuthHelpers.token_to_scheme_credential(
-      "apikey", "query", "api_key", "test_key"
-    )
+    {scheme, credential} =
+      AuthHelpers.token_to_scheme_credential(
+        "apikey",
+        "query",
+        "api_key",
+        "test_key"
+      )
 
     assert scheme == %{"type" => "apiKey", "in" => "query", "name" => "api_key"}
     assert credential == Credential.api_key("test_key")
   end
 
   test "token_to_scheme_credential_api_key_cookie" do
-    {scheme, credential} = AuthHelpers.token_to_scheme_credential(
-      "apikey", "cookie", "session_id", "test_key"
-    )
+    {scheme, credential} =
+      AuthHelpers.token_to_scheme_credential(
+        "apikey",
+        "cookie",
+        "session_id",
+        "test_key"
+      )
 
     assert scheme == %{"type" => "apiKey", "in" => "cookie", "name" => "session_id"}
     assert credential == Credential.api_key("test_key")
   end
 
   test "token_to_scheme_credential_api_key_no_credential" do
-    {scheme, credential} = AuthHelpers.token_to_scheme_credential(
-      "apikey", "cookie", "session_id"
-    )
+    {scheme, credential} =
+      AuthHelpers.token_to_scheme_credential(
+        "apikey",
+        "cookie",
+        "session_id"
+      )
 
     assert scheme == %{"type" => "apiKey", "in" => "cookie", "name" => "session_id"}
     assert credential == nil
   end
 
   test "token_to_scheme_credential_oauth2_token" do
-    {scheme, credential} = AuthHelpers.token_to_scheme_credential(
-      "oauth2Token", "header", "Authorization", "test_token"
-    )
+    {scheme, credential} =
+      AuthHelpers.token_to_scheme_credential(
+        "oauth2Token",
+        "header",
+        "Authorization",
+        "test_token"
+      )
 
     assert scheme == %{"type" => "http", "scheme" => "bearer", "bearerFormat" => "JWT"}
     assert credential == Credential.http_bearer("test_token")
   end
 
   test "token_to_scheme_credential_oauth2_no_credential" do
-    {scheme, credential} = AuthHelpers.token_to_scheme_credential(
-      "oauth2Token", "header", "Authorization"
-    )
+    {scheme, credential} =
+      AuthHelpers.token_to_scheme_credential(
+        "oauth2Token",
+        "header",
+        "Authorization"
+      )
 
     assert scheme == %{"type" => "http", "scheme" => "bearer", "bearerFormat" => "JWT"}
     assert credential == nil
@@ -71,6 +93,7 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
       "client_x509_cert_url" => "client_x509_cert_url",
       "universe_domain" => "universe_domain"
     }
+
     scopes = ["scope1", "scope2"]
 
     {scheme, credential} = AuthHelpers.service_account_dict_to_scheme_credential(config, scopes)
@@ -82,22 +105,23 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
   end
 
   test "service_account_scheme_credential" do
-    config = Credential.service_account(
-      %{
-        "type" => "service_account",
-        "project_id" => "project_id",
-        "private_key_id" => "private_key_id",
-        "private_key" => "private_key",
-        "client_email" => "client_email",
-        "client_id" => "client_id",
-        "auth_uri" => "auth_uri",
-        "token_uri" => "token_uri",
-        "auth_provider_x509_cert_url" => "auth_provider_x509_cert_url",
-        "client_x509_cert_url" => "client_x509_cert_url",
-        "universe_domain" => "universe_domain"
-      },
-      scopes: ["scope1", "scope2"]
-    )
+    config =
+      Credential.service_account(
+        %{
+          "type" => "service_account",
+          "project_id" => "project_id",
+          "private_key_id" => "private_key_id",
+          "private_key" => "private_key",
+          "client_email" => "client_email",
+          "client_id" => "client_id",
+          "auth_uri" => "auth_uri",
+          "token_uri" => "token_uri",
+          "auth_provider_x509_cert_url" => "auth_provider_x509_cert_url",
+          "client_x509_cert_url" => "client_x509_cert_url",
+          "universe_domain" => "universe_domain"
+        },
+        scopes: ["scope1", "scope2"]
+      )
 
     {scheme, credential} = AuthHelpers.service_account_scheme_credential(config)
 
@@ -112,16 +136,21 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
       "token_endpoint" => "token_url",
       "openIdConnectUrl" => "openid_url"
     }
+
     credential_dict = %{
       "client_id" => "client_id",
       "client_secret" => "client_secret",
       "redirect_uri" => "redirect_uri"
     }
+
     scopes = ["scope1", "scope2"]
 
-    {scheme, credential} = AuthHelpers.openid_dict_to_scheme_credential(
-      config_dict, scopes, credential_dict
-    )
+    {scheme, credential} =
+      AuthHelpers.openid_dict_to_scheme_credential(
+        config_dict,
+        scopes,
+        credential_dict
+      )
 
     assert scheme["authorization_endpoint"] == "auth_url"
     assert scheme["token_endpoint"] == "token_url"
@@ -137,16 +166,21 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
       "authorization_endpoint" => "auth_url",
       "token_endpoint" => "token_url"
     }
+
     credential_dict = %{
       "client_id" => "client_id",
       "client_secret" => "client_secret",
       "redirect_uri" => "redirect_uri"
     }
+
     scopes = ["scope1", "scope2"]
 
-    {scheme, _credential} = AuthHelpers.openid_dict_to_scheme_credential(
-      config_dict, scopes, credential_dict
-    )
+    {scheme, _credential} =
+      AuthHelpers.openid_dict_to_scheme_credential(
+        config_dict,
+        scopes,
+        credential_dict
+      )
 
     assert scheme["openIdConnectUrl"] == ""
   end
@@ -157,6 +191,7 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
       "token_endpoint" => "token_url",
       "openIdConnectUrl" => "openid_url"
     }
+
     credential_dict = %{
       "web" => %{
         "client_id" => "client_id",
@@ -164,11 +199,15 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
         "redirect_uri" => "redirect_uri"
       }
     }
+
     scopes = ["scope1", "scope2"]
 
-    {scheme, credential} = AuthHelpers.openid_dict_to_scheme_credential(
-      config_dict, scopes, credential_dict
-    )
+    {scheme, credential} =
+      AuthHelpers.openid_dict_to_scheme_credential(
+        config_dict,
+        scopes,
+        credential_dict
+      )
 
     assert scheme["type"] == "openIdConnect"
     assert credential.type == :open_id_connect
@@ -181,10 +220,12 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
     config_dict = %{
       "invalid_field" => "value"
     }
+
     credential_dict = %{
       "client_id" => "client_id",
       "client_secret" => "client_secret"
     }
+
     scopes = ["scope1", "scope2"]
 
     assert_raise ArgumentError, ~r/Invalid OpenID Connect configuration/, fn ->
@@ -197,21 +238,29 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
       "authorization_endpoint" => "auth_url",
       "token_endpoint" => "token_url"
     }
+
     credential_dict = %{
       "client_id" => "client_id"
     }
+
     scopes = ["scope1", "scope2"]
 
-    assert_raise ArgumentError, ~r/Missing required fields in credential_dict: client_secret/, fn ->
-      AuthHelpers.openid_dict_to_scheme_credential(config_dict, scopes, credential_dict)
-    end
+    assert_raise ArgumentError,
+                 ~r/Missing required fields in credential_dict: client_secret/,
+                 fn ->
+                   AuthHelpers.openid_dict_to_scheme_credential(
+                     config_dict,
+                     scopes,
+                     credential_dict
+                   )
+                 end
   end
-
 
   # -- Bypass Tests for openid_url_to_scheme_credential --
 
   test "openid_url_to_scheme_credential" do
     bypass = Bypass.open()
+
     Bypass.expect(bypass, "GET", "/.well-known/openid-configuration", fn conn ->
       Plug.Conn.put_resp_content_type(conn, "application/json")
       |> Plug.Conn.resp(200, ~s({
@@ -222,14 +271,17 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
     end)
 
     url = "http://localhost:#{bypass.port}/.well-known/openid-configuration"
+
     credential_dict = %{
       "client_id" => "client_id",
       "client_secret" => "client_secret",
       "redirect_uri" => "redirect_uri"
     }
+
     scopes = ["scope1", "scope2"]
 
-    {scheme, credential} = AuthHelpers.openid_url_to_scheme_credential(url, scopes, credential_dict)
+    {scheme, credential} =
+      AuthHelpers.openid_url_to_scheme_credential(url, scopes, credential_dict)
 
     assert scheme["authorization_endpoint"] == "auth_url"
     assert scheme["token_endpoint"] == "token_url"
@@ -242,6 +294,7 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
 
   test "openid_url_to_scheme_credential_no_openid_url" do
     bypass = Bypass.open()
+
     Bypass.expect(bypass, "GET", "/.well-known/openid-configuration", fn conn ->
       Plug.Conn.put_resp_content_type(conn, "application/json")
       |> Plug.Conn.resp(200, ~s({
@@ -252,14 +305,17 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
     end)
 
     url = "http://localhost:#{bypass.port}/.well-known/openid-configuration"
+
     credential_dict = %{
       "client_id" => "client_id",
       "client_secret" => "client_secret",
       "redirect_uri" => "redirect_uri"
     }
+
     scopes = ["scope1", "scope2"]
 
-    {scheme, _credential} = AuthHelpers.openid_url_to_scheme_credential(url, scopes, credential_dict)
+    {scheme, _credential} =
+      AuthHelpers.openid_url_to_scheme_credential(url, scopes, credential_dict)
 
     assert scheme["openIdConnectUrl"] == url
   end
@@ -278,6 +334,7 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
 
   test "openid_url_to_scheme_credential_invalid_json" do
     bypass = Bypass.open()
+
     Bypass.expect(bypass, "GET", "/.well-known/openid-configuration", fn conn ->
       Plug.Conn.put_resp_content_type(conn, "application/json")
       |> Plug.Conn.resp(200, "Invalid JSON")
@@ -286,9 +343,11 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
     url = "http://localhost:#{bypass.port}/.well-known/openid-configuration"
     credential_dict = %{"client_id" => "client_id", "client_secret" => "client_secret"}
 
-    assert_raise ArgumentError, ~r/Invalid JSON response from OpenID configuration endpoint/, fn ->
-      AuthHelpers.openid_url_to_scheme_credential(url, [], credential_dict)
-    end
+    assert_raise ArgumentError,
+                 ~r/Invalid JSON response from OpenID configuration endpoint/,
+                 fn ->
+                   AuthHelpers.openid_url_to_scheme_credential(url, [], credential_dict)
+                 end
   end
 
   # -- credential_to_param tests --
@@ -433,6 +492,7 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
         }
       }
     }
+
     scheme = AuthHelpers.dict_to_auth_scheme(data)
 
     assert scheme["type"] == "oauth2"
@@ -444,6 +504,7 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
       "type" => "openIdConnect",
       "openIdConnectUrl" => "https://example.com/.well-known/openid-configuration"
     }
+
     scheme = AuthHelpers.dict_to_auth_scheme(data)
 
     assert scheme["type"] == "openIdConnect"
@@ -452,6 +513,7 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
 
   test "dict_to_auth_scheme_missing_type" do
     data = %{"in" => "header", "name" => "X-API-Key"}
+
     assert_raise ArgumentError, ~r/Missing 'type' field in security scheme dictionary./, fn ->
       AuthHelpers.dict_to_auth_scheme(data)
     end
@@ -459,17 +521,18 @@ defmodule ADK.Tool.OpenApiTool.Auth.AuthHelpersTest do
 
   test "dict_to_auth_scheme_invalid_type" do
     data = %{"type" => "invalid", "in" => "header", "name" => "X-API-Key"}
+
     assert_raise ArgumentError, ~r/Invalid security scheme type: invalid/, fn ->
       AuthHelpers.dict_to_auth_scheme(data)
     end
   end
 
   test "dict_to_auth_scheme_invalid_data" do
-    data = %{"type" => "apiKey", "in" => "header"}  # Missing 'name'
+    # Missing 'name'
+    data = %{"type" => "apiKey", "in" => "header"}
+
     assert_raise ArgumentError, ~r/Invalid security scheme data/, fn ->
       AuthHelpers.dict_to_auth_scheme(data)
     end
   end
-
-
 end

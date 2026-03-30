@@ -24,18 +24,19 @@ defmodule ADK.TelemetryTest do
 
   describe "ADK.Telemetry.span/3" do
     test "emits stop event with extra metadata when returning {:adk_telemetry, result, extra}" do
-  result = ADK.Telemetry.span([:adk, :agent], %{base: 1}, fn ->
-    {:adk_telemetry, :done, %{extra: 2, "gen_ai.system": "test"}}
-  end)
+      result =
+        ADK.Telemetry.span([:adk, :agent], %{base: 1}, fn ->
+          {:adk_telemetry, :done, %{extra: 2, "gen_ai.system": "test"}}
+        end)
 
-  assert result == :done
+      assert result == :done
 
-  assert_received {:telemetry_event, [:adk, :agent, :start], _m, %{base: 1}}
-  assert_received {:telemetry_event, [:adk, :agent, :stop], _m, meta}
-  assert meta.base == 1
-  assert meta.extra == 2
-  assert meta[:"gen_ai.system"] == "test"
-end
+      assert_received {:telemetry_event, [:adk, :agent, :start], _m, %{base: 1}}
+      assert_received {:telemetry_event, [:adk, :agent, :stop], _m, meta}
+      assert meta.base == 1
+      assert meta.extra == 2
+      assert meta[:"gen_ai.system"] == "test"
+    end
 
     test "emits start and stop events" do
       result = ADK.Telemetry.span([:adk, :agent], %{agent_name: "test"}, fn -> :hello end)
@@ -71,12 +72,19 @@ end
   describe "agent telemetry via Runner" do
     test "emits agent start/stop events" do
       agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help")
-      runner = %ADK.Runner{app_name: "telemetry_test_#{System.unique_integer([:positive])}", agent: agent}
+
+      runner = %ADK.Runner{
+        app_name: "telemetry_test_#{System.unique_integer([:positive])}",
+        agent: agent
+      }
 
       ADK.Runner.run(runner, "user1", "sess1", "hi")
 
       assert_received {:telemetry_event, [:adk, :agent, :start], _, %{agent_name: "bot"}}
-      assert_received {:telemetry_event, [:adk, :agent, :stop], %{duration: d}, %{agent_name: "bot"}}
+
+      assert_received {:telemetry_event, [:adk, :agent, :stop], %{duration: d},
+                       %{agent_name: "bot"}}
+
       assert is_integer(d)
     end
   end
@@ -92,24 +100,38 @@ end
 
   describe "tool telemetry" do
     test "emits tool start/stop events when agent uses tools" do
-      tool = ADK.Tool.FunctionTool.new("greet",
-        description: "Say hello",
-        parameters: %{},
-        func: fn _ctx, _args -> {:ok, "hi there"} end
-      )
+      tool =
+        ADK.Tool.FunctionTool.new("greet",
+          description: "Say hello",
+          parameters: %{},
+          func: fn _ctx, _args -> {:ok, "hi there"} end
+        )
 
       ADK.LLM.Mock.set_responses([
         %{function_call: %{name: "greet", args: %{}, id: "c1"}},
         "Done!"
       ])
 
-      agent = ADK.Agent.LlmAgent.new(name: "toolbot", model: "test", instruction: "Use tools", tools: [tool])
-      runner = %ADK.Runner{app_name: "telemetry_tool_#{System.unique_integer([:positive])}", agent: agent}
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "toolbot",
+          model: "test",
+          instruction: "Use tools",
+          tools: [tool]
+        )
+
+      runner = %ADK.Runner{
+        app_name: "telemetry_tool_#{System.unique_integer([:positive])}",
+        agent: agent
+      }
 
       ADK.Runner.run(runner, "user1", "sess1", "hi")
 
-      assert_received {:telemetry_event, [:adk, :tool, :start], _, %{tool_name: "greet", agent_name: "toolbot"}}
-      assert_received {:telemetry_event, [:adk, :tool, :stop], %{duration: _}, %{tool_name: "greet"}}
+      assert_received {:telemetry_event, [:adk, :tool, :start], _,
+                       %{tool_name: "greet", agent_name: "toolbot"}}
+
+      assert_received {:telemetry_event, [:adk, :tool, :stop], %{duration: _},
+                       %{tool_name: "greet"}}
     end
   end
 end

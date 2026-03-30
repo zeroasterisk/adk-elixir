@@ -49,7 +49,9 @@ defmodule ADK.Tool.ModuleTool do
       module: module,
       name: opts[:name] || module.name(),
       description: opts[:description] || module.description(),
-      parameters: opts[:parameters] || if(function_exported?(module, :parameters, 0), do: module.parameters(), else: %{})
+      parameters:
+        opts[:parameters] ||
+          if(function_exported?(module, :parameters, 0), do: module.parameters(), else: %{})
     }
   end
 

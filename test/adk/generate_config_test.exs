@@ -8,12 +8,13 @@ defmodule ADK.GenerateConfigTest do
     end
 
     test "accepts generate_config" do
-      agent = ADK.Agent.LlmAgent.new(
-        name: "bot",
-        model: "test",
-        instruction: "Help.",
-        generate_config: %{temperature: 0.7, max_output_tokens: 1000}
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "bot",
+          model: "test",
+          instruction: "Help.",
+          generate_config: %{temperature: 0.7, max_output_tokens: 1000}
+        )
 
       assert agent.generate_config.temperature == 0.7
       assert agent.generate_config.max_output_tokens == 1000
@@ -40,12 +41,18 @@ defmodule ADK.GenerateConfigTest do
       # We'll use Process dictionary to capture the request
       ADK.LLM.Mock.set_responses(["OK"])
 
-      agent = ADK.Agent.LlmAgent.new(
-        name: "bot",
-        model: "test",
-        instruction: "Help.",
-        generate_config: %{temperature: 0.7, top_p: 0.9, max_output_tokens: 500, stop_sequences: ["STOP"]}
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "bot",
+          model: "test",
+          instruction: "Help.",
+          generate_config: %{
+            temperature: 0.7,
+            top_p: 0.9,
+            max_output_tokens: 500,
+            stop_sequences: ["STOP"]
+          }
+        )
 
       {:ok, agent: agent, test_pid: test_pid}
     end
@@ -151,9 +158,12 @@ defmodule ADK.GenerateConfigTest do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{
-          "candidates" => [%{"content" => %{"role" => "model", "parts" => [%{"text" => "ok"}]}}]
-        }))
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "candidates" => [%{"content" => %{"role" => "model", "parts" => [%{"text" => "ok"}]}}]
+          })
+        )
       end)
 
       Application.put_env(:adk, :gemini_api_key, "test-key")
@@ -191,10 +201,13 @@ defmodule ADK.GenerateConfigTest do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{
-          "content" => [%{"type" => "text", "text" => "ok"}],
-          "role" => "assistant"
-        }))
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "content" => [%{"type" => "text", "text" => "ok"}],
+            "role" => "assistant"
+          })
+        )
       end)
 
       Application.put_env(:adk, :anthropic_api_key, "test-key")
@@ -234,9 +247,12 @@ defmodule ADK.GenerateConfigTest do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{
-          "choices" => [%{"message" => %{"role" => "assistant", "content" => "ok"}}]
-        }))
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "choices" => [%{"message" => %{"role" => "assistant", "content" => "ok"}}]
+          })
+        )
       end)
 
       Application.put_env(:adk, :openai_api_key, "test-key")
@@ -271,6 +287,7 @@ defmodule ADK.GenerateConfigTest do
             config when is_map(config) -> Map.merge(config, rc)
             _ -> rc
           end
+
         _ ->
           agent.generate_config || %{}
       end
@@ -278,6 +295,7 @@ defmodule ADK.GenerateConfigTest do
     case merged_config do
       config when is_map(config) and map_size(config) > 0 ->
         Map.put(request, :generate_config, config)
+
       _ ->
         request
     end

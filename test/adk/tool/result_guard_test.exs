@@ -22,7 +22,9 @@ defmodule ADK.Tool.ResultGuardTest do
       result = ResultGuard.maybe_truncate(value)
 
       assert byte_size(result) < size
-      assert result =~ "[TRUNCATED: result was #{size} bytes, showing first #{trunc(max * 0.8)} bytes]"
+
+      assert result =~
+               "[TRUNCATED: result was #{size} bytes, showing first #{trunc(max * 0.8)} bytes]"
     end
   end
 

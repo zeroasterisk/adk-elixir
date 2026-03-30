@@ -1,7 +1,8 @@
 defmodule ADK.Tool.AgentSimulator.AgentSimulatorPluginTest do
   use ExUnit.Case, async: true
 
-  @moduletag :skip # Parity gap: missing feature AgentSimulator
+  # Parity gap: missing feature AgentSimulator
+  @moduletag :skip
 
   describe "before_tool_callback/4" do
     test "calls the engine's simulate method" do

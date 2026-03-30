@@ -70,9 +70,11 @@ defmodule ADK.Models.CacheMetadata do
 
   defp validate_non_negative!(attrs, key) do
     value = if is_map(attrs), do: Map.get(attrs, key), else: Keyword.get(attrs, key)
+
     if value != nil and is_number(value) and value < 0 do
       raise ArgumentError, "#{key} must be greater than or equal to 0"
     end
+
     attrs
   end
 
@@ -83,7 +85,8 @@ defmodule ADK.Models.CacheMetadata do
   and contents count are tracked for future prefix matching.
   """
   @spec fingerprint_only(String.t(), non_neg_integer()) :: t()
-  def fingerprint_only(fingerprint, contents_count) when is_integer(contents_count) and contents_count >= 0 do
+  def fingerprint_only(fingerprint, contents_count)
+      when is_integer(contents_count) and contents_count >= 0 do
     %__MODULE__{
       fingerprint: fingerprint,
       contents_count: contents_count

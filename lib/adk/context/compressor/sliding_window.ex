@@ -141,6 +141,7 @@ defmodule ADK.Context.Compressor.SlidingWindow do
 
   defp find_expanded_index(messages, index, missing) do
     msg = Enum.at(messages, index - 1)
+
     call_ids_here =
       (msg[:parts] || [])
       |> Enum.flat_map(fn

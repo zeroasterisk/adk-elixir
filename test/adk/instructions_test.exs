@@ -601,7 +601,13 @@ defmodule ADK.InstructionsTest do
     end
 
     test "agent with all fields produces combined instruction" do
-      sub = LlmAgent.new(name: "helper", model: "test", instruction: "Help with tasks.", description: "A helper")
+      sub =
+        LlmAgent.new(
+          name: "helper",
+          model: "test",
+          instruction: "Help with tasks.",
+          description: "A helper"
+        )
 
       agent =
         LlmAgent.new(

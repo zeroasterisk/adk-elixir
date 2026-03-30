@@ -460,5 +460,4 @@ defmodule ADK.LLM.Anthropic do
       {"anthropic-version", @anthropic_version}
     ]
   end
-
 end

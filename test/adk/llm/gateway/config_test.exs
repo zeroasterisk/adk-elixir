@@ -45,9 +45,15 @@ defmodule ADK.LLM.Gateway.ConfigTest do
   test "from_keyword parses correctly" do
     kw = [
       backends: [
-        %{id: :gemini, backend: ADK.LLM.Mock, model: "gemini-flash", auth: %Auth{type: :api_key, source: {:static, "k"}}}
+        %{
+          id: :gemini,
+          backend: ADK.LLM.Mock,
+          model: "gemini-flash",
+          auth: %Auth{type: :api_key, source: {:static, "k"}}
+        }
       ]
     ]
+
     config = Config.from_keyword(kw)
     assert length(config.backends) == 1
     assert hd(config.backends).id == :gemini

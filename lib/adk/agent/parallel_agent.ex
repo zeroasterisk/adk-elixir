@@ -11,7 +11,13 @@ defmodule ADK.Agent.ParallelAgent do
   """
 
   @enforce_keys [:name]
-  defstruct [:name, :parent_agent, description: "Runs agents in parallel", sub_agents: [], timeout: 30_000]
+  defstruct [
+    :name,
+    :parent_agent,
+    description: "Runs agents in parallel",
+    sub_agents: [],
+    timeout: 30_000
+  ]
 
   @type t :: %__MODULE__{
           name: String.t(),
@@ -64,8 +70,11 @@ defmodule ADK.Agent.ParallelAgent do
         ordered: true
       )
       |> Enum.flat_map(fn
-        {:ok, events} -> events
-        {:exit, reason} -> [ADK.Event.new(author: "parallel", content: "Agent failed: #{inspect(reason)}")]
+        {:ok, events} ->
+          events
+
+        {:exit, reason} ->
+          [ADK.Event.new(author: "parallel", content: "Agent failed: #{inspect(reason)}")]
       end)
     end
   end

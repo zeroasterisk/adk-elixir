@@ -16,6 +16,7 @@ defmodule ADK.LLM.RetryTest do
 
       fun = fn ->
         :counters.add(counter, 1, 1)
+
         if :counters.get(counter, 1) < 3 do
           {:error, :rate_limited}
         else

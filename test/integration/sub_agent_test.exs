@@ -96,7 +96,8 @@ defmodule ADK.Integration.SubAgentTest do
         ADK.Agent.LlmAgent.new(
           name: "plan_agent",
           model: "test",
-          description: "Create the most amazing travel itineraries with budget and packing suggestions",
+          description:
+            "Create the most amazing travel itineraries with budget and packing suggestions",
           instruction: "Expand the guide into a full 7-day travel itinerary."
         )
 

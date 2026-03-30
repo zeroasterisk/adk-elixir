@@ -23,7 +23,7 @@ defmodule ADK.Plugin.BigQueryAgentAnalytics do
       dataset_id: Keyword.get(opts, :dataset_id),
       table_id: Keyword.get(opts, :table_id, "adk_events"),
       client: Keyword.get(opts, :client, __MODULE__.DefaultClient),
-      max_content_length: Keyword.get(opts, :max_content_length, 100000),
+      max_content_length: Keyword.get(opts, :max_content_length, 100_000),
       log_session_metadata: Keyword.get(opts, :log_session_metadata, true),
       custom_tags: Keyword.get(opts, :custom_tags, nil)
     }
@@ -52,10 +52,12 @@ defmodule ADK.Plugin.BigQueryAgentAnalytics do
   @impl true
   def before_model(context, request) do
     state = get_state()
+
     content = %{
       prompt: request,
       model: Map.get(context.agent || %{}, :model)
     }
+
     log_event("LLM_REQUEST", context, state, content)
     {:ok, request}
   end
@@ -63,6 +65,7 @@ defmodule ADK.Plugin.BigQueryAgentAnalytics do
   @impl true
   def after_model(context, response) do
     state = get_state()
+
     status =
       case response do
         {:ok, _} -> "OK"
@@ -125,7 +128,7 @@ defmodule ADK.Plugin.BigQueryAgentAnalytics do
       dataset_id: "default",
       table_id: "adk_events",
       client: __MODULE__.DefaultClient,
-      max_content_length: 100000,
+      max_content_length: 100_000,
       log_session_metadata: true,
       custom_tags: nil
     })
@@ -175,7 +178,7 @@ defmodule ADK.Plugin.BigQueryAgentAnalytics do
 
   defp enrich_attributes(context, state) do
     attrs = %{}
-    
+
     attrs =
       if state.log_session_metadata && (context.session_pid != nil or context.app_name != nil) do
         Map.put(attrs, :session_metadata, %{
@@ -194,7 +197,7 @@ defmodule ADK.Plugin.BigQueryAgentAnalytics do
       else
         attrs
       end
-      
+
     attrs
   end
 
@@ -218,6 +221,7 @@ defmodule ADK.Plugin.BigQueryAgentAnalytics do
   rescue
     _ ->
       str = inspect(content, limit: :infinity)
+
       if max_len > 0 and String.length(str) > max_len do
         {Jason.encode!(%{truncated: String.slice(str, 0, max_len) <> "...[TRUNCATED]"}), true}
       else

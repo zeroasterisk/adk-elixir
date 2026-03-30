@@ -70,22 +70,26 @@ defmodule ADK.Agents.LangGraphAgentTest do
 
   # Append a user event to the session (mirrors Python's `events_list`).
   defp append_user_event(session_pid, text, invocation_id \\ "test_invocation_id") do
-    event = Event.new(%{
-      invocation_id: invocation_id,
-      author: "user",
-      content: %{role: "user", parts: [%{text: text}]}
-    })
+    event =
+      Event.new(%{
+        invocation_id: invocation_id,
+        author: "user",
+        content: %{role: "user", parts: [%{text: text}]}
+      })
+
     ADK.Session.append_event(session_pid, event)
     event
   end
 
   # Append a model event from a named agent.
   defp append_agent_event(session_pid, author, text, invocation_id \\ "test_invocation_id") do
-    event = Event.new(%{
-      invocation_id: invocation_id,
-      author: author,
-      content: %{role: "model", parts: [%{text: text}]}
-    })
+    event =
+      Event.new(%{
+        invocation_id: invocation_id,
+        author: author,
+        content: %{role: "model", parts: [%{text: text}]}
+      })
+
     ADK.Session.append_event(session_pid, event)
     event
   end
@@ -123,7 +127,9 @@ defmodule ADK.Agents.LangGraphAgentTest do
     end)
     |> List.last()
     |> then(fn
-      nil -> []
+      nil ->
+        []
+
       e ->
         text = e.content[:parts] |> List.first() |> Map.get(:text, "")
         [{"user", text}]
@@ -150,11 +156,13 @@ defmodule ADK.Agents.LangGraphAgentTest do
         # Record what messages the "graph" received
         Process.put(messages_ref, messages)
 
-        [Event.new(%{
-          author: name,
-          invocation_id: ctx.invocation_id,
-          content: %{role: "model", parts: [%{text: response_text}]}
-        })]
+        [
+          Event.new(%{
+            author: name,
+            invocation_id: ctx.invocation_id,
+            content: %{role: "model", parts: [%{text: response_text}]}
+          })
+        ]
       end
     )
   end
@@ -186,8 +194,9 @@ defmodule ADK.Agents.LangGraphAgentTest do
       agent = graph_agent("weather_agent", msgs_key, "test response", _checkpointer = true)
       ctx = make_ctx(session_pid, agent)
 
-      [result_event] = Custom.new(name: "weather_agent", run_fn: fn a, c -> ADK.Agent.run(a, c) end)
-                       |> then(fn _ -> ADK.Agent.run(agent, ctx) end)
+      [result_event] =
+        Custom.new(name: "weather_agent", run_fn: fn a, c -> ADK.Agent.run(a, c) end)
+        |> then(fn _ -> ADK.Agent.run(agent, ctx) end)
 
       assert result_event.author == "weather_agent"
       assert result_event.content[:parts] |> List.first() |> Map.get(:text) == "test response"
@@ -259,11 +268,12 @@ defmodule ADK.Agents.LangGraphAgentTest do
 
       # Stateless mode: all user + leaf-agent events; root_agent excluded
       messages = Process.get(msgs_key)
+
       assert messages == [
-        {"user", "user prompt 1"},
-        {"model", "weather agent response"},
-        {"user", "user prompt 2"}
-      ]
+               {"user", "user prompt 1"},
+               {"model", "weather agent response"},
+               {"user", "user prompt 2"}
+             ]
 
       GenServer.stop(session_pid)
     end
@@ -335,12 +345,21 @@ defmodule ADK.Agents.LangGraphAgentTest do
 
     test "build_stateless_history includes user and leaf-agent events" do
       events = [
-        Event.new(%{invocation_id: "inv", author: "user",
-          content: %{role: "user", parts: [%{text: "hi"}]}}),
-        Event.new(%{invocation_id: "inv", author: "root_agent",
-          content: %{role: "model", parts: [%{text: "orchestrating"}]}}),
-        Event.new(%{invocation_id: "inv", author: "leaf_agent",
-          content: %{role: "model", parts: [%{text: "leaf reply"}]}})
+        Event.new(%{
+          invocation_id: "inv",
+          author: "user",
+          content: %{role: "user", parts: [%{text: "hi"}]}
+        }),
+        Event.new(%{
+          invocation_id: "inv",
+          author: "root_agent",
+          content: %{role: "model", parts: [%{text: "orchestrating"}]}
+        }),
+        Event.new(%{
+          invocation_id: "inv",
+          author: "leaf_agent",
+          content: %{role: "model", parts: [%{text: "leaf reply"}]}
+        })
       ]
 
       history = build_stateless_history(events, "inv", "root_agent")
@@ -352,10 +371,16 @@ defmodule ADK.Agents.LangGraphAgentTest do
 
     test "build_stateless_history excludes events from other invocations" do
       events = [
-        Event.new(%{invocation_id: "inv1", author: "user",
-          content: %{role: "user", parts: [%{text: "old"}]}}),
-        Event.new(%{invocation_id: "inv2", author: "user",
-          content: %{role: "user", parts: [%{text: "new"}]}})
+        Event.new(%{
+          invocation_id: "inv1",
+          author: "user",
+          content: %{role: "user", parts: [%{text: "old"}]}
+        }),
+        Event.new(%{
+          invocation_id: "inv2",
+          author: "user",
+          content: %{role: "user", parts: [%{text: "new"}]}
+        })
       ]
 
       history = build_stateless_history(events, "inv2")
@@ -364,10 +389,16 @@ defmodule ADK.Agents.LangGraphAgentTest do
 
     test "build_stateful_history returns only the latest user message" do
       events = [
-        Event.new(%{invocation_id: "inv", author: "user",
-          content: %{role: "user", parts: [%{text: "first"}]}}),
-        Event.new(%{invocation_id: "inv", author: "user",
-          content: %{role: "user", parts: [%{text: "second"}]}})
+        Event.new(%{
+          invocation_id: "inv",
+          author: "user",
+          content: %{role: "user", parts: [%{text: "first"}]}
+        }),
+        Event.new(%{
+          invocation_id: "inv",
+          author: "user",
+          content: %{role: "user", parts: [%{text: "second"}]}
+        })
       ]
 
       history = build_stateful_history(events, "inv")
@@ -376,8 +407,11 @@ defmodule ADK.Agents.LangGraphAgentTest do
 
     test "build_stateful_history returns empty list when no user events" do
       events = [
-        Event.new(%{invocation_id: "inv", author: "agent",
-          content: %{role: "model", parts: [%{text: "reply"}]}})
+        Event.new(%{
+          invocation_id: "inv",
+          author: "agent",
+          content: %{role: "model", parts: [%{text: "reply"}]}
+        })
       ]
 
       assert build_stateful_history(events, "inv") == []

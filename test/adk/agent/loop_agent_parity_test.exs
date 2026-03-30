@@ -55,7 +55,10 @@ defmodule ADK.Agent.LoopAgentParityTest do
       name: name,
       run_fn: fn _agent, _ctx ->
         [
-          %{ADK.Event.new(%{author: name, content: "Hello, async #{name}!"}) | actions: %{escalate: true}},
+          %{
+            ADK.Event.new(%{author: name, content: "Hello, async #{name}!"})
+            | actions: %{escalate: true}
+          },
           ADK.Event.new(%{author: name, content: "I have done my job after escalation!!"})
         ]
       end
@@ -117,10 +120,11 @@ defmodule ADK.Agent.LoopAgentParityTest do
     escalating = escalating_agent_multi_event("parity_escalating")
     ignored = simple_agent("parity_ignored")
 
-    loop = LoopAgent.new(
-      name: "parity_escalate_loop",
-      sub_agents: [non_escalating, escalating, ignored]
-    )
+    loop =
+      LoopAgent.new(
+        name: "parity_escalate_loop",
+        sub_agents: [non_escalating, escalating, ignored]
+      )
 
     events = ADK.Agent.run(loop, make_ctx(loop))
 
@@ -137,10 +141,11 @@ defmodule ADK.Agent.LoopAgentParityTest do
     # Both events should appear in the final output.
     escalating = escalating_agent_multi_event("parity_esc_multi")
 
-    loop = LoopAgent.new(
-      name: "parity_multi_event_loop",
-      sub_agents: [escalating]
-    )
+    loop =
+      LoopAgent.new(
+        name: "parity_multi_event_loop",
+        sub_agents: [escalating]
+      )
 
     events = ADK.Agent.run(loop, make_ctx(loop))
 
@@ -154,11 +159,12 @@ defmodule ADK.Agent.LoopAgentParityTest do
     escalating = escalating_agent_multi_event("parity_esc_stop")
 
     # max_iterations = 10 but escalation should stop after first iteration
-    loop = LoopAgent.new(
-      name: "parity_early_stop_loop",
-      sub_agents: [escalating],
-      max_iterations: 10
-    )
+    loop =
+      LoopAgent.new(
+        name: "parity_early_stop_loop",
+        sub_agents: [escalating],
+        max_iterations: 10
+      )
 
     events = ADK.Agent.run(loop, make_ctx(loop))
 
@@ -170,10 +176,11 @@ defmodule ADK.Agent.LoopAgentParityTest do
     non_escalating = simple_agent("parity_before_esc")
     escalating = escalating_agent_multi_event("parity_esc_in_middle")
 
-    loop = LoopAgent.new(
-      name: "parity_before_esc_loop",
-      sub_agents: [non_escalating, escalating]
-    )
+    loop =
+      LoopAgent.new(
+        name: "parity_before_esc_loop",
+        sub_agents: [non_escalating, escalating]
+      )
 
     events = ADK.Agent.run(loop, make_ctx(loop))
 

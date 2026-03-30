@@ -81,7 +81,12 @@ defmodule ADK.ToolContext do
   """
   @spec save_artifact(t(), String.t(), map(), keyword()) ::
           {:ok, non_neg_integer(), t()} | {:error, term()}
-  def save_artifact(%__MODULE__{context: ctx, actions: actions} = tc, filename, artifact, opts \\ []) do
+  def save_artifact(
+        %__MODULE__{context: ctx, actions: actions} = tc,
+        filename,
+        artifact,
+        opts \\ []
+      ) do
     case ctx.artifact_service do
       nil ->
         {:error, :no_artifact_service}
@@ -100,7 +105,11 @@ defmodule ADK.ToolContext do
                merged_opts
              ) do
           {:ok, version} ->
-            updated_actions = %{actions | artifact_delta: Map.put(actions.artifact_delta, filename, version)}
+            updated_actions = %{
+              actions
+              | artifact_delta: Map.put(actions.artifact_delta, filename, version)
+            }
+
             {:ok, version, %{tc | actions: updated_actions}}
 
           {:error, _} = err ->
@@ -119,10 +128,13 @@ defmodule ADK.ToolContext do
           {:ok, map()} | :not_found | {:error, term()}
   def load_artifact(%__MODULE__{context: ctx}, filename, opts \\ []) do
     case ctx.artifact_service do
-      nil -> {:error, :no_artifact_service}
+      nil ->
+        {:error, :no_artifact_service}
+
       service_config ->
         {service, backend_opts} = normalize_service(service_config)
         session_id = get_session_id(ctx)
+
         service.load(
           ctx.app_name || "default",
           ctx.user_id || "default",
@@ -137,10 +149,13 @@ defmodule ADK.ToolContext do
   @spec list_artifacts(t()) :: {:ok, [String.t()]} | {:error, term()}
   def list_artifacts(%__MODULE__{context: ctx}) do
     case ctx.artifact_service do
-      nil -> {:error, :no_artifact_service}
+      nil ->
+        {:error, :no_artifact_service}
+
       service_config ->
         {service, backend_opts} = normalize_service(service_config)
         session_id = get_session_id(ctx)
+
         service.list(
           ctx.app_name || "default",
           ctx.user_id || "default",
@@ -166,7 +181,10 @@ defmodule ADK.ToolContext do
     {:error, :no_function_call_id}
   end
 
-  def request_credential(%__MODULE__{function_call_id: call_id, actions: actions} = tc, auth_config) do
+  def request_credential(
+        %__MODULE__{function_call_id: call_id, actions: actions} = tc,
+        auth_config
+      ) do
     updated_actions = %{
       actions
       | requested_auth_configs: Map.put(actions.requested_auth_configs, call_id, auth_config)
@@ -296,7 +314,11 @@ defmodule ADK.ToolContext do
   @doc false
   @deprecated "Use save_artifact/4 instead"
   def set_artifact(%__MODULE__{} = tc, key, value) do
-    case save_artifact(tc, key, %{data: value, content_type: "application/octet-stream", metadata: %{}}) do
+    case save_artifact(tc, key, %{
+           data: value,
+           content_type: "application/octet-stream",
+           metadata: %{}
+         }) do
       {:ok, _version, _tc} -> :ok
       {:error, _} = err -> err
     end
@@ -325,6 +347,7 @@ defmodule ADK.ToolContext do
   defp tool_name(m) when is_atom(m), do: m.name()
 
   defp get_session_id(%{session_pid: nil}), do: "unknown"
+
   defp get_session_id(%{session_pid: pid}) do
     case ADK.Session.get(pid) do
       {:ok, session} -> session.id || "unknown"

@@ -31,11 +31,15 @@ defmodule ADK.Skill.IntegrationTest do
     test "loads skill with auth requirements" do
       dir = tmp_skill_dir("with_auth")
       File.write!(Path.join(dir, "SKILL.md"), "# Auth Skill\n\nNeeds auth.")
-      File.write!(Path.join(dir, "auth.json"), Jason.encode!(%{
-        "credentials" => [
-          %{"name" => "api_key", "env_var" => "API_KEY", "required" => true}
-        ]
-      }))
+
+      File.write!(
+        Path.join(dir, "auth.json"),
+        Jason.encode!(%{
+          "credentials" => [
+            %{"name" => "api_key", "env_var" => "API_KEY", "required" => true}
+          ]
+        })
+      )
 
       assert {:ok, skill} = Skill.from_dir(dir)
       assert length(skill.auth_requirements) == 1

@@ -299,9 +299,7 @@ defmodule ADK.Agent.CallbackContextParityTest do
       runner = Runner.new(app_name: "test_app", agent: agent)
 
       _events =
-        Runner.run(runner, "user1", "cb-state-read", "Hi",
-          callbacks: [ContextCapture]
-        )
+        Runner.run(runner, "user1", "cb-state-read", "Hi", callbacks: [ContextCapture])
 
       cb_ctx = Process.get(:captured_cb_ctx)
       ctx = cb_ctx.context
@@ -323,9 +321,7 @@ defmodule ADK.Agent.CallbackContextParityTest do
       runner = Runner.new(app_name: "test_app", agent: agent)
 
       _events =
-        Runner.run(runner, "user1", "cb-state-nil", "Hi",
-          callbacks: [HaltWithStateCapture]
-        )
+        Runner.run(runner, "user1", "cb-state-nil", "Hi", callbacks: [HaltWithStateCapture])
 
       captured = Process.get(:captured_state_value)
       assert captured == nil
@@ -371,7 +367,9 @@ defmodule ADK.Agent.CallbackContextParityTest do
         )
 
       runner = Runner.new(app_name: "test_app", agent: agent)
-      events = Runner.run(runner, "user1", "cb-append", "Hi", callbacks: [AfterAgentAppendCallback])
+
+      events =
+        Runner.run(runner, "user1", "cb-append", "Hi", callbacks: [AfterAgentAppendCallback])
 
       texts = Enum.map(events, &event_text/1)
       assert "appended by after_agent" in texts
@@ -388,7 +386,9 @@ defmodule ADK.Agent.CallbackContextParityTest do
         )
 
       runner = Runner.new(app_name: "test_app", agent: agent)
-      events = Runner.run(runner, "user1", "cb-events", "Hi", callbacks: [AfterAgentAppendCallback])
+
+      events =
+        Runner.run(runner, "user1", "cb-events", "Hi", callbacks: [AfterAgentAppendCallback])
 
       texts = Enum.map(events, &event_text/1)
       assert "LLM said hello" in texts
@@ -485,7 +485,9 @@ defmodule ADK.Agent.CallbackContextParityTest do
       tc = ToolContext.new(ctx, "call-1", %{name: "test_tool"})
       assert {:error, :no_artifact_service} = ToolContext.list_artifacts(tc)
       assert {:error, :no_artifact_service} = ToolContext.load_artifact(tc, "file.txt")
-      assert {:error, :no_artifact_service} = ToolContext.save_artifact(tc, "file.txt", %{data: "x"})
+
+      assert {:error, :no_artifact_service} =
+               ToolContext.save_artifact(tc, "file.txt", %{data: "x"})
 
       GenServer.stop(session_pid)
     end

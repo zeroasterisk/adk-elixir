@@ -73,50 +73,54 @@ defmodule ADK.Agent.LoopAgentTest do
   test "exit_condition stops loop when it returns true" do
     call_count = :counters.new(1, [:atomics])
 
-    counting_agent = ADK.Agent.Custom.new(
-      name: "counting",
-      run_fn: fn _agent, ctx ->
-        :counters.add(call_count, 1, 1)
-        count = :counters.get(call_count, 1)
-        ctx = ADK.Context.put_temp(ctx, :iteration, count)
-        # We need to propagate the temp_state somehow
-        # The child_ctx is what LoopAgent merges back
-        [ADK.Event.new(%{author: "counting", content: "iter=#{count}"})]
-      end
-    )
+    counting_agent =
+      ADK.Agent.Custom.new(
+        name: "counting",
+        run_fn: fn _agent, ctx ->
+          :counters.add(call_count, 1, 1)
+          count = :counters.get(call_count, 1)
+          ctx = ADK.Context.put_temp(ctx, :iteration, count)
+          # We need to propagate the temp_state somehow
+          # The child_ctx is what LoopAgent merges back
+          [ADK.Event.new(%{author: "counting", content: "iter=#{count}"})]
+        end
+      )
 
-    agent = LoopAgent.new(
-      name: "cond_loop",
-      sub_agents: [counting_agent],
-      max_iterations: 100,
-      exit_condition: fn _ctx ->
-        :counters.get(call_count, 1) >= 3
-      end
-    )
+    agent =
+      LoopAgent.new(
+        name: "cond_loop",
+        sub_agents: [counting_agent],
+        max_iterations: 100,
+        exit_condition: fn _ctx ->
+          :counters.get(call_count, 1) >= 3
+        end
+      )
 
     events = ADK.Agent.run(agent, make_ctx(agent))
     assert length(events) == 3
   end
 
   test "exit_condition nil means loop runs to max_iterations" do
-    agent = LoopAgent.new(
-      name: "no_cond",
-      sub_agents: [counter_agent()],
-      max_iterations: 4,
-      exit_condition: nil
-    )
+    agent =
+      LoopAgent.new(
+        name: "no_cond",
+        sub_agents: [counter_agent()],
+        max_iterations: 4,
+        exit_condition: nil
+      )
 
     events = ADK.Agent.run(agent, make_ctx(agent))
     assert length(events) == 4
   end
 
   test "exit_condition that always returns true stops after first iteration" do
-    agent = LoopAgent.new(
-      name: "instant_exit",
-      sub_agents: [counter_agent()],
-      max_iterations: 100,
-      exit_condition: fn _ctx -> true end
-    )
+    agent =
+      LoopAgent.new(
+        name: "instant_exit",
+        sub_agents: [counter_agent()],
+        max_iterations: 100,
+        exit_condition: fn _ctx -> true end
+      )
 
     events = ADK.Agent.run(agent, make_ctx(agent))
     assert length(events) == 1
@@ -124,22 +128,24 @@ defmodule ADK.Agent.LoopAgentTest do
 
   test "exit_condition receives context with temp_state" do
     # Agent that sets temp_state
-    setter = ADK.Agent.Custom.new(
-      name: "setter",
-      run_fn: fn _agent, _ctx ->
-        [ADK.Event.new(%{author: "setter", content: "set"})]
-      end
-    )
+    setter =
+      ADK.Agent.Custom.new(
+        name: "setter",
+        run_fn: fn _agent, _ctx ->
+          [ADK.Event.new(%{author: "setter", content: "set"})]
+        end
+      )
 
-    agent = LoopAgent.new(
-      name: "ctx_check",
-      sub_agents: [setter],
-      max_iterations: 10,
-      exit_condition: fn ctx ->
-        # Context is passed, verify it's a Context struct
-        is_map(ctx.temp_state)
-      end
-    )
+    agent =
+      LoopAgent.new(
+        name: "ctx_check",
+        sub_agents: [setter],
+        max_iterations: 10,
+        exit_condition: fn ctx ->
+          # Context is passed, verify it's a Context struct
+          is_map(ctx.temp_state)
+        end
+      )
 
     # Should exit after 1 iteration since condition checks ctx is valid
     events = ADK.Agent.run(agent, make_ctx(agent))
@@ -150,12 +156,15 @@ defmodule ADK.Agent.LoopAgentTest do
 
   test "escalation takes priority over exit_condition" do
     escalator = escalating_agent()
-    agent = LoopAgent.new(
-      name: "esc_vs_cond",
-      sub_agents: [escalator],
-      max_iterations: 100,
-      exit_condition: fn _ctx -> false end  # never exit via condition
-    )
+
+    agent =
+      LoopAgent.new(
+        name: "esc_vs_cond",
+        sub_agents: [escalator],
+        max_iterations: 100,
+        # never exit via condition
+        exit_condition: fn _ctx -> false end
+      )
 
     events = ADK.Agent.run(agent, make_ctx(agent))
     assert length(events) == 1
@@ -166,17 +175,20 @@ defmodule ADK.Agent.LoopAgentTest do
 
   test "nested loop agents work correctly" do
     inner_counter = counter_agent(name: "inner")
-    inner_loop = LoopAgent.new(
-      name: "inner_loop",
-      sub_agents: [inner_counter],
-      max_iterations: 2
-    )
 
-    outer_loop = LoopAgent.new(
-      name: "outer_loop",
-      sub_agents: [inner_loop],
-      max_iterations: 3
-    )
+    inner_loop =
+      LoopAgent.new(
+        name: "inner_loop",
+        sub_agents: [inner_counter],
+        max_iterations: 2
+      )
+
+    outer_loop =
+      LoopAgent.new(
+        name: "outer_loop",
+        sub_agents: [inner_loop],
+        max_iterations: 3
+      )
 
     events = ADK.Agent.run(outer_loop, make_ctx(outer_loop))
     # 3 outer iterations * 2 inner iterations = 6 events
@@ -188,17 +200,19 @@ defmodule ADK.Agent.LoopAgentTest do
     counter = counter_agent(name: "tick")
     escalator = escalating_agent(name: "esc")
 
-    inner_loop = LoopAgent.new(
-      name: "inner",
-      sub_agents: [counter, escalator],
-      max_iterations: 10
-    )
+    inner_loop =
+      LoopAgent.new(
+        name: "inner",
+        sub_agents: [counter, escalator],
+        max_iterations: 10
+      )
 
-    outer_loop = LoopAgent.new(
-      name: "outer",
-      sub_agents: [inner_loop],
-      max_iterations: 3
-    )
+    outer_loop =
+      LoopAgent.new(
+        name: "outer",
+        sub_agents: [inner_loop],
+        max_iterations: 3
+      )
 
     events = ADK.Agent.run(outer_loop, make_ctx(outer_loop))
     # Inner loop: counter + escalator = 2 events, then escalation propagates to outer

@@ -65,8 +65,6 @@ end
 
 defimpl String.Chars, for: ADK.Agents.ContextCacheConfig do
   def to_string(config) do
-    "ContextCacheConfig(cache_intervals=#{config.cache_intervals}, ttl=#{
-      ADK.Agents.ContextCacheConfig.ttl_string(config)
-    }, min_tokens=#{config.min_tokens})"
+    "ContextCacheConfig(cache_intervals=#{config.cache_intervals}, ttl=#{ADK.Agents.ContextCacheConfig.ttl_string(config)}, min_tokens=#{config.min_tokens})"
   end
 end

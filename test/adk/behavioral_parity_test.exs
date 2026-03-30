@@ -109,11 +109,13 @@ defmodule ADK.BehavioralParityTest do
         )
 
       # Add a transfer event
-      transfer_event = Event.new(%{
-        author: "root",
-        content: %{parts: [%{text: "Transferring to helper"}]},
-        actions: %ADK.EventActions{transfer_to_agent: "helper"}
-      })
+      transfer_event =
+        Event.new(%{
+          author: "root",
+          content: %{parts: [%{text: "Transferring to helper"}]},
+          actions: %ADK.EventActions{transfer_to_agent: "helper"}
+        })
+
       ADK.Session.append_event(pid, transfer_event)
 
       active = Runner.find_active_agent(root, pid)
@@ -133,11 +135,13 @@ defmodule ADK.BehavioralParityTest do
         )
 
       # Transfer to non-existent agent
-      transfer_event = Event.new(%{
-        author: "root",
-        content: %{parts: [%{text: "Transferring to ghost"}]},
-        actions: %ADK.EventActions{transfer_to_agent: "ghost"}
-      })
+      transfer_event =
+        Event.new(%{
+          author: "root",
+          content: %{parts: [%{text: "Transferring to ghost"}]},
+          actions: %ADK.EventActions{transfer_to_agent: "ghost"}
+        })
+
       ADK.Session.append_event(pid, transfer_event)
 
       active = Runner.find_active_agent(root, pid)
@@ -155,7 +159,14 @@ defmodule ADK.BehavioralParityTest do
     test "find_active_agent uses LAST transfer (not first)" do
       child_a = LlmAgent.new(name: "alpha", model: "test", instruction: "A")
       child_b = LlmAgent.new(name: "beta", model: "test", instruction: "B")
-      root = LlmAgent.new(name: "root", model: "test", instruction: "Root", sub_agents: [child_a, child_b])
+
+      root =
+        LlmAgent.new(
+          name: "root",
+          model: "test",
+          instruction: "Root",
+          sub_agents: [child_a, child_b]
+        )
 
       {:ok, pid} =
         ADK.Session.start_link(
@@ -165,19 +176,23 @@ defmodule ADK.BehavioralParityTest do
         )
 
       # Transfer to alpha first
-      t1 = Event.new(%{
-        author: "root",
-        content: %{parts: [%{text: "Transfer"}]},
-        actions: %ADK.EventActions{transfer_to_agent: "alpha"}
-      })
+      t1 =
+        Event.new(%{
+          author: "root",
+          content: %{parts: [%{text: "Transfer"}]},
+          actions: %ADK.EventActions{transfer_to_agent: "alpha"}
+        })
+
       ADK.Session.append_event(pid, t1)
 
       # Then transfer to beta
-      t2 = Event.new(%{
-        author: "alpha",
-        content: %{parts: [%{text: "Transfer"}]},
-        actions: %ADK.EventActions{transfer_to_agent: "beta"}
-      })
+      t2 =
+        Event.new(%{
+          author: "alpha",
+          content: %{parts: [%{text: "Transfer"}]},
+          actions: %ADK.EventActions{transfer_to_agent: "beta"}
+        })
+
       ADK.Session.append_event(pid, t2)
 
       active = Runner.find_active_agent(root, pid)
@@ -193,12 +208,13 @@ defmodule ADK.BehavioralParityTest do
     test "output_schema sets response_mime_type and response_schema" do
       schema = %{type: "object", properties: %{name: %{type: "string"}}}
 
-      agent = LlmAgent.new(
-        name: "bot",
-        model: "test",
-        instruction: "Return JSON",
-        output_schema: schema
-      )
+      agent =
+        LlmAgent.new(
+          name: "bot",
+          model: "test",
+          instruction: "Return JSON",
+          output_schema: schema
+        )
 
       # We can't easily call build_request since it's private, but we can verify
       # the generate_config merging logic through the agent struct

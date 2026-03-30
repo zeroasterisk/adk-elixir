@@ -1,7 +1,8 @@
 defmodule ADK.Tool.AgentSimulator.AgentSimulatorFactoryTest do
   use ExUnit.Case, async: true
 
-  @moduletag :skip # Parity gap: missing feature AgentSimulator
+  # Parity gap: missing feature AgentSimulator
+  @moduletag :skip
 
   describe "create_callback/1" do
     test "create_callback returns a valid callable" do

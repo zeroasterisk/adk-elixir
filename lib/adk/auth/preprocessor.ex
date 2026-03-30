@@ -240,11 +240,13 @@ defmodule ADK.Auth.Preprocessor do
   end
 
   defp extract_credential(auth_response) when is_map(auth_response) do
-    exchanged = auth_response["exchanged_auth_credential"] ||
-      auth_response["exchanged_credential"]
+    exchanged =
+      auth_response["exchanged_auth_credential"] ||
+        auth_response["exchanged_credential"]
 
-    raw = auth_response["raw_auth_credential"] ||
-      auth_response["raw_credential"]
+    raw =
+      auth_response["raw_auth_credential"] ||
+        auth_response["raw_credential"]
 
     case exchanged || raw do
       %ADK.Auth.Credential{} = cred -> cred

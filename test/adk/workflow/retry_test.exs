@@ -78,7 +78,8 @@ defmodule ADK.Workflow.RetryTest do
             end
           end,
           3,
-          1  # 1ms fixed delay for fast tests
+          # 1ms fixed delay for fast tests
+          1
         )
 
       assert result == {:ok, ["success"], "done"}
@@ -96,7 +97,8 @@ defmodule ADK.Workflow.RetryTest do
             {{:error, :always_fails}, [], nil}
           end,
           2,
-          1  # 1ms fixed delay
+          # 1ms fixed delay
+          1
         )
 
       assert {{:error, :always_fails}, [], nil} = result
@@ -176,7 +178,8 @@ defmodule ADK.Workflow.RetryTest do
           end
         end,
         retry_times: 3,
-        backoff: 1  # 1ms for fast tests
+        # 1ms for fast tests
+        backoff: 1
       }
 
       graph = Graph.build([{:START, :flaky}, {:flaky, :END}], %{flaky: step})
@@ -228,7 +231,8 @@ defmodule ADK.Workflow.RetryTest do
           end
         end,
         retry_times: 3,
-        backoff: :exponential  # 100ms, 200ms
+        # 100ms, 200ms
+        backoff: :exponential
       }
 
       graph = Graph.build([{:START, :slow_retry}, {:slow_retry, :END}], %{slow_retry: step})
@@ -258,7 +262,8 @@ defmodule ADK.Workflow.RetryTest do
           end
         end,
         retry_times: 3,
-        backoff: :linear  # 100ms, 200ms
+        # 100ms, 200ms
+        backoff: :linear
       }
 
       graph =
@@ -290,7 +295,8 @@ defmodule ADK.Workflow.RetryTest do
           end
         end,
         retry_times: 1,
-        backoff: 50  # 50ms fixed
+        # 50ms fixed
+        backoff: 50
       }
 
       graph =

@@ -7,7 +7,14 @@ defmodule ADK.Tool.TransferToAgentTest do
 
   describe "tools_for_sub_agents/1" do
     test "generates one transfer tool per sub-agent" do
-      sub1 = LlmAgent.new(name: "researcher", model: "test", instruction: "Research things", description: "A research agent")
+      sub1 =
+        LlmAgent.new(
+          name: "researcher",
+          model: "test",
+          instruction: "Research things",
+          description: "A research agent"
+        )
+
       sub2 = LlmAgent.new(name: "writer", model: "test", instruction: "Write things")
 
       tools = TransferToAgent.tools_for_sub_agents([sub1, sub2])
@@ -47,9 +54,22 @@ defmodule ADK.Tool.TransferToAgentTest do
   describe "effective_tools/1" do
     test "includes transfer tools when sub_agents present" do
       sub = LlmAgent.new(name: "sub", model: "test", instruction: "Sub")
-      tool = %FunctionTool{name: "search", description: "Search", func: fn _, _ -> {:ok, "r"} end, parameters: %{}}
 
-      agent = LlmAgent.new(name: "parent", model: "test", instruction: "Parent", tools: [tool], sub_agents: [sub])
+      tool = %FunctionTool{
+        name: "search",
+        description: "Search",
+        func: fn _, _ -> {:ok, "r"} end,
+        parameters: %{}
+      }
+
+      agent =
+        LlmAgent.new(
+          name: "parent",
+          model: "test",
+          instruction: "Parent",
+          tools: [tool],
+          sub_agents: [sub]
+        )
 
       effective = LlmAgent.effective_tools(agent)
       assert length(effective) == 2
@@ -59,7 +79,13 @@ defmodule ADK.Tool.TransferToAgentTest do
     end
 
     test "no transfer tools when no sub_agents" do
-      tool = %FunctionTool{name: "search", description: "Search", func: fn _, _ -> {:ok, "r"} end, parameters: %{}}
+      tool = %FunctionTool{
+        name: "search",
+        description: "Search",
+        func: fn _, _ -> {:ok, "r"} end,
+        parameters: %{}
+      }
+
       agent = LlmAgent.new(name: "solo", model: "test", instruction: "Solo", tools: [tool])
 
       effective = LlmAgent.effective_tools(agent)

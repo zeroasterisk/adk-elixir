@@ -102,7 +102,11 @@ defmodule ADK.LLM.Gateway.SchedulerTest do
       Scheduler.flush(pid)
 
       results = Enum.map(tasks, &Task.await(&1, 5_000))
-      assert Enum.all?(results, fn {:ok, _} -> true; _ -> false end)
+
+      assert Enum.all?(results, fn
+               {:ok, _} -> true
+               _ -> false
+             end)
     end
   end
 
@@ -145,10 +149,11 @@ defmodule ADK.LLM.Gateway.SchedulerTest do
 
       capacity_fn = fn -> :atomics.get(capacity, 1) / 100.0 end
 
-      pid = start_scheduler(
-        capacity_fn: capacity_fn,
-        drain_interval_ms: 50
-      )
+      pid =
+        start_scheduler(
+          capacity_fn: capacity_fn,
+          drain_interval_ms: 50
+        )
 
       task =
         Task.async(fn ->
@@ -171,10 +176,11 @@ defmodule ADK.LLM.Gateway.SchedulerTest do
 
   describe "default priority" do
     test "uses configured default" do
-      pid = start_scheduler(
-        default_priority: :background,
-        capacity_fn: fn -> 0.95 end
-      )
+      pid =
+        start_scheduler(
+          default_priority: :background,
+          capacity_fn: fn -> 0.95 end
+        )
 
       task =
         Task.async(fn ->

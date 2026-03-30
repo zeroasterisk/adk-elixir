@@ -68,17 +68,25 @@ defmodule ADK.Phoenix.WebServerClientTest do
     test "returns session map on success" do
       bypass = Bypass.open()
 
-      Bypass.expect_once(bypass, "GET", "/apps/test_app/users/test_user/sessions/test_session", fn conn ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> resp(200, Jason.encode!(%{
-          id: "test_session",
-          app_name: "test_app",
-          user_id: "test_user",
-          events: [],
-          state: %{}
-        }))
-      end)
+      Bypass.expect_once(
+        bypass,
+        "GET",
+        "/apps/test_app/users/test_user/sessions/test_session",
+        fn conn ->
+          conn
+          |> put_resp_content_type("application/json")
+          |> resp(
+            200,
+            Jason.encode!(%{
+              id: "test_session",
+              app_name: "test_app",
+              user_id: "test_user",
+              events: [],
+              state: %{}
+            })
+          )
+        end
+      )
 
       client = WebServerClient.new(base_url: "http://localhost:#{bypass.port}")
 
@@ -97,11 +105,16 @@ defmodule ADK.Phoenix.WebServerClientTest do
     test "returns error on 404" do
       bypass = Bypass.open()
 
-      Bypass.expect_once(bypass, "GET", "/apps/test_app/users/test_user/sessions/missing", fn conn ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> resp(404, Jason.encode!(%{detail: "Not found"}))
-      end)
+      Bypass.expect_once(
+        bypass,
+        "GET",
+        "/apps/test_app/users/test_user/sessions/missing",
+        fn conn ->
+          conn
+          |> put_resp_content_type("application/json")
+          |> resp(404, Jason.encode!(%{detail: "Not found"}))
+        end
+      )
 
       client = WebServerClient.new(base_url: "http://localhost:#{bypass.port}")
 
@@ -125,13 +138,16 @@ defmodule ADK.Phoenix.WebServerClientTest do
 
         conn
         |> put_resp_content_type("application/json")
-        |> resp(200, Jason.encode!(%{
-          id: "new_session",
-          app_name: "test_app",
-          user_id: "test_user",
-          events: [],
-          state: %{"key" => "value"}
-        }))
+        |> resp(
+          200,
+          Jason.encode!(%{
+            id: "new_session",
+            app_name: "test_app",
+            user_id: "test_user",
+            events: [],
+            state: %{"key" => "value"}
+          })
+        )
       end)
 
       client = WebServerClient.new(base_url: "http://localhost:#{bypass.port}")
@@ -157,7 +173,16 @@ defmodule ADK.Phoenix.WebServerClientTest do
 
         conn
         |> put_resp_content_type("application/json")
-        |> resp(200, Jason.encode!(%{id: "s1", app_name: "test_app", user_id: "test_user", events: [], state: %{}}))
+        |> resp(
+          200,
+          Jason.encode!(%{
+            id: "s1",
+            app_name: "test_app",
+            user_id: "test_user",
+            events: [],
+            state: %{}
+          })
+        )
       end)
 
       client = WebServerClient.new(base_url: "http://localhost:#{bypass.port}")
@@ -231,13 +256,16 @@ defmodule ADK.Phoenix.WebServerClientTest do
 
           conn
           |> put_resp_content_type("application/json")
-          |> resp(200, Jason.encode!(%{
-            id: "test_session",
-            app_name: "test_app",
-            user_id: "test_user",
-            events: [],
-            state: %{"key" => "updated", "new_key" => "new_value"}
-          }))
+          |> resp(
+            200,
+            Jason.encode!(%{
+              id: "test_session",
+              app_name: "test_app",
+              user_id: "test_user",
+              events: [],
+              state: %{"key" => "updated", "new_key" => "new_value"}
+            })
+          )
         end
       )
 
@@ -384,7 +412,8 @@ defmodule ADK.Phoenix.WebServerClientTest do
 
       metadata = %{
         version: 2,
-        canonicalUri: "artifact://apps/app/users/user/sessions/session/artifacts/report/versions/2",
+        canonicalUri:
+          "artifact://apps/app/users/user/sessions/session/artifacts/report/versions/2",
         customMetadata: %{"foo" => "bar"},
         createTime: 123.4,
         mimeType: "text/plain"
@@ -422,8 +451,19 @@ defmodule ADK.Phoenix.WebServerClientTest do
       bypass = Bypass.open()
 
       metadata_list = [
-        %{version: 0, canonicalUri: "artifact://.../versions/0", customMetadata: %{}, createTime: 100.0},
-        %{version: 1, canonicalUri: "artifact://.../versions/1", customMetadata: %{"foo" => "bar"}, createTime: 200.0, mimeType: "application/json"}
+        %{
+          version: 0,
+          canonicalUri: "artifact://.../versions/0",
+          customMetadata: %{},
+          createTime: 100.0
+        },
+        %{
+          version: 1,
+          canonicalUri: "artifact://.../versions/1",
+          customMetadata: %{"foo" => "bar"},
+          createTime: 200.0,
+          mimeType: "application/json"
+        }
       ]
 
       Bypass.expect_once(

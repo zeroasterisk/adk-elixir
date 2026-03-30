@@ -5,7 +5,11 @@ defmodule ADK.Models.InteractionsUtilsTest do
   describe "convert_part_to_interaction_content" do
     test "text part" do
       part = %{text: "Hello, world!"}
-      assert InteractionsUtils.convert_part_to_interaction_content(part) == %{type: "text", text: "Hello, world!"}
+
+      assert InteractionsUtils.convert_part_to_interaction_content(part) == %{
+               type: "text",
+               text: "Hello, world!"
+             }
     end
 
     test "function call part" do
@@ -16,12 +20,13 @@ defmodule ADK.Models.InteractionsUtilsTest do
           args: %{"city" => "London"}
         }
       }
+
       assert InteractionsUtils.convert_part_to_interaction_content(part) == %{
-        type: "function_call",
-        id: "call_123",
-        name: "get_weather",
-        arguments: %{"city" => "London"}
-      }
+               type: "function_call",
+               id: "call_123",
+               name: "get_weather",
+               arguments: %{"city" => "London"}
+             }
     end
 
     test "function call part no id" do
@@ -31,6 +36,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
           args: %{"city" => "London"}
         }
       }
+
       res = InteractionsUtils.convert_part_to_interaction_content(part)
       assert res.id == ""
       assert res.name == "get_weather"
@@ -45,6 +51,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
         },
         thought_signature: "test_signature_bytes"
       }
+
       res = InteractionsUtils.convert_part_to_interaction_content(part)
       assert res.type == "function_call"
       assert res.id == "call_456"
@@ -62,6 +69,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
           args: %{}
         }
       }
+
       res = InteractionsUtils.convert_part_to_interaction_content(part)
       assert res.type == "function_call"
       refute Map.has_key?(res, "thought_signature")
@@ -75,6 +83,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
           response: %{"temperature" => 20, "condition" => "sunny"}
         }
       }
+
       res = InteractionsUtils.convert_part_to_interaction_content(part)
       assert res.type == "function_result"
       assert res.call_id == "call_123"
@@ -90,6 +99,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
           response: %{"message" => "Weather is sunny"}
         }
       }
+
       res = InteractionsUtils.convert_part_to_interaction_content(part)
       assert res.type == "function_result"
       assert Jason.decode!(res.result) == %{"message" => "Weather is sunny"}
@@ -102,11 +112,12 @@ defmodule ADK.Models.InteractionsUtilsTest do
           mime_type: "image/png"
         }
       }
+
       assert InteractionsUtils.convert_part_to_interaction_content(part) == %{
-        type: "image",
-        data: "image_data",
-        mime_type: "image/png"
-      }
+               type: "image",
+               data: "image_data",
+               mime_type: "image/png"
+             }
     end
 
     test "inline data audio" do
@@ -116,11 +127,12 @@ defmodule ADK.Models.InteractionsUtilsTest do
           mime_type: "audio/mp3"
         }
       }
+
       assert InteractionsUtils.convert_part_to_interaction_content(part) == %{
-        type: "audio",
-        data: "audio_data",
-        mime_type: "audio/mp3"
-      }
+               type: "audio",
+               data: "audio_data",
+               mime_type: "audio/mp3"
+             }
     end
 
     test "inline data video" do
@@ -130,11 +142,12 @@ defmodule ADK.Models.InteractionsUtilsTest do
           mime_type: "video/mp4"
         }
       }
+
       assert InteractionsUtils.convert_part_to_interaction_content(part) == %{
-        type: "video",
-        data: "video_data",
-        mime_type: "video/mp4"
-      }
+               type: "video",
+               data: "video_data",
+               mime_type: "video/mp4"
+             }
     end
 
     test "inline data document" do
@@ -144,11 +157,12 @@ defmodule ADK.Models.InteractionsUtilsTest do
           mime_type: "application/pdf"
         }
       }
+
       assert InteractionsUtils.convert_part_to_interaction_content(part) == %{
-        type: "document",
-        data: "doc_data",
-        mime_type: "application/pdf"
-      }
+               type: "document",
+               data: "doc_data",
+               mime_type: "application/pdf"
+             }
     end
 
     test "file data image" do
@@ -158,19 +172,21 @@ defmodule ADK.Models.InteractionsUtilsTest do
           mime_type: "image/png"
         }
       }
+
       assert InteractionsUtils.convert_part_to_interaction_content(part) == %{
-        type: "image",
-        uri: "gs://bucket/image.png",
-        mime_type: "image/png"
-      }
+               type: "image",
+               uri: "gs://bucket/image.png",
+               mime_type: "image/png"
+             }
     end
 
     test "text with thought flag" do
       part = %{text: "Let me think about this...", thought: true}
+
       assert InteractionsUtils.convert_part_to_interaction_content(part) == %{
-        type: "text",
-        text: "Let me think about this..."
-      }
+               type: "text",
+               text: "Let me think about this..."
+             }
     end
 
     test "thought only part" do
@@ -192,12 +208,13 @@ defmodule ADK.Models.InteractionsUtilsTest do
           outcome: :OUTCOME_OK
         }
       }
+
       assert InteractionsUtils.convert_part_to_interaction_content(part) == %{
-        type: "code_execution_result",
-        call_id: "",
-        result: "Hello from code",
-        is_error: false
-      }
+               type: "code_execution_result",
+               call_id: "",
+               result: "Hello from code",
+               is_error: false
+             }
     end
 
     test "code execution result with error" do
@@ -207,6 +224,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
           outcome: :OUTCOME_FAILED
         }
       }
+
       assert InteractionsUtils.convert_part_to_interaction_content(part).is_error == true
     end
 
@@ -217,14 +235,15 @@ defmodule ADK.Models.InteractionsUtilsTest do
           language: "PYTHON"
         }
       }
+
       assert InteractionsUtils.convert_part_to_interaction_content(part) == %{
-        type: "code_execution_call",
-        id: "",
-        arguments: %{
-          code: "print(\"hello\")",
-          language: "PYTHON"
-        }
-      }
+               type: "code_execution_call",
+               id: "",
+               arguments: %{
+                 code: "print(\"hello\")",
+                 language: "PYTHON"
+               }
+             }
     end
 
     test "empty part" do
@@ -238,10 +257,11 @@ defmodule ADK.Models.InteractionsUtilsTest do
         role: "user",
         parts: [%{text: "Hello!"}]
       }
+
       assert InteractionsUtils.convert_content_to_turn(content) == %{
-        role: "user",
-        content: [%{type: "text", text: "Hello!"}]
-      }
+               role: "user",
+               content: [%{type: "text", text: "Hello!"}]
+             }
     end
 
     test "model content" do
@@ -249,10 +269,11 @@ defmodule ADK.Models.InteractionsUtilsTest do
         role: "model",
         parts: [%{text: "Hi there!"}]
       }
+
       assert InteractionsUtils.convert_content_to_turn(content) == %{
-        role: "model",
-        content: [%{type: "text", text: "Hi there!"}]
-      }
+               role: "model",
+               content: [%{type: "text", text: "Hi there!"}]
+             }
     end
 
     test "multiple parts" do
@@ -263,6 +284,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
           %{inline_data: %{data: "img", mime_type: "image/png"}}
         ]
       }
+
       res = InteractionsUtils.convert_content_to_turn(content)
       assert length(res.content) == 2
       assert Enum.at(res.content, 0) == %{type: "text", text: "Look at this:"}
@@ -275,6 +297,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
       contents = [
         %{role: "user", parts: [%{text: "What is 2+2?"}]}
       ]
+
       res = InteractionsUtils.convert_contents_to_turns(contents)
       assert length(res) == 1
       assert Enum.at(res, 0).role == "user"
@@ -286,6 +309,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
         %{role: "model", parts: [%{text: "Hello!"}]},
         %{role: "user", parts: [%{text: "How are you?"}]}
       ]
+
       res = InteractionsUtils.convert_contents_to_turns(contents)
       assert length(res) == 3
       assert Enum.at(res, 0).role == "user"
@@ -298,6 +322,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
         %{role: "user", parts: [%{text: "Hi"}]},
         %{role: "model", parts: []}
       ]
+
       res = InteractionsUtils.convert_contents_to_turns(contents)
       assert length(res) == 1
     end
@@ -324,6 +349,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
           }
         ]
       }
+
       res = InteractionsUtils.convert_tools_config_to_interactions_format(config)
       assert length(res) == 1
       assert Enum.at(res, 0).type == "function"
@@ -362,6 +388,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
         name: "get_weather",
         arguments: %{"city" => "London"}
       }
+
       res = InteractionsUtils.convert_interaction_output_to_part(output)
       assert res.function_call.id == "call_123"
       assert res.function_call.name == "get_weather"
@@ -376,6 +403,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
         arguments: %{"content" => "hello"},
         thought_signature: Base.encode64("gemini3_signature")
       }
+
       res = InteractionsUtils.convert_interaction_output_to_part(output)
       assert res.function_call.id == "call_sig_123"
       assert res.function_call.name == "gemini3_tool"
@@ -389,16 +417,18 @@ defmodule ADK.Models.InteractionsUtilsTest do
         name: "regular_tool",
         arguments: %{}
       }
+
       res = InteractionsUtils.convert_interaction_output_to_part(output)
       assert res.thought_signature == nil
     end
-    
+
     test "code execution result output" do
       output = %{
         type: "code_execution_result",
         result: "Output from code",
         is_error: false
       }
+
       res = InteractionsUtils.convert_interaction_output_to_part(output)
       assert res.code_execution_result.output == "Output from code"
       assert res.code_execution_result.outcome == :OUTCOME_OK
@@ -427,6 +457,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
           total_output_tokens: 5
         }
       }
+
       res = InteractionsUtils.convert_interaction_to_llm_response(interaction)
       assert res.interaction_id == "interaction_123"
       assert Enum.at(res.content.parts, 0).text == "The answer is 4."
@@ -443,6 +474,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
         outputs: [],
         error: %{code: "INVALID_REQUEST", message: "Bad request"}
       }
+
       res = InteractionsUtils.convert_interaction_to_llm_response(interaction)
       assert res.interaction_id == "interaction_123"
       assert res.error_code == "INVALID_REQUEST"
@@ -454,9 +486,15 @@ defmodule ADK.Models.InteractionsUtilsTest do
         id: "interaction_123",
         status: "requires_action",
         outputs: [
-          %{type: "function_call", id: "call_1", name: "get_weather", arguments: %{"city" => "Paris"}}
+          %{
+            type: "function_call",
+            id: "call_1",
+            name: "get_weather",
+            arguments: %{"city" => "Paris"}
+          }
         ]
       }
+
       res = InteractionsUtils.convert_interaction_to_llm_response(interaction)
       assert Enum.at(res.content.parts, 0).function_call.name == "get_weather"
       assert res.finish_reason == :STOP
@@ -475,6 +513,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
         presence_penalty: 0.5,
         frequency_penalty: 0.3
       }
+
       res = InteractionsUtils.build_generation_config(config)
       assert res == config
     end
@@ -492,7 +531,9 @@ defmodule ADK.Models.InteractionsUtilsTest do
   describe "extract_system_instruction" do
     test "string instruction" do
       config = %{system_instruction: "You are a helpful assistant."}
-      assert InteractionsUtils.extract_system_instruction(config) == "You are a helpful assistant."
+
+      assert InteractionsUtils.extract_system_instruction(config) ==
+               "You are a helpful assistant."
     end
 
     test "content instruction" do
@@ -501,6 +542,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
           parts: [%{text: "Be helpful."}, %{text: "Be concise."}]
         }
       }
+
       assert InteractionsUtils.extract_system_instruction(config) == "Be helpful.\nBe concise."
     end
 
@@ -526,6 +568,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
         %{role: "model", parts: [%{text: "Model response"}]},
         %{role: "user", parts: [%{text: "Second user"}]}
       ]
+
       res = InteractionsUtils.get_latest_user_contents(contents)
       assert length(res) == 1
       assert Enum.at(res, 0).parts |> Enum.at(0) |> Map.get(:text) == "Second user"
@@ -540,6 +583,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
         %{role: "user", parts: [%{text: "Great"}]},
         %{role: "user", parts: [%{text: "Tell me more"}]}
       ]
+
       res = InteractionsUtils.get_latest_user_contents(contents)
       assert length(res) == 2
       assert Enum.at(res, 0).role == "user"
@@ -553,6 +597,7 @@ defmodule ADK.Models.InteractionsUtilsTest do
         %{role: "model", parts: [%{function_call: %{name: "tool"}}]},
         %{role: "user", parts: [%{function_response: %{id: "123"}}]}
       ]
+
       res = InteractionsUtils.get_latest_user_contents(contents)
       assert length(res) == 2
       assert Enum.at(res, 0).role == "model"
@@ -569,7 +614,10 @@ defmodule ADK.Models.InteractionsUtilsTest do
           text: "Hello world"
         }
       }
-      {res, aggregated_parts} = InteractionsUtils.convert_interaction_event_to_llm_response(event, [], "int_123")
+
+      {res, aggregated_parts} =
+        InteractionsUtils.convert_interaction_event_to_llm_response(event, [], "int_123")
+
       assert res != nil
       assert res.partial == true
       assert res.interaction_id == "int_123"
@@ -588,7 +636,10 @@ defmodule ADK.Models.InteractionsUtilsTest do
           thought_signature: Base.encode64("delta_signature")
         }
       }
-      {res, aggregated_parts} = InteractionsUtils.convert_interaction_event_to_llm_response(event, [], "int_456")
+
+      {res, aggregated_parts} =
+        InteractionsUtils.convert_interaction_event_to_llm_response(event, [], "int_456")
+
       assert res == nil
       assert length(aggregated_parts) == 1
       fc_part = Enum.at(aggregated_parts, 0)
@@ -607,7 +658,10 @@ defmodule ADK.Models.InteractionsUtilsTest do
           arguments: %{}
         }
       }
-      {res, aggregated_parts} = InteractionsUtils.convert_interaction_event_to_llm_response(event, [], "int_789")
+
+      {res, aggregated_parts} =
+        InteractionsUtils.convert_interaction_event_to_llm_response(event, [], "int_789")
+
       assert res == nil
       assert Enum.at(aggregated_parts, 0).function_call.name == "regular_tool"
       assert Enum.at(aggregated_parts, 0).thought_signature == nil
@@ -623,7 +677,10 @@ defmodule ADK.Models.InteractionsUtilsTest do
           arguments: %{}
         }
       }
-      {res, aggregated_parts} = InteractionsUtils.convert_interaction_event_to_llm_response(event, [], "int_000")
+
+      {res, aggregated_parts} =
+        InteractionsUtils.convert_interaction_event_to_llm_response(event, [], "int_000")
+
       assert res == nil
       assert Enum.empty?(aggregated_parts)
     end

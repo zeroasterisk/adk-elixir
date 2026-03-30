@@ -146,7 +146,9 @@ defmodule ADK.Plugin.BasePluginTest do
 
       # on_model_error
       error = {:error, "failed"}
-      assert {:error, "overridden_on_model_error"} = ADK.Plugin.run_on_model_error(plugins, context, error)
+
+      assert {:error, "overridden_on_model_error"} =
+               ADK.Plugin.run_on_model_error(plugins, context, error)
 
       # before_tool
       args = %{x: 1}
@@ -160,7 +162,9 @@ defmodule ADK.Plugin.BasePluginTest do
 
       # on_tool_error
       tool_error = {:error, "tool failed"}
-      assert {:error, "overridden_on_tool_error"} = ADK.Plugin.run_on_tool_error(plugins, context, "my_tool", tool_error)
+
+      assert {:error, "overridden_on_tool_error"} =
+               ADK.Plugin.run_on_tool_error(plugins, context, "my_tool", tool_error)
 
       # on_event
       event = %{type: :my_event}

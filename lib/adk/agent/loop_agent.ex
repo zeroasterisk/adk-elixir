@@ -21,7 +21,14 @@ defmodule ADK.Agent.LoopAgent do
   """
 
   @enforce_keys [:name]
-  defstruct [:name, :exit_condition, :parent_agent, description: "Runs agents in a loop", sub_agents: [], max_iterations: 10]
+  defstruct [
+    :name,
+    :exit_condition,
+    :parent_agent,
+    description: "Runs agents in a loop",
+    sub_agents: [],
+    max_iterations: 10
+  ]
 
   @type exit_condition :: (ADK.Context.t() -> boolean()) | nil
 
@@ -74,7 +81,12 @@ defmodule ADK.Agent.LoopAgent do
   @doc false
   def do_loop(_ctx, %{max_iterations: max}, iteration, acc) when iteration >= max, do: acc
 
-  def do_loop(ctx, %{sub_agents: sub_agents, exit_condition: exit_condition} = agent, iteration, acc) do
+  def do_loop(
+        ctx,
+        %{sub_agents: sub_agents, exit_condition: exit_condition} = agent,
+        iteration,
+        acc
+      ) do
     {events, escalated?, updated_ctx} =
       Enum.reduce_while(sub_agents, {[], false, ctx}, fn agent_spec, {evts, _, cur_ctx} ->
         child_ctx = ADK.Context.for_child(cur_ctx, agent_spec)
@@ -109,6 +121,9 @@ defmodule ADK.Agent.LoopAgent do
   end
 
   defp escalated?(%{actions: %{escalate: true}}), do: true
-  defp escalated?(%{actions: actions}) when is_map(actions), do: Map.get(actions, :escalate, false)
+
+  defp escalated?(%{actions: actions}) when is_map(actions),
+    do: Map.get(actions, :escalate, false)
+
   defp escalated?(_), do: false
 end

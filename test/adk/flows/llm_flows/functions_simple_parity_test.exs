@@ -83,7 +83,11 @@ defmodule ADK.Flows.LlmFlows.FunctionsSimpleParityTest do
   defp function_response_events(events) do
     Enum.filter(events, fn e ->
       parts = get_parts(e)
-      Enum.any?(parts, &(Map.has_key?(&1, :function_response) or Map.has_key?(&1, "function_response")))
+
+      Enum.any?(
+        parts,
+        &(Map.has_key?(&1, :function_response) or Map.has_key?(&1, "function_response"))
+      )
     end)
   end
 
@@ -498,7 +502,10 @@ defmodule ADK.Flows.LlmFlows.FunctionsSimpleParityTest do
             send(test_pid, {:anon, a + b})
             {:ok, %{"result" => a + b}}
           end,
-          parameters: %{type: "object", properties: %{a: %{type: "integer"}, b: %{type: "integer"}}}
+          parameters: %{
+            type: "object",
+            properties: %{a: %{type: "integer"}, b: %{type: "integer"}}
+          }
         )
 
       mf_tool =

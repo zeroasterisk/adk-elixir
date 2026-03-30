@@ -11,7 +11,10 @@ defmodule ADK.Transcript.RepairTest do
     test "no-op when there are no orphaned calls" do
       messages = [
         %{role: :model, parts: [%{function_call: %{id: "fc-1", name: "search", args: %{}}}]},
-        %{role: :user, parts: [%{function_response: %{id: "fc-1", name: "search", response: %{"ok" => true}}}]}
+        %{
+          role: :user,
+          parts: [%{function_response: %{id: "fc-1", name: "search", response: %{"ok" => true}}}]
+        }
       ]
 
       assert Repair.repair(messages) == messages
@@ -20,7 +23,10 @@ defmodule ADK.Transcript.RepairTest do
     test "synthesises response for a single orphaned call" do
       messages = [
         %{role: :user, parts: [%{text: "hello"}]},
-        %{role: :model, parts: [%{function_call: %{id: "fc-1", name: "search", args: %{"q" => "elixir"}}}]}
+        %{
+          role: :model,
+          parts: [%{function_call: %{id: "fc-1", name: "search", args: %{"q" => "elixir"}}}]
+        }
       ]
 
       repaired = Repair.repair(messages)
@@ -38,10 +44,13 @@ defmodule ADK.Transcript.RepairTest do
 
     test "synthesises responses for multiple orphaned calls" do
       messages = [
-        %{role: :model, parts: [
-          %{function_call: %{id: "fc-1", name: "search", args: %{}}},
-          %{function_call: %{id: "fc-2", name: "fetch", args: %{}}}
-        ]}
+        %{
+          role: :model,
+          parts: [
+            %{function_call: %{id: "fc-1", name: "search", args: %{}}},
+            %{function_call: %{id: "fc-2", name: "fetch", args: %{}}}
+          ]
+        }
       ]
 
       repaired = Repair.repair(messages)
@@ -55,13 +64,19 @@ defmodule ADK.Transcript.RepairTest do
 
     test "handles mixed matched and orphaned calls" do
       messages = [
-        %{role: :model, parts: [
-          %{function_call: %{id: "fc-1", name: "search", args: %{}}},
-          %{function_call: %{id: "fc-2", name: "fetch", args: %{}}}
-        ]},
-        %{role: :user, parts: [
-          %{function_response: %{id: "fc-1", name: "search", response: %{"ok" => true}}}
-        ]}
+        %{
+          role: :model,
+          parts: [
+            %{function_call: %{id: "fc-1", name: "search", args: %{}}},
+            %{function_call: %{id: "fc-2", name: "fetch", args: %{}}}
+          ]
+        },
+        %{
+          role: :user,
+          parts: [
+            %{function_response: %{id: "fc-1", name: "search", response: %{"ok" => true}}}
+          ]
+        }
       ]
 
       repaired = Repair.repair(messages)
@@ -76,7 +91,10 @@ defmodule ADK.Transcript.RepairTest do
     test "matches by id when ids are present" do
       messages = [
         %{role: :model, parts: [%{function_call: %{id: "abc", name: "tool_a", args: %{}}}]},
-        %{role: :user, parts: [%{function_response: %{id: "abc", name: "tool_a", response: "ok"}}]}
+        %{
+          role: :user,
+          parts: [%{function_response: %{id: "abc", name: "tool_a", response: "ok"}}]
+        }
       ]
 
       assert Repair.repair(messages) == messages
@@ -120,7 +138,10 @@ defmodule ADK.Transcript.RepairTest do
     test "returns empty list when no orphans" do
       messages = [
         %{role: :model, parts: [%{function_call: %{id: "fc-1", name: "search", args: %{}}}]},
-        %{role: :user, parts: [%{function_response: %{id: "fc-1", name: "search", response: "ok"}}]}
+        %{
+          role: :user,
+          parts: [%{function_response: %{id: "fc-1", name: "search", response: "ok"}}]
+        }
       ]
 
       assert Repair.orphaned_calls(messages) == []

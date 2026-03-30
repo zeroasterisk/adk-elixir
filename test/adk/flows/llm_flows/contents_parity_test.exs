@@ -68,12 +68,14 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
   # Safe text extraction handling both atom and string keyed content
   defp safe_text(%{content: content}) when is_map(content) do
     parts = content[:parts] || content["parts"] || []
+
     Enum.find_value(parts, fn
       %{text: text} -> text
       %{"text" => text} -> text
       _ -> nil
     end)
   end
+
   defp safe_text(_), do: nil
 
   defp make_tool(name, func) do
@@ -150,9 +152,10 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
         "The weather is sunny"
       ])
 
-      tool = make_tool("get_weather", fn _ctx, %{"city" => city} ->
-        {:ok, %{weather: "sunny in #{city}"}}
-      end)
+      tool =
+        make_tool("get_weather", fn _ctx, %{"city" => city} ->
+          {:ok, %{weather: "sunny in #{city}"}}
+        end)
 
       agent = build_agent(tools: [tool])
       runner = Runner.new(app_name: "contents_test", agent: agent)
@@ -181,9 +184,10 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
         "The result is 3"
       ])
 
-      tool = make_tool("add_numbers", fn _ctx, %{"a" => a, "b" => b} ->
-        {:ok, %{result: a + b}}
-      end)
+      tool =
+        make_tool("add_numbers", fn _ctx, %{"a" => a, "b" => b} ->
+          {:ok, %{result: a + b}}
+        end)
 
       agent = build_agent(tools: [tool])
       runner = Runner.new(app_name: "contents_test", agent: agent)
@@ -191,14 +195,16 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
       events = Runner.run(runner, "u1", unique_session(), "Add 1 and 2")
 
       # Find the function response event
-      fr_event = Enum.find(events, fn e ->
-        parts = (e.content || %{})[:parts] || []
-        Enum.any?(parts, fn p -> Map.has_key?(p, :function_response) end)
-      end)
+      fr_event =
+        Enum.find(events, fn e ->
+          parts = (e.content || %{})[:parts] || []
+          Enum.any?(parts, fn p -> Map.has_key?(p, :function_response) end)
+        end)
 
       assert fr_event != nil, "Expected a function_response event"
+
       assert fr_event.content[:role] == :user,
-        "Function response should have user role, got: #{inspect(fr_event.content[:role])}"
+             "Function response should have user role, got: #{inspect(fr_event.content[:role])}"
     end
 
     test "multi-step tool use produces correct content sequence" do
@@ -213,13 +219,15 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
         "Final result after two steps"
       ])
 
-      step_one = make_tool("step_one", fn _ctx, %{"input" => i} ->
-        {:ok, %{output: "#{i}_processed"}}
-      end)
+      step_one =
+        make_tool("step_one", fn _ctx, %{"input" => i} ->
+          {:ok, %{output: "#{i}_processed"}}
+        end)
 
-      step_two = make_tool("step_two", fn _ctx, %{"input" => i} ->
-        {:ok, %{output: "#{i}_done"}}
-      end)
+      step_two =
+        make_tool("step_two", fn _ctx, %{"input" => i} ->
+          {:ok, %{output: "#{i}_done"}}
+        end)
 
       agent = build_agent(tools: [step_one, step_two])
       runner = Runner.new(app_name: "contents_test", agent: agent)
@@ -243,9 +251,10 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
         "Found it"
       ])
 
-      tool = make_tool("lookup", fn _ctx, %{"query" => q} ->
-        {:ok, %{result: "result for #{q}"}}
-      end)
+      tool =
+        make_tool("lookup", fn _ctx, %{"query" => q} ->
+          {:ok, %{result: "result for #{q}"}}
+        end)
 
       agent = build_agent(tools: [tool])
       runner = Runner.new(app_name: "contents_test", agent: agent)
@@ -256,15 +265,17 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
       {:ok, session_pid} = ADK.Session.lookup("contents_test", "u1", sid)
       events = ADK.Session.get_events(session_pid)
 
-      has_fc = Enum.any?(events, fn e ->
-        parts = (e.content || %{})[:parts] || []
-        Enum.any?(parts, fn p -> Map.has_key?(p, :function_call) end)
-      end)
+      has_fc =
+        Enum.any?(events, fn e ->
+          parts = (e.content || %{})[:parts] || []
+          Enum.any?(parts, fn p -> Map.has_key?(p, :function_call) end)
+        end)
 
-      has_fr = Enum.any?(events, fn e ->
-        parts = (e.content || %{})[:parts] || []
-        Enum.any?(parts, fn p -> Map.has_key?(p, :function_response) end)
-      end)
+      has_fr =
+        Enum.any?(events, fn e ->
+          parts = (e.content || %{})[:parts] || []
+          Enum.any?(parts, fn p -> Map.has_key?(p, :function_response) end)
+        end)
 
       assert has_fc, "Session should contain function_call event"
       assert has_fr, "Session should contain function_response event"
@@ -402,17 +413,23 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
           session_id: sid
         )
 
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv1",
-        author: "user",
-        content: %{parts: [%{text: "Hello from user"}]}
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv1",
+          author: "user",
+          content: %{parts: [%{text: "Hello from user"}]}
+        })
+      )
 
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv2",
-        author: "test_agent",
-        content: %{role: :model, parts: [%{text: "Hello from agent"}]}
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv2",
+          author: "test_agent",
+          content: %{role: :model, parts: [%{text: "Hello from agent"}]}
+        })
+      )
 
       ctx = %ADK.Context{
         invocation_id: "inv3",
@@ -449,18 +466,24 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
         )
 
       # Nil content event
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv1",
-        author: "user",
-        content: nil
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv1",
+          author: "user",
+          content: nil
+        })
+      )
 
       # Normal event after
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv2",
-        author: "user",
-        content: %{parts: [%{text: "Real message"}]}
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv2",
+          author: "user",
+          content: %{parts: [%{text: "Real message"}]}
+        })
+      )
 
       ctx = %ADK.Context{
         invocation_id: "inv3",
@@ -490,29 +513,38 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
           session_id: sid
         )
 
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv1",
-        author: "user",
-        content: %{parts: [%{text: "Call the tool"}]}
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv1",
+          author: "user",
+          content: %{parts: [%{text: "Call the tool"}]}
+        })
+      )
 
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv2",
-        author: "test_agent",
-        content: %{
-          role: :model,
-          parts: [%{function_call: %{name: "test_tool", args: %{"x" => 1}}}]
-        }
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv2",
+          author: "test_agent",
+          content: %{
+            role: :model,
+            parts: [%{function_call: %{name: "test_tool", args: %{"x" => 1}}}]
+          }
+        })
+      )
 
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv3",
-        author: "test_agent",
-        content: %{
-          role: :user,
-          parts: [%{function_response: %{name: "test_tool", response: %{result: 2}}}]
-        }
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv3",
+          author: "test_agent",
+          content: %{
+            role: :user,
+            parts: [%{function_response: %{name: "test_tool", response: %{result: 2}}}]
+          }
+        })
+      )
 
       ctx = %ADK.Context{
         invocation_id: "inv4",
@@ -552,16 +584,23 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
         )
 
       # Prior turn in session
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv1",
-        author: "user",
-        content: %{parts: [%{text: "Prior user message"}]}
-      }))
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv2",
-        author: "test_agent",
-        content: %{role: :model, parts: [%{text: "Prior agent response"}]}
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv1",
+          author: "user",
+          content: %{parts: [%{text: "Prior user message"}]}
+        })
+      )
+
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv2",
+          author: "test_agent",
+          content: %{role: :model, parts: [%{text: "Prior agent response"}]}
+        })
+      )
 
       # Current user input
       ctx = %ADK.Context{

@@ -74,16 +74,10 @@ defmodule ADK.Application do
 
         # DynamicSupervisor for session processes
         {DynamicSupervisor,
-         name: ADK.SessionSupervisor,
-         strategy: :one_for_one,
-         max_restarts: 10,
-         max_seconds: 5},
+         name: ADK.SessionSupervisor, strategy: :one_for_one, max_restarts: 10, max_seconds: 5},
 
         # Task.Supervisor for async runner executions
-        {Task.Supervisor,
-         name: ADK.RunnerSupervisor,
-         max_restarts: 20,
-         max_seconds: 10},
+        {Task.Supervisor, name: ADK.RunnerSupervisor, max_restarts: 20, max_seconds: 10},
 
         # ETS-backed debug span storage
         ADK.Telemetry.SpanStore,

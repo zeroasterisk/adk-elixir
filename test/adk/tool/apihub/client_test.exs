@@ -3,7 +3,7 @@ defmodule ADK.Tool.Apihub.ClientTest do
 
   @moduledoc """
   Parity tests for Python's `tests/unittests/tools/apihub_tool/clients/test_apihub_client.py`.
-  
+
   The `ADK.Tool.ApihubClient` module does not exist yet (parity gap).
   These tests outline the expected behavior once implemented.
   """

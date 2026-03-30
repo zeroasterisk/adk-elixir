@@ -1,4 +1,3 @@
-
 defmodule ADK.Phoenix.LiveSocket do
   @moduledoc """
   Handles the `run_live` WebSocket connection for the ADK.

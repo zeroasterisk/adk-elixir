@@ -63,7 +63,10 @@ defmodule ADK.Scenarios.SkillAgentTest do
       runner = make_runner(agent)
       sid = "skill-inst-#{System.unique_integer([:positive])}"
 
-      ADK.LLM.Mock.set_responses(["It's 18°C with 15km/h winds. Fun fact: rain smells good because of petrichor!"])
+      ADK.LLM.Mock.set_responses([
+        "It's 18°C with 15km/h winds. Fun fact: rain smells good because of petrichor!"
+      ])
+
       events = run_turn(runner, sid, "What's the weather like?")
       assert last_text(events) =~ "18°C"
 
@@ -107,7 +110,10 @@ defmodule ADK.Scenarios.SkillAgentTest do
       runner = make_runner(agent)
       sid = "multi-skill-#{System.unique_integer([:positive])}"
 
-      ADK.LLM.Mock.set_responses(["It's 25°C and sunny! Why did the sun go to school? To get a little brighter! ☀️"])
+      ADK.LLM.Mock.set_responses([
+        "It's 25°C and sunny! Why did the sun go to school? To get a little brighter! ☀️"
+      ])
+
       events = run_turn(runner, sid, "Weather please")
       assert last_text(events) =~ "25°C"
 

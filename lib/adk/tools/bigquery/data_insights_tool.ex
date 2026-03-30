@@ -57,7 +57,7 @@ defmodule ADK.Tool.BigQuery.DataInsightsTool do
       }
 
       max_rows = Map.get(settings || %{}, :max_query_result_rows, 50)
-      
+
       # Use dependency injection for get_stream, to mock either get_stream or stream_fn
       get_stream_fn = Keyword.get(opts, :get_stream_fn, &get_stream/5)
 
@@ -85,7 +85,7 @@ defmodule ADK.Tool.BigQuery.DataInsightsTool do
     # In Python, they mocked requests.post. Here we mock stream_fn or get_stream.
     stream_fn = Keyword.get(opts, :stream_fn, fn -> [] end)
     lines = stream_fn.()
-    
+
     process_stream_lines(lines, max_query_result_rows)
   end
 

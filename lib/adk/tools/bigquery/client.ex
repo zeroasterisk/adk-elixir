@@ -4,8 +4,6 @@ defmodule ADK.Tool.BigQuery.Client do
   Provides configuration and default user agents for BigQuery and Dataplex clients.
   """
 
-  
-
   @doc """
   Get the default base user agent.
   """
@@ -36,7 +34,7 @@ defmodule ADK.Tool.BigQuery.Client do
     # Default to GCP application default credentials strategy if none provided
     # For now, just nil or the passed credentials
     credentials = Keyword.get(opts, :credentials)
-    
+
     # In a full port, if project is nil, it fetches from auth/env. We'll simulate that logic
     project = project || System.get_env("GOOGLE_CLOUD_PROJECT")
 
@@ -70,6 +68,7 @@ defmodule ADK.Tool.BigQuery.Client do
 
   defp append_user_agents(agents, nil), do: agents
   defp append_user_agents(agents, custom) when is_binary(custom), do: agents ++ [custom]
+
   defp append_user_agents(agents, custom) when is_list(custom) do
     agents ++ Enum.reject(custom, &is_nil/1)
   end

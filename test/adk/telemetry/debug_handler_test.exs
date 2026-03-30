@@ -46,7 +46,12 @@ defmodule ADK.Telemetry.DebugHandlerTest do
     end
 
     test "llm stop event is captured" do
-      metadata = %{model: "gemini-flash-latest", agent_name: "llm_agent", session_id: "sess-debug-3"}
+      metadata = %{
+        model: "gemini-flash-latest",
+        agent_name: "llm_agent",
+        session_id: "sess-debug-3"
+      }
+
       measurements = %{duration: 100_000_000, monotonic_time: System.monotonic_time(:nanosecond)}
 
       :telemetry.execute([:adk, :llm, :stop], measurements, metadata)
@@ -82,7 +87,12 @@ defmodule ADK.Telemetry.DebugHandlerTest do
       base_meta = %{session_id: "sess-debug-5"}
       measurements = %{duration: 1_000_000, monotonic_time: System.monotonic_time(:nanosecond)}
 
-      :telemetry.execute([:adk, :agent, :stop], measurements, Map.put(base_meta, :agent_name, "a1"))
+      :telemetry.execute(
+        [:adk, :agent, :stop],
+        measurements,
+        Map.put(base_meta, :agent_name, "a1")
+      )
+
       :telemetry.execute([:adk, :tool, :stop], measurements, Map.put(base_meta, :tool_name, "t1"))
       :telemetry.execute([:adk, :llm, :stop], measurements, Map.put(base_meta, :model, "m1"))
 

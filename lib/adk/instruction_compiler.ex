@@ -217,7 +217,11 @@ defmodule ADK.InstructionCompiler do
 
   def resolve_provider(other, _ctx) do
     require Logger
-    Logger.warning("ADK.InstructionCompiler: unexpected instruction provider type: #{inspect(other)}")
+
+    Logger.warning(
+      "ADK.InstructionCompiler: unexpected instruction provider type: #{inspect(other)}"
+    )
+
     nil
   end
 
@@ -232,7 +236,11 @@ defmodule ADK.InstructionCompiler do
   rescue
     e ->
       require Logger
-      Logger.warning("ADK.InstructionCompiler: instruction provider raised: #{Exception.message(e)}")
+
+      Logger.warning(
+        "ADK.InstructionCompiler: instruction provider raised: #{Exception.message(e)}"
+      )
+
       ""
   end
 

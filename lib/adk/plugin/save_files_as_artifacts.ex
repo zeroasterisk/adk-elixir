@@ -45,11 +45,25 @@ defmodule ADK.Plugin.SaveFilesAsArtifacts do
           {acc_parts ++ [part], acc_delta}
 
         {filename, blob} ->
-          case mod.save(ctx.app_name || "default", ctx.user_id || "default", session_id, filename, blob, opts) do
+          case mod.save(
+                 ctx.app_name || "default",
+                 ctx.user_id || "default",
+                 session_id,
+                 filename,
+                 blob,
+                 opts
+               ) do
             {:ok, version} ->
               text_part = %{text: "[Uploaded Artifact: \"#{filename}\"]"}
               uri = "gs://mock-bucket/#{filename}/versions/#{version}"
-              file_part = %{file_data: %{file_uri: uri, display_name: filename, mime_type: blob[:content_type]}}
+
+              file_part = %{
+                file_data: %{
+                  file_uri: uri,
+                  display_name: filename,
+                  mime_type: blob[:content_type]
+                }
+              }
 
               {acc_parts ++ [text_part, file_part], Map.put(acc_delta, filename, version)}
 
@@ -61,10 +75,12 @@ defmodule ADK.Plugin.SaveFilesAsArtifacts do
   end
 
   defp extract_session_id(nil), do: "default_session"
+
   defp extract_session_id(pid) when is_pid(pid) do
     # For testing and simplicity, we'll just mock it or assume it is handled by the mock.
     "test_session"
   end
+
   defp extract_session_id(val), do: val
 
   defp extract_blob(ctx, %{inline_data: data}, index), do: do_extract_blob(ctx, data, index)
@@ -74,11 +90,13 @@ defmodule ADK.Plugin.SaveFilesAsArtifacts do
   defp do_extract_blob(ctx, data, index) do
     display_name = data[:display_name] || data["display_name"]
     filename = display_name || "artifact_#{ctx.invocation_id}_#{index}"
+
     blob = %{
       data: data[:data] || data["data"],
       content_type: data[:mime_type] || data["mime_type"],
       metadata: %{}
     }
+
     {filename, blob}
   end
 end

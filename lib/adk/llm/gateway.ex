@@ -174,23 +174,37 @@ defmodule ADK.LLM.Gateway do
             KeyPool.record_success(pool, key_idx)
             tokens = extract_tokens(response)
             KeyPool.record_usage(pool, key_idx, %{tokens: tokens})
+
             Stats.record_request(backend.id, key_idx, %{
-              latency_ms: latency, tokens_in: 0, tokens_out: tokens, status: :ok
+              latency_ms: latency,
+              tokens_in: 0,
+              tokens_out: tokens,
+              status: :ok
             })
+
             {:ok, response}
 
           {:error, :rate_limited} ->
             KeyPool.record_rate_limited(pool, key_idx)
+
             Stats.record_request(backend.id, key_idx, %{
-              latency_ms: latency, tokens_in: 0, tokens_out: 0, status: :rate_limited
+              latency_ms: latency,
+              tokens_in: 0,
+              tokens_out: 0,
+              status: :rate_limited
             })
+
             # Try next key in same pool, or fall through to next backend
             do_generate(rest, model, request, opts)
 
           {:error, _} ->
             Stats.record_request(backend.id, key_idx, %{
-              latency_ms: latency, tokens_in: 0, tokens_out: 0, status: :error
+              latency_ms: latency,
+              tokens_in: 0,
+              tokens_out: 0,
+              status: :error
             })
+
             # Try next backend
             do_generate(rest, model, request, opts)
         end

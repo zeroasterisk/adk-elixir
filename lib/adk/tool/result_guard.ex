@@ -49,7 +49,8 @@ defmodule ADK.Tool.ResultGuard do
       if original? do
         truncated <> "\n\n[TRUNCATED: result was #{size} bytes, showing first #{keep} bytes]"
       else
-        truncated <> "\n\n[TRUNCATED: result was #{size} bytes (serialized), showing first #{keep} bytes]"
+        truncated <>
+          "\n\n[TRUNCATED: result was #{size} bytes (serialized), showing first #{keep} bytes]"
       end
     end
   end

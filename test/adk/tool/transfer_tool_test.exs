@@ -74,19 +74,21 @@ defmodule ADK.Tool.TransferToolTest do
       "I am the helper sub-agent!"
     ])
 
-    sub = ADK.Agent.LlmAgent.new(
-      name: "helper",
-      model: "test",
-      instruction: "Help with questions.",
-      description: "A helpful sub-agent"
-    )
+    sub =
+      ADK.Agent.LlmAgent.new(
+        name: "helper",
+        model: "test",
+        instruction: "Help with questions.",
+        description: "A helpful sub-agent"
+      )
 
-    agent = ADK.Agent.LlmAgent.new(
-      name: "coordinator",
-      model: "test",
-      instruction: "Coordinate tasks.",
-      sub_agents: [sub]
-    )
+    agent =
+      ADK.Agent.LlmAgent.new(
+        name: "coordinator",
+        model: "test",
+        instruction: "Coordinate tasks.",
+        sub_agents: [sub]
+      )
 
     {:ok, session_pid} =
       ADK.Session.start_link(app_name: "test", user_id: "u1", session_id: "transfer-2")
@@ -108,21 +110,24 @@ defmodule ADK.Tool.TransferToolTest do
     assert ADK.Event.text(last) =~ "helper sub-agent"
 
     # Verify transfer event exists
-    transfer_event = Enum.find(events, fn e ->
-      e.actions && e.actions.transfer_to_agent == "helper"
-    end)
+    transfer_event =
+      Enum.find(events, fn e ->
+        e.actions && e.actions.transfer_to_agent == "helper"
+      end)
+
     assert transfer_event != nil
 
     GenServer.stop(session_pid)
   end
 
   test "compiled instruction includes transfer instructions" do
-    sub = ADK.Agent.LlmAgent.new(
-      name: "helper",
-      model: "test",
-      instruction: "Help.",
-      description: "Helps with things"
-    )
+    sub =
+      ADK.Agent.LlmAgent.new(
+        name: "helper",
+        model: "test",
+        instruction: "Help.",
+        description: "Helps with things"
+      )
 
     agent = %ADK.Agent.LlmAgent{
       name: "boss",

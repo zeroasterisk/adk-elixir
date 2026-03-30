@@ -141,11 +141,12 @@ defmodule ADK.Auth.ToolContextIntegrationTest do
     cred = Credential.api_key("sk-tool")
     :ok = service.put("my_tool", cred, [])
 
-    tool = ADK.Tool.FunctionTool.new(:my_tool,
-      description: "A tool",
-      func: fn _ctx, _args -> {:ok, "done"} end,
-      parameters: %{}
-    )
+    tool =
+      ADK.Tool.FunctionTool.new(:my_tool,
+        description: "A tool",
+        func: fn _ctx, _args -> {:ok, "done"} end,
+        parameters: %{}
+      )
 
     ctx = %ADK.Context{
       invocation_id: "inv-1",
@@ -153,6 +154,7 @@ defmodule ADK.Auth.ToolContextIntegrationTest do
       agent: nil,
       credential_service: service
     }
+
     tool_ctx = ADK.ToolContext.new(ctx, "fc-1", tool)
 
     assert {:ok, ^cred} = ADK.ToolContext.load_credential(tool_ctx, "my_tool")
@@ -161,11 +163,12 @@ defmodule ADK.Auth.ToolContextIntegrationTest do
   test "save_credential and load_credential roundtrip", %{credential_service: service} do
     cred = Credential.oauth2("tok-123")
 
-    tool = ADK.Tool.FunctionTool.new(:my_tool,
-      description: "A tool",
-      func: fn _ctx, _args -> {:ok, "done"} end,
-      parameters: %{}
-    )
+    tool =
+      ADK.Tool.FunctionTool.new(:my_tool,
+        description: "A tool",
+        func: fn _ctx, _args -> {:ok, "done"} end,
+        parameters: %{}
+      )
 
     ctx = %ADK.Context{
       invocation_id: "inv-1",
@@ -173,6 +176,7 @@ defmodule ADK.Auth.ToolContextIntegrationTest do
       agent: nil,
       credential_service: service
     }
+
     tool_ctx = ADK.ToolContext.new(ctx, "fc-1", tool)
 
     assert :ok = ADK.ToolContext.save_credential(tool_ctx, "custom_name", cred)
@@ -180,11 +184,12 @@ defmodule ADK.Auth.ToolContextIntegrationTest do
   end
 
   test "request_credential records auth config in actions" do
-    tool = ADK.Tool.FunctionTool.new(:test_tool,
-      description: "Test",
-      func: fn _ctx, _args -> {:ok, "ok"} end,
-      parameters: %{}
-    )
+    tool =
+      ADK.Tool.FunctionTool.new(:test_tool,
+        description: "Test",
+        func: fn _ctx, _args -> {:ok, "ok"} end,
+        parameters: %{}
+      )
 
     ctx = %ADK.Context{invocation_id: "inv-1", session_pid: nil, agent: nil}
     tool_ctx = ADK.ToolContext.new(ctx, "fc-1", tool)
@@ -195,11 +200,12 @@ defmodule ADK.Auth.ToolContextIntegrationTest do
   end
 
   test "load_credential returns error without service" do
-    tool = ADK.Tool.FunctionTool.new(:test_tool,
-      description: "Test",
-      func: fn _ctx, _args -> {:ok, "ok"} end,
-      parameters: %{}
-    )
+    tool =
+      ADK.Tool.FunctionTool.new(:test_tool,
+        description: "Test",
+        func: fn _ctx, _args -> {:ok, "ok"} end,
+        parameters: %{}
+      )
 
     ctx = %ADK.Context{invocation_id: "inv-1", session_pid: nil, agent: nil}
     tool_ctx = ADK.ToolContext.new(ctx, "fc-1", tool)

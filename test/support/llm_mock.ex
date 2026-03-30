@@ -58,7 +58,9 @@ defmodule ADK.LLM.TestHelper do
   @doc "Clean up the MockBackend agent."
   def cleanup_mock_backend do
     case Process.get(:adk_mock_backend_name) do
-      nil -> :ok
+      nil ->
+        :ok
+
       name ->
         try do
           ADK.LLM.MockBackend.stop(name)

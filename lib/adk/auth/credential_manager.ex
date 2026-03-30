@@ -97,7 +97,15 @@ defmodule ADK.Auth.CredentialManager do
     case store_mod.get(name, store_opts) do
       {:ok, stored_cred} ->
         # Have a stored credential — refresh if near-expiry
-        handle_stored_credential(name, stored_cred, raw_cred, opts, store_mod, store_opts, refresh_buffer)
+        handle_stored_credential(
+          name,
+          stored_cred,
+          raw_cred,
+          opts,
+          store_mod,
+          store_opts,
+          refresh_buffer
+        )
 
       :not_found ->
         # No stored credential — try to obtain one
@@ -108,7 +116,15 @@ defmodule ADK.Auth.CredentialManager do
     end
   end
 
-  defp handle_stored_credential(name, stored_cred, _raw_cred, opts, store_mod, store_opts, refresh_buffer) do
+  defp handle_stored_credential(
+         name,
+         stored_cred,
+         _raw_cred,
+         opts,
+         store_mod,
+         store_opts,
+         refresh_buffer
+       ) do
     if OAuth2.expires_soon?(stored_cred, refresh_buffer) and OAuth2.refreshable?(stored_cred) do
       http_opts = Keyword.get(opts, :http_opts, [])
 

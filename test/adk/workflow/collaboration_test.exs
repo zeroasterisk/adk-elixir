@@ -98,10 +98,11 @@ defmodule ADK.Workflow.CollaborationTest do
       assert output == "Draft article about AI"
 
       # Should have review events
-      review_events = Enum.filter(events, fn e ->
-        text = ADK.Event.text(e)
-        text != nil and String.contains?(text, "Review of")
-      end)
+      review_events =
+        Enum.filter(events, fn e ->
+          text = ADK.Event.text(e)
+          text != nil and String.contains?(text, "Review of")
+        end)
 
       assert length(review_events) == 2
     end

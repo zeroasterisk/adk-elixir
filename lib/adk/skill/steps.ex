@@ -159,7 +159,8 @@ defmodule ADK.Skill.Steps do
       undefined = Enum.find(step.depends_on, &(not MapSet.member?(names, &1)))
 
       if undefined do
-        {:halt, {:error, "Step #{inspect(step.name)} depends on undefined step: #{inspect(undefined)}"}}
+        {:halt,
+         {:error, "Step #{inspect(step.name)} depends on undefined step: #{inspect(undefined)}"}}
       else
         {:cont, :ok}
       end

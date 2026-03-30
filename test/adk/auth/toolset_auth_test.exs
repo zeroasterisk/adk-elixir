@@ -59,10 +59,11 @@ defmodule ADK.Auth.ToolsetAuthTest do
         credential_type: :oauth2,
         required: true,
         scopes: ["read"],
-        raw_credential: Credential.oauth2(nil,
-          client_id: "test_client_id",
-          client_secret: "test_client_secret"
-        )
+        raw_credential:
+          Credential.oauth2(nil,
+            client_id: "test_client_id",
+            client_secret: "test_client_secret"
+          )
       )
     end
 
@@ -86,10 +87,11 @@ defmodule ADK.Auth.ToolsetAuthTest do
         credential_type: :oauth2,
         required: true,
         scopes: ["write"],
-        raw_credential: Credential.oauth2(nil,
-          client_id: "test_client_id_2",
-          client_secret: "test_client_secret_2"
-        )
+        raw_credential:
+          Credential.oauth2(nil,
+            client_id: "test_client_id_2",
+            client_secret: "test_client_secret_2"
+          )
       )
     end
 
@@ -192,9 +194,7 @@ defmodule ADK.Auth.ToolsetAuthTest do
       agent = make_agent([OAuthToolset])
 
       {events, ended?} =
-        ToolsetAuth.resolve(ctx, agent,
-          credential_manager_mod: FakeCredentialManager
-        )
+        ToolsetAuth.resolve(ctx, agent, credential_manager_mod: FakeCredentialManager)
 
       # No auth request events — credential was resolved
       assert events == []
@@ -208,9 +208,7 @@ defmodule ADK.Auth.ToolsetAuthTest do
       agent = make_agent([OAuthToolset])
 
       {events, ended?} =
-        ToolsetAuth.resolve(ctx, agent,
-          credential_manager_mod: NeedsAuthCredentialManager
-        )
+        ToolsetAuth.resolve(ctx, agent, credential_manager_mod: NeedsAuthCredentialManager)
 
       assert length(events) == 1
       assert ended? == true
@@ -238,9 +236,7 @@ defmodule ADK.Auth.ToolsetAuthTest do
       agent = make_agent([OAuthToolset, OAuthToolset2])
 
       {events, ended?} =
-        ToolsetAuth.resolve(ctx, agent,
-          credential_manager_mod: NeedsAuthCredentialManager
-        )
+        ToolsetAuth.resolve(ctx, agent, credential_manager_mod: NeedsAuthCredentialManager)
 
       assert length(events) == 1
       assert ended? == true
@@ -268,9 +264,7 @@ defmodule ADK.Auth.ToolsetAuthTest do
       agent = make_agent([NoAuthToolset, OAuthToolset])
 
       {events, ended?} =
-        ToolsetAuth.resolve(ctx, agent,
-          credential_manager_mod: NeedsAuthCredentialManager
-        )
+        ToolsetAuth.resolve(ctx, agent, credential_manager_mod: NeedsAuthCredentialManager)
 
       assert length(events) == 1
       assert ended? == true

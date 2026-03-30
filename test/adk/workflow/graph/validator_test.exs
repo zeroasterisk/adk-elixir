@@ -27,6 +27,7 @@ defmodule ADK.Workflow.Graph.ValidatorTest do
         nodes: %{START: :START, a: :a, b: :b, orphan: :orphan, END: :END},
         edges: [{:START, :a}, {:a, :b}, {:b, :END}]
       }
+
       assert {:error, reasons} = Validator.validate(g)
       assert Enum.any?(reasons, &String.contains?(&1, "orphan"))
     end
@@ -36,6 +37,7 @@ defmodule ADK.Workflow.Graph.ValidatorTest do
         nodes: %{START: :START, a: :a, b: :b, END: :END},
         edges: [{:START, :a}, {:a, :b}, {:b, :a}, {:b, :END}]
       }
+
       assert {:error, reasons} = Validator.validate(g)
       assert Enum.any?(reasons, &String.contains?(&1, "cycle"))
     end
@@ -52,6 +54,7 @@ defmodule ADK.Workflow.Graph.ValidatorTest do
         nodes: %{START: :START, a: :a, b: :b, END: :END},
         edges: [{:START, :a}, {:a, :b}, {:b, :a}, {:a, :END}]
       }
+
       refute Validator.acyclic?(g)
     end
   end

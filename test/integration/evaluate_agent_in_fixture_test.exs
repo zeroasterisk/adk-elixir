@@ -14,6 +14,7 @@ defmodule ADK.Integration.EvaluateAgentInFixtureTest do
       # In a real-world scenario, we would have a mock LLM that returns canned responses
       # based on the eval file, and we would score the agent's response against those.
       text = ADK.Eval.Scorer.response_text(events)
+
       if text == "" do
         %{score: 1.0, pass: true, details: "Response is empty as expected."}
       else
@@ -34,9 +35,11 @@ defmodule ADK.Integration.EvaluateAgentInFixtureTest do
     @empty_scorer_agents
     |> Enum.flat_map(fn agent_name ->
       agent_dir = Path.join(fixture_dir, agent_name)
+
       if File.dir?(agent_dir) do
         # Compile the agent file
         agent_file = Path.join(agent_dir, "agent.ex")
+
         if File.exists?(agent_file) do
           Code.compile_file(agent_file)
         end
@@ -44,7 +47,9 @@ defmodule ADK.Integration.EvaluateAgentInFixtureTest do
         File.ls!(agent_dir)
         |> Enum.filter(&String.ends_with?(&1, "test.json"))
         |> Enum.map(fn filename ->
-          agent_module = Module.concat(["Elixir.ADK.Integration.Fixture", Macro.camelize(agent_name)])
+          agent_module =
+            Module.concat(["Elixir.ADK.Integration.Fixture", Macro.camelize(agent_name)])
+
           {agent_module, Path.join(agent_dir, filename)}
         end)
       else

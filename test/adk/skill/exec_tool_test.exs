@@ -32,7 +32,14 @@ defmodule ADK.Skill.ExecToolTest do
 
     test "creates FunctionTool from .py script" do
       dir = tmp_dir()
-      path = write_script(dir, "calc.py", "# description: Calculate\nimport sys\nprint(sum(map(int, sys.argv[1:])))")
+
+      path =
+        write_script(
+          dir,
+          "calc.py",
+          "# description: Calculate\nimport sys\nprint(sum(map(int, sys.argv[1:])))"
+        )
+
       tool = ExecTool.new(path)
 
       assert tool.name == "calc"

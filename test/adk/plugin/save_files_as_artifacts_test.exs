@@ -49,10 +49,14 @@ defmodule ADK.Plugin.SaveFilesAsArtifactsTest do
     ctx = %{context | user_content: user_content}
 
     assert {:cont, new_ctx, _state} = SaveFilesAsArtifacts.before_run(ctx, [])
-    
+
     assert new_ctx.user_content.parts |> length() == 2
-    assert Enum.at(new_ctx.user_content.parts, 0).text == "[Uploaded Artifact: \"test_document.pdf\"]"
-    assert Enum.at(new_ctx.user_content.parts, 1).file_data.file_uri == "gs://mock-bucket/test_document.pdf/versions/0"
+
+    assert Enum.at(new_ctx.user_content.parts, 0).text ==
+             "[Uploaded Artifact: \"test_document.pdf\"]"
+
+    assert Enum.at(new_ctx.user_content.parts, 1).file_data.file_uri ==
+             "gs://mock-bucket/test_document.pdf/versions/0"
   end
 
   test "test_save_files_without_display_name", %{context: context} do
@@ -65,28 +69,34 @@ defmodule ADK.Plugin.SaveFilesAsArtifactsTest do
     ctx = %{context | user_content: user_content}
 
     assert {:cont, new_ctx, _state} = SaveFilesAsArtifacts.before_run(ctx, [])
-    
+
     expected_filename = "artifact_test_invocation_123_0"
-    
+
     assert new_ctx.user_content.parts |> length() == 2
-    assert Enum.at(new_ctx.user_content.parts, 0).text == "[Uploaded Artifact: \"#{expected_filename}\"]"
-    assert Enum.at(new_ctx.user_content.parts, 1).file_data.file_uri == "gs://mock-bucket/#{expected_filename}/versions/0"
+
+    assert Enum.at(new_ctx.user_content.parts, 0).text ==
+             "[Uploaded Artifact: \"#{expected_filename}\"]"
+
+    assert Enum.at(new_ctx.user_content.parts, 1).file_data.file_uri ==
+             "gs://mock-bucket/#{expected_filename}/versions/0"
   end
 
   test "test_multiple_files_in_message", %{context: context} do
     inline_data1 = %{display_name: "file1.txt", data: "file1 content", mime_type: "text/plain"}
     inline_data2 = %{display_name: "file2.jpg", data: "file2 content", mime_type: "image/jpeg"}
 
-    user_content = %{parts: [
-      %{inline_data: inline_data1},
-      %{text: "Some text between files"},
-      %{inline_data: inline_data2}
-    ]}
-    
+    user_content = %{
+      parts: [
+        %{inline_data: inline_data1},
+        %{text: "Some text between files"},
+        %{inline_data: inline_data2}
+      ]
+    }
+
     ctx = %{context | user_content: user_content}
 
     assert {:cont, new_ctx, _state} = SaveFilesAsArtifacts.before_run(ctx, [])
-    
+
     assert new_ctx.user_content.parts |> length() == 5
     assert Enum.at(new_ctx.user_content.parts, 0).text == "[Uploaded Artifact: \"file1.txt\"]"
     assert Enum.at(new_ctx.user_content.parts, 2).text == "Some text between files"
@@ -96,11 +106,11 @@ defmodule ADK.Plugin.SaveFilesAsArtifactsTest do
   test "test_no_artifact_service", %{context: context} do
     inline_data = %{display_name: "test.pdf", data: "test data", mime_type: "application/pdf"}
     user_content = %{parts: [%{inline_data: inline_data}]}
-    
+
     ctx = %{context | user_content: user_content, artifact_service: nil}
 
     assert {:cont, new_ctx, _state} = SaveFilesAsArtifacts.before_run(ctx, [])
-    
+
     assert new_ctx.user_content == user_content
   end
 
@@ -123,7 +133,7 @@ defmodule ADK.Plugin.SaveFilesAsArtifactsTest do
   test "test_save_artifact_failure", %{context: context} do
     inline_data = %{display_name: "failure.pdf", data: "test data", mime_type: "application/pdf"}
     user_content = %{parts: [%{inline_data: inline_data}]}
-    
+
     ctx = %{context | user_content: user_content}
 
     assert {:cont, new_ctx, _state} = SaveFilesAsArtifacts.before_run(ctx, [])
@@ -138,7 +148,7 @@ defmodule ADK.Plugin.SaveFilesAsArtifactsTest do
     ctx = %{context | user_content: user_content}
 
     assert {:cont, new_ctx, _state} = SaveFilesAsArtifacts.before_run(ctx, [])
-    
+
     assert new_ctx.user_content.parts |> length() == 3
     assert Enum.at(new_ctx.user_content.parts, 0).text == "[Uploaded Artifact: \"success.pdf\"]"
     assert Enum.at(new_ctx.user_content.parts, 2).inline_data == inline_data2
@@ -150,7 +160,7 @@ defmodule ADK.Plugin.SaveFilesAsArtifactsTest do
     ctx = %{context | user_content: user_content}
 
     assert {:cont, new_ctx, _state} = SaveFilesAsArtifacts.before_run(ctx, [])
-    
+
     delta = Context.get_temp(new_ctx, :artifact_delta)
     assert delta == %{"blob.pdf" => 0}
   end

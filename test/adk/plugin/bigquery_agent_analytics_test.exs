@@ -99,7 +99,7 @@ defmodule ADK.Plugin.BigQueryAgentAnalyticsTest do
 
       [record] = MockClient.get_records()
       assert record.event_type == "LLM_REQUEST"
-      
+
       # Content should be JSON encoded
       assert record.content =~ "Hello"
       assert record.content =~ "gemini-1.5-pro"
@@ -133,7 +133,8 @@ defmodule ADK.Plugin.BigQueryAgentAnalyticsTest do
       setup_plugin()
       ctx = create_context()
 
-      {:ok, %{arg1: "value1"}} = BigQueryAgentAnalytics.before_tool(ctx, "my_tool", %{arg1: "value1"})
+      {:ok, %{arg1: "value1"}} =
+        BigQueryAgentAnalytics.before_tool(ctx, "my_tool", %{arg1: "value1"})
 
       [record] = MockClient.get_records()
       assert record.event_type == "TOOL_STARTING"
@@ -193,10 +194,10 @@ defmodule ADK.Plugin.BigQueryAgentAnalyticsTest do
     test "truncates large content" do
       setup_plugin(max_content_length: 50)
       ctx = create_context()
-      
+
       # 100 characters, exceeding the 50 limit
       large_arg = String.duplicate("A", 100)
-      
+
       BigQueryAgentAnalytics.before_tool(ctx, "long_tool", %{arg: large_arg})
 
       [record] = MockClient.get_records()
@@ -209,9 +210,9 @@ defmodule ADK.Plugin.BigQueryAgentAnalyticsTest do
     test "does not truncate short content" do
       setup_plugin(max_content_length: 500)
       ctx = create_context()
-      
+
       short_arg = "Short string"
-      
+
       BigQueryAgentAnalytics.before_tool(ctx, "short_tool", %{arg: short_arg})
 
       [record] = MockClient.get_records()
@@ -224,12 +225,12 @@ defmodule ADK.Plugin.BigQueryAgentAnalyticsTest do
     test "includes session metadata by default" do
       state = setup_plugin()
       ctx = create_context()
-      
+
       BigQueryAgentAnalytics.before_run(ctx, state)
 
       [record] = MockClient.get_records()
       attrs = Jason.decode!(record.attributes)
-      
+
       assert attrs["session_metadata"]["session_id"] == inspect(ctx.session_pid)
       assert attrs["session_metadata"]["app_name"] == "test-app"
     end
@@ -237,24 +238,24 @@ defmodule ADK.Plugin.BigQueryAgentAnalyticsTest do
     test "excludes session metadata if configured false" do
       state = setup_plugin(log_session_metadata: false)
       ctx = create_context()
-      
+
       BigQueryAgentAnalytics.before_run(ctx, state)
 
       [record] = MockClient.get_records()
       attrs = Jason.decode!(record.attributes)
-      
+
       refute Map.has_key?(attrs, "session_metadata")
     end
 
     test "includes custom tags" do
       state = setup_plugin(custom_tags: %{"env" => "test"})
       ctx = create_context()
-      
+
       BigQueryAgentAnalytics.before_run(ctx, state)
 
       [record] = MockClient.get_records()
       attrs = Jason.decode!(record.attributes)
-      
+
       assert attrs["custom_tags"]["env"] == "test"
     end
   end

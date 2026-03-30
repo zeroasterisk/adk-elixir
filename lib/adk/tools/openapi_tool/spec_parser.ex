@@ -2,7 +2,7 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
   @moduledoc """
   Parses an OpenAPI specification into a list of operations.
   """
-  
+
   alias ADK.Utils.Common
 
   defmodule OperationEndpoint do
@@ -10,11 +10,30 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
   end
 
   defmodule ApiParameter do
-    defstruct [:original_name, :param_location, :param_schema, description: "", py_name: "", type_value: nil, type_hint: nil, required: false]
+    defstruct [
+      :original_name,
+      :param_location,
+      :param_schema,
+      description: "",
+      py_name: "",
+      type_value: nil,
+      type_hint: nil,
+      required: false
+    ]
   end
 
   defmodule ParsedOperation do
-    defstruct [:name, :description, :endpoint, :operation, parameters: [], return_value: nil, auth_scheme: nil, auth_credential: nil, additional_context: %{}]
+    defstruct [
+      :name,
+      :description,
+      :endpoint,
+      :operation,
+      parameters: [],
+      return_value: nil,
+      auth_scheme: nil,
+      auth_credential: nil,
+      additional_context: %{}
+    ]
   end
 
   @valid_schema_types ~w(array boolean integer null number object string)
@@ -42,7 +61,8 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
     recursive_resolve(spec, spec, MapSet.new(), %{}) |> elem(0)
   end
 
-  defp recursive_resolve(%{"$ref" => ref_string} = obj, current_doc, seen_refs, resolved_cache) when is_binary(ref_string) do
+  defp recursive_resolve(%{"$ref" => ref_string} = obj, current_doc, seen_refs, resolved_cache)
+       when is_binary(ref_string) do
     if not String.starts_with?(ref_string, "#") do
       raise ArgumentError, "External references not supported: #{ref_string}"
     end
@@ -52,15 +72,18 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
       {Map.delete(obj, "$ref"), resolved_cache}
     else
       seen_refs = MapSet.put(seen_refs, ref_string)
-      
+
       if Map.has_key?(resolved_cache, ref_string) do
         {Map.get(resolved_cache, ref_string), resolved_cache}
       else
         resolved_value = resolve_ref_path(ref_string, current_doc)
+
         if is_nil(resolved_value) do
           {obj, resolved_cache}
         else
-          {resolved_value, new_cache} = recursive_resolve(resolved_value, current_doc, seen_refs, resolved_cache)
+          {resolved_value, new_cache} =
+            recursive_resolve(resolved_value, current_doc, seen_refs, resolved_cache)
+
           new_cache = Map.put(new_cache, ref_string, resolved_value)
           {resolved_value, new_cache}
         end
@@ -85,7 +108,9 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
   defp recursive_resolve(obj, _current_doc, _seen_refs, resolved_cache), do: {obj, resolved_cache}
 
   defp resolve_ref_path(ref_string, current_doc) do
-    parts = String.split(ref_string, "/") |> tl() # remove the "#"
+    # remove the "#"
+    parts = String.split(ref_string, "/") |> tl()
+
     Enum.reduce_while(parts, current_doc, fn part, acc ->
       if is_map(acc) and Map.has_key?(acc, part) do
         {:cont, Map.get(acc, part)}
@@ -105,7 +130,7 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
     obj = if in_schema, do: sanitize_type_field(obj), else: obj
 
     Map.new(obj, fn {k, v} ->
-      is_schema_key = in_schema or (k in @schema_container_keys)
+      is_schema_key = in_schema or k in @schema_container_keys
       {k, sanitize_recursive(v, is_schema_key)}
     end)
   end
@@ -118,6 +143,7 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
 
   defp sanitize_type_field(%{"type" => type_val} = dict) when is_binary(type_val) do
     normalized = String.downcase(type_val)
+
     if normalized in @valid_schema_types do
       Map.put(dict, "type", normalized)
     else
@@ -126,7 +152,7 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
   end
 
   defp sanitize_type_field(%{"type" => type_val} = dict) when is_list(type_val) do
-    valid_types = 
+    valid_types =
       type_val
       |> Enum.filter(&is_binary/1)
       |> Enum.map(&String.downcase/1)
@@ -146,11 +172,12 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
 
   defp collect_operations(spec, preserve_property_names) do
     base_url = get_base_url(spec)
-    
-    global_scheme_name = case get_in(spec, ["security"]) do
-      [first | _] when is_map(first) -> List.first(Map.keys(first))
-      _ -> nil
-    end
+
+    global_scheme_name =
+      case get_in(spec, ["security"]) do
+        [first | _] when is_map(first) -> List.first(Map.keys(first))
+        _ -> nil
+      end
 
     auth_schemes = get_in(spec, ["components", "securitySchemes"]) || %{}
 
@@ -159,25 +186,29 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
     Enum.flat_map(paths, fn {path, path_item} ->
       if is_map(path_item) do
         path_params = Map.get(path_item, "parameters", [])
-        
+
         ~w(get post put delete patch head options trace)
         |> Enum.map(fn method -> {method, Map.get(path_item, method)} end)
         |> Enum.filter(fn {_, op} -> is_map(op) end)
         |> Enum.map(fn {method, op_dict} ->
           op_dict = Map.update(op_dict, "parameters", path_params, &(&1 ++ path_params))
-          op_dict = if Map.has_key?(op_dict, "operationId") do
-            op_dict
-          else
-            Map.put(op_dict, "operationId", Common.to_snake_case("#{path}_#{method}"))
-          end
-          
+
+          op_dict =
+            if Map.has_key?(op_dict, "operationId") do
+              op_dict
+            else
+              Map.put(op_dict, "operationId", Common.to_snake_case("#{path}_#{method}"))
+            end
+
           url = %OperationEndpoint{base_url: base_url, path: path, method: method}
-          
+
           auth_scheme_name = get_op_auth_scheme_name(op_dict) || global_scheme_name
-          auth_scheme = if auth_scheme_name, do: Map.get(auth_schemes, auth_scheme_name), else: nil
-          
+
+          auth_scheme =
+            if auth_scheme_name, do: Map.get(auth_schemes, auth_scheme_name), else: nil
+
           {params, return_val} = parse_operation_params(op_dict, preserve_property_names)
-          
+
           description = Map.get(op_dict, "description") || Map.get(op_dict, "summary") || ""
           name = get_function_name(Map.get(op_dict, "operationId"))
 
@@ -220,28 +251,30 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
     |> Common.to_snake_case()
     |> String.slice(0, 60)
   end
+
   defp get_function_name(_), do: raise(ArgumentError, "Operation ID is missing")
 
   defp parse_operation_params(op_dict, preserve_property_names) do
     # 1. Process operation parameters
     raw_params = Map.get(op_dict, "parameters", [])
-    
-    params = Enum.map(raw_params, fn p ->
-      original_name = Map.get(p, "name", "")
-      description = Map.get(p, "description", "")
-      location = Map.get(p, "in", "")
-      schema = Map.get(p, "schema", %{})
-      required = Map.get(p, "required", false)
 
-      %ApiParameter{
-        original_name: original_name,
-        param_location: location,
-        param_schema: schema,
-        description: description,
-        required: required,
-        py_name: get_py_name(original_name, preserve_property_names)
-      }
-    end)
+    params =
+      Enum.map(raw_params, fn p ->
+        original_name = Map.get(p, "name", "")
+        description = Map.get(p, "description", "")
+        location = Map.get(p, "in", "")
+        schema = Map.get(p, "schema", %{})
+        required = Map.get(p, "required", false)
+
+        %ApiParameter{
+          original_name: original_name,
+          param_location: location,
+          param_schema: schema,
+          description: description,
+          required: required,
+          py_name: get_py_name(original_name, preserve_property_names)
+        }
+      end)
 
     # 2. Process request body
     body_params = process_request_body(Map.get(op_dict, "requestBody"), preserve_property_names)
@@ -257,22 +290,25 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
   end
 
   defp process_request_body(nil, _), do: []
+
   defp process_request_body(request_body, preserve_property_names) when is_map(request_body) do
     content = Map.get(request_body, "content", %{})
-    
+
     # Process first mime type only
     case Enum.at(content, 0) do
       {_, media_type_object} when is_map(media_type_object) ->
         schema = Map.get(media_type_object, "schema", %{})
         description = Map.get(request_body, "description", "")
-        
+
         type = Map.get(schema, "type")
-        
+
         cond do
           type == "object" ->
             properties = Map.get(schema, "properties", %{})
+
             Enum.map(properties, fn {prop_name, prop_details} ->
               prop_desc = Map.get(prop_details, "description", "")
+
               %ApiParameter{
                 original_name: prop_name,
                 param_location: "body",
@@ -281,7 +317,7 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
                 py_name: get_py_name(prop_name, preserve_property_names)
               }
             end)
-          
+
           type == "array" ->
             [
               %ApiParameter{
@@ -292,10 +328,15 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
                 py_name: "array"
               }
             ]
-            
+
           true ->
             # Default to "body" for oneOf/anyOf/allOf or empty type
-            param_name = if (Map.has_key?(schema, "oneOf") or Map.has_key?(schema, "anyOf") or Map.has_key?(schema, "allOf")) or (not Map.has_key?(schema, "type")), do: "body", else: ""
+            param_name =
+              if Map.has_key?(schema, "oneOf") or Map.has_key?(schema, "anyOf") or
+                   Map.has_key?(schema, "allOf") or not Map.has_key?(schema, "type"),
+                 do: "body",
+                 else: ""
+
             [
               %ApiParameter{
                 original_name: param_name,
@@ -306,25 +347,34 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
               }
             ]
         end
+
       _ ->
         []
     end
   end
+
   defp process_request_body(_, _), do: []
 
   defp dedupe_param_names(params) do
-    {deduped, _} = Enum.reduce(params, {[], %{}}, fn param, {acc, counts} ->
-      name = if param.py_name == "", do: param.original_name |> Common.to_snake_case(), else: param.py_name
-      name = if name == "", do: default_py_name(param.param_location), else: name
-      
-      {final_name, new_counts} = case Map.get(counts, name) do
-        nil -> {name, Map.put(counts, name, 1)}
-        count -> {"#{name}_#{count}", Map.put(counts, name, count + 1)}
-      end
-      
-      updated_param = %{param | py_name: final_name}
-      {acc ++ [updated_param], new_counts}
-    end)
+    {deduped, _} =
+      Enum.reduce(params, {[], %{}}, fn param, {acc, counts} ->
+        name =
+          if param.py_name == "",
+            do: param.original_name |> Common.to_snake_case(),
+            else: param.py_name
+
+        name = if name == "", do: default_py_name(param.param_location), else: name
+
+        {final_name, new_counts} =
+          case Map.get(counts, name) do
+            nil -> {name, Map.put(counts, name, 1)}
+            count -> {"#{name}_#{count}", Map.put(counts, name, count + 1)}
+          end
+
+        updated_param = %{param | py_name: final_name}
+        {acc ++ [updated_param], new_counts}
+      end)
+
     deduped
   end
 
@@ -341,18 +391,20 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
   defp process_return_value(responses) when is_map(responses) do
     # Find smallest 20x response
     valid_keys = Map.keys(responses) |> Enum.filter(&String.starts_with?(&1, "2"))
-    
+
     min_20x = if valid_keys != [], do: Enum.min(valid_keys), else: nil
-    
-    return_schema = if min_20x do
-      content = get_in(responses, [min_20x, "content"]) || %{}
-      case Enum.at(content, 0) do
-        {_, mime_details} when is_map(mime_details) -> Map.get(mime_details, "schema", %{})
-        _ -> %{}
+
+    return_schema =
+      if min_20x do
+        content = get_in(responses, [min_20x, "content"]) || %{}
+
+        case Enum.at(content, 0) do
+          {_, mime_details} when is_map(mime_details) -> Map.get(mime_details, "schema", %{})
+          _ -> %{}
+        end
+      else
+        %{}
       end
-    else
-      %{}
-    end
 
     %ApiParameter{
       original_name: "",
@@ -360,5 +412,7 @@ defmodule ADK.Tool.OpenApiTool.SpecParser do
       param_schema: return_schema
     }
   end
-  defp process_return_value(_), do: %ApiParameter{original_name: "", param_location: "", param_schema: %{}}
+
+  defp process_return_value(_),
+    do: %ApiParameter{original_name: "", param_location: "", param_schema: %{}}
 end

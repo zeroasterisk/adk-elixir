@@ -8,7 +8,7 @@ defmodule ADK.MCP.McpToolParityTest do
   - Invoking tool with correct arguments over MCP client
   - Returning success response text
   - Handling explicit error responses (`isError: true`)
-  
+
   Roadmap deviations (Omitted):
   - No LangChain, CrewAI, Apigee, Vertex AI Search Grounding, AudioCacheManager, Realtime streaming/VAD.
   - No `BaseAuthenticatedTool` features (OAuth2, API keys, basic auth) since
@@ -122,7 +122,7 @@ defmodule ADK.MCP.McpToolParityTest do
       tool = ToolAdapter.to_function_tool(client, mcp_def)
 
       ctx = ADK.ToolContext.new(%ADK.Context{app_name: "test"}, "call_123", tool)
-      
+
       # The tool delegates to ADK.MCP.Client.call_tool, which uses GenServer.call
       result = FunctionTool.run(tool, ctx, %{"param1" => "value1"})
 
@@ -134,7 +134,7 @@ defmodule ADK.MCP.McpToolParityTest do
       tool = ToolAdapter.to_function_tool(client, mcp_def)
 
       ctx = ADK.ToolContext.new(%ADK.Context{app_name: "test"}, "call_124", tool)
-      
+
       result = FunctionTool.run(tool, ctx, %{})
       assert {:ok, "plain text field instead of typed"} = result
     end
@@ -144,7 +144,7 @@ defmodule ADK.MCP.McpToolParityTest do
       tool = ToolAdapter.to_function_tool(client, mcp_def)
 
       ctx = ADK.ToolContext.new(%ADK.Context{app_name: "test"}, "call_125", tool)
-      
+
       result = FunctionTool.run(tool, ctx, %{})
 
       assert {:error, "an error occurred"} = result

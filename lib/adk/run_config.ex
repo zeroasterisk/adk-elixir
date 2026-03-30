@@ -41,25 +41,23 @@ defmodule ADK.RunConfig do
   # Mirrors Python's sys.maxsize (64-bit); values at or above this are rejected.
   @max_integer 9_223_372_036_854_775_807
 
-  defstruct [
-    streaming_mode: :none,
-    max_llm_calls: 500,
-    output_format: "text",
-    speech_config: nil,
-    generate_config: %{},
-    response_modalities: nil,
-    output_config: nil,
-    support_cfc: false,
-    custom_metadata: nil,
-    get_session_config: nil,
-    output_audio_transcription: %{},
-    input_audio_transcription: %{},
-    proactivity: nil,
-    session_resumption: nil,
-    enable_affective_dialog: nil,
-    realtime_input_config: nil,
-    context_window_compression: nil
-  ]
+  defstruct streaming_mode: :none,
+            max_llm_calls: 500,
+            output_format: "text",
+            speech_config: nil,
+            generate_config: %{},
+            response_modalities: nil,
+            output_config: nil,
+            support_cfc: false,
+            custom_metadata: nil,
+            get_session_config: nil,
+            output_audio_transcription: %{},
+            input_audio_transcription: %{},
+            proactivity: nil,
+            session_resumption: nil,
+            enable_affective_dialog: nil,
+            realtime_input_config: nil,
+            context_window_compression: nil
 
   @type streaming_mode :: :none | :sse | :live
 
@@ -153,7 +151,8 @@ defmodule ADK.RunConfig do
   end
 
   defp validate!(%__MODULE__{streaming_mode: mode}) when mode not in @valid_streaming_modes do
-    raise ArgumentError, "invalid streaming_mode: #{inspect(mode)}, must be one of #{inspect(@valid_streaming_modes)}"
+    raise ArgumentError,
+          "invalid streaming_mode: #{inspect(mode)}, must be one of #{inspect(@valid_streaming_modes)}"
   end
 
   defp validate!(%__MODULE__{max_llm_calls: max}) when not is_integer(max) do
@@ -173,12 +172,15 @@ defmodule ADK.RunConfig do
     )
   end
 
-  defp validate!(%__MODULE__{get_session_config: config}) when not is_nil(config) and not is_map(config) do
+  defp validate!(%__MODULE__{get_session_config: config})
+       when not is_nil(config) and not is_map(config) do
     raise ArgumentError, "get_session_config must be a map or nil, got: #{inspect(config)}"
   end
 
-  defp validate!(%__MODULE__{get_session_config: %{num_recent_events: num}}) when not is_nil(num) and (not is_integer(num) or num < 0) do
-    raise ArgumentError, "get_session_config.num_recent_events must be a non-negative integer or nil, got: #{inspect(num)}"
+  defp validate!(%__MODULE__{get_session_config: %{num_recent_events: num}})
+       when not is_nil(num) and (not is_integer(num) or num < 0) do
+    raise ArgumentError,
+          "get_session_config.num_recent_events must be a non-negative integer or nil, got: #{inspect(num)}"
   end
 
   defp validate!(_config), do: :ok

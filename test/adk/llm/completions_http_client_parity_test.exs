@@ -34,21 +34,26 @@ defmodule ADK.LLM.CompletionsHTTPClientParityTest do
 
   describe "construct payload" do
     test "basic payload" do
-      stub_openai(200, %{
-        "choices" => [
-          %{"message" => %{"role" => "assistant", "content" => "Hi"}}
-        ]
-      }, fn conn ->
-        {:ok, body, _conn} = Plug.Conn.read_body(conn)
-        decoded = Jason.decode!(body)
-        
-        assert conn.request_path == "/chat/completions"
-        assert decoded["model"] == "open_llama"
-        # stream is not explicitly sent as false in Elixir if not supported, but let's check basic fields
-        assert length(decoded["messages"]) == 1
-        assert hd(decoded["messages"])["role"] == "user"
-        assert hd(decoded["messages"])["content"] == "Hello"
-      end)
+      stub_openai(
+        200,
+        %{
+          "choices" => [
+            %{"message" => %{"role" => "assistant", "content" => "Hi"}}
+          ]
+        },
+        fn conn ->
+          {:ok, body, _conn} = Plug.Conn.read_body(conn)
+          decoded = Jason.decode!(body)
+
+          assert conn.request_path == "/chat/completions"
+          assert decoded["model"] == "open_llama"
+
+          # stream is not explicitly sent as false in Elixir if not supported, but let's check basic fields
+          assert length(decoded["messages"]) == 1
+          assert hd(decoded["messages"])["role"] == "user"
+          assert hd(decoded["messages"])["content"] == "Hello"
+        end
+      )
 
       request = %{
         messages: [%{role: :user, parts: [%{text: "Hello"}]}]
@@ -58,25 +63,29 @@ defmodule ADK.LLM.CompletionsHTTPClientParityTest do
     end
 
     test "with config" do
-      stub_openai(200, %{
-        "choices" => [
-          %{"message" => %{"role" => "assistant", "content" => "Hi"}}
-        ]
-      }, fn conn ->
-        {:ok, body, _conn} = Plug.Conn.read_body(conn)
-        payload = Jason.decode!(body)
+      stub_openai(
+        200,
+        %{
+          "choices" => [
+            %{"message" => %{"role" => "assistant", "content" => "Hi"}}
+          ]
+        },
+        fn conn ->
+          {:ok, body, _conn} = Plug.Conn.read_body(conn)
+          payload = Jason.decode!(body)
 
-        assert payload["temperature"] == 0.7
-        assert payload["top_p"] == 0.9
-        assert payload["max_tokens"] == 100
-        assert payload["stop"] == ["STOP"]
-        # frequency_penalty and presence_penalty and seed aren't mapped in OpenAI.ex currently
-        # assert payload["frequency_penalty"] == 0.5
-        # assert payload["presence_penalty"] == 0.5
-        # assert payload["seed"] == 42
-        assert payload["n"] == 2
-        assert payload["response_format"] == %{"type" => "json_object"}
-      end)
+          assert payload["temperature"] == 0.7
+          assert payload["top_p"] == 0.9
+          assert payload["max_tokens"] == 100
+          assert payload["stop"] == ["STOP"]
+          # frequency_penalty and presence_penalty and seed aren't mapped in OpenAI.ex currently
+          # assert payload["frequency_penalty"] == 0.5
+          # assert payload["presence_penalty"] == 0.5
+          # assert payload["seed"] == 42
+          assert payload["n"] == 2
+          assert payload["response_format"] == %{"type" => "json_object"}
+        end
+      )
 
       request = %{
         messages: [%{role: :user, parts: [%{text: "Hello"}]}],
@@ -97,17 +106,21 @@ defmodule ADK.LLM.CompletionsHTTPClientParityTest do
     end
 
     test "with tools" do
-      stub_openai(200, %{
-        "choices" => [
-          %{"message" => %{"role" => "assistant", "content" => "Hi"}}
-        ]
-      }, fn conn ->
-        {:ok, body, _conn} = Plug.Conn.read_body(conn)
-        payload = Jason.decode!(body)
+      stub_openai(
+        200,
+        %{
+          "choices" => [
+            %{"message" => %{"role" => "assistant", "content" => "Hi"}}
+          ]
+        },
+        fn conn ->
+          {:ok, body, _conn} = Plug.Conn.read_body(conn)
+          payload = Jason.decode!(body)
 
-        assert Map.has_key?(payload, "tools")
-        assert hd(payload["tools"])["function"]["name"] == "get_weather"
-      end)
+          assert Map.has_key?(payload, "tools")
+          assert hd(payload["tools"])["function"]["name"] == "get_weather"
+        end
+      )
 
       request = %{
         messages: [%{role: :user, parts: [%{text: "Hello"}]}],
@@ -127,19 +140,23 @@ defmodule ADK.LLM.CompletionsHTTPClientParityTest do
     end
 
     test "system instruction" do
-      stub_openai(200, %{
-        "choices" => [
-          %{"message" => %{"role" => "assistant", "content" => "Hi"}}
-        ]
-      }, fn conn ->
-        {:ok, body, _conn} = Plug.Conn.read_body(conn)
-        payload = Jason.decode!(body)
+      stub_openai(
+        200,
+        %{
+          "choices" => [
+            %{"message" => %{"role" => "assistant", "content" => "Hi"}}
+          ]
+        },
+        fn conn ->
+          {:ok, body, _conn} = Plug.Conn.read_body(conn)
+          payload = Jason.decode!(body)
 
-        messages = payload["messages"]
-        assert Enum.at(messages, 0)["role"] == "system"
-        assert Enum.at(messages, 0)["content"] == "You are a helpful assistant."
-        assert Enum.at(messages, 1)["role"] == "user"
-      end)
+          messages = payload["messages"]
+          assert Enum.at(messages, 0)["role"] == "system"
+          assert Enum.at(messages, 0)["content"] == "You are a helpful assistant."
+          assert Enum.at(messages, 1)["role"] == "user"
+        end
+      )
 
       request = %{
         instruction: "You are a helpful assistant.",
@@ -188,7 +205,7 @@ defmodule ADK.LLM.CompletionsHTTPClientParityTest do
       }
 
       assert {:ok, response} = OpenAI.generate("open_llama", request)
-      
+
       part = hd(response.content.parts)
       assert part.function_call
       assert part.function_call.name == "get_weather"
@@ -220,7 +237,11 @@ defmodule ADK.LLM.CompletionsHTTPClientParityTest do
         ]
       })
 
-      assert {:ok, response} = OpenAI.generate("open_llama", %{messages: [%{role: :user, parts: [%{text: "Hello"}]}]})
+      assert {:ok, response} =
+               OpenAI.generate("open_llama", %{
+                 messages: [%{role: :user, parts: [%{text: "Hello"}]}]
+               })
+
       assert [%{function_call: %{id: "call_123", name: nil, args: %{}}}] = response.content.parts
     end
 
@@ -242,29 +263,37 @@ defmodule ADK.LLM.CompletionsHTTPClientParityTest do
         ]
       })
 
-      assert {:ok, response} = OpenAI.generate("open_llama", %{messages: [%{role: :user, parts: [%{text: "Hello"}]}]})
+      assert {:ok, response} =
+               OpenAI.generate("open_llama", %{
+                 messages: [%{role: :user, parts: [%{text: "Hello"}]}]
+               })
+
       assert response.content.parts == [%{text: ""}]
     end
   end
 
   describe "response format" do
     test "only response_json_schema is provided" do
-      stub_openai(200, %{
-        "choices" => [
-          %{"message" => %{"role" => "assistant", "content" => "{}"}}
-        ]
-      }, fn conn ->
-        {:ok, body, _conn} = Plug.Conn.read_body(conn)
-        payload = Jason.decode!(body)
+      stub_openai(
+        200,
+        %{
+          "choices" => [
+            %{"message" => %{"role" => "assistant", "content" => "{}"}}
+          ]
+        },
+        fn conn ->
+          {:ok, body, _conn} = Plug.Conn.read_body(conn)
+          payload = Jason.decode!(body)
 
-        assert payload["response_format"] == %{
-          "type" => "json_schema",
-          "json_schema" => %{
-            "type" => "object",
-            "properties" => %{"name" => %{"type" => "string"}}
-          }
-        }
-      end)
+          assert payload["response_format"] == %{
+                   "type" => "json_schema",
+                   "json_schema" => %{
+                     "type" => "object",
+                     "properties" => %{"name" => %{"type" => "string"}}
+                   }
+                 }
+        end
+      )
 
       # In Elixir, we must explicitly set response_mime_type to "application/json" to trigger the json_schema logic
       request = %{

@@ -113,7 +113,10 @@ defmodule ADK.Flows.LlmFlows.BasicProcessorParityTest do
           name: "test_agent",
           model: "gemini-1.5-flash",
           instruction: "Answer.",
-          output_schema: %{type: "object", properties: %{name: %{type: "string"}, value: %{type: "integer"}}},
+          output_schema: %{
+            type: "object",
+            properties: %{name: %{type: "string"}, value: %{type: "integer"}}
+          },
           tools: []
         )
 
@@ -231,7 +234,9 @@ defmodule ADK.Flows.LlmFlows.BasicProcessorParityTest do
     end
 
     test "sub-agent transfer tools are auto-generated" do
-      sub = LlmAgent.new(name: "helper", model: "test", instruction: "Assist", description: "Helps")
+      sub =
+        LlmAgent.new(name: "helper", model: "test", instruction: "Assist", description: "Helps")
+
       agent = LlmAgent.new(name: "root", model: "test", instruction: "Route", sub_agents: [sub])
 
       ctx = make_ctx()
@@ -349,7 +354,9 @@ defmodule ADK.Flows.LlmFlows.BasicProcessorParityTest do
         )
 
       runner = ADK.Runner.new(app_name: "bp_test", agent: agent)
-      events = ADK.Runner.run(runner, "user1", "sess-bp-#{System.unique_integer([:positive])}", "hi")
+
+      events =
+        ADK.Runner.run(runner, "user1", "sess-bp-#{System.unique_integer([:positive])}", "hi")
 
       # Should have produced at least one model event
       model_events = Enum.filter(events, &(&1.author == "test_agent"))

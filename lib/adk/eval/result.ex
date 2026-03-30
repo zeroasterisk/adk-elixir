@@ -4,7 +4,9 @@ defmodule ADK.Eval.Result do
   @type t :: %__MODULE__{
           case_name: String.t(),
           pass: boolean(),
-          scores: [%{scorer: module(), score: float(), pass: boolean(), details: String.t() | nil}],
+          scores: [
+            %{scorer: module(), score: float(), pass: boolean(), details: String.t() | nil}
+          ],
           aggregate_score: float(),
           events: [ADK.Event.t()],
           duration_ms: non_neg_integer()

@@ -35,7 +35,15 @@ defmodule ADK.Workflow.Checkpoint.EtsStore do
   @impl GenServer
   @spec init(:ok) :: {:ok, %{table: :ets.table()}}
   def init(:ok) do
-    table = :ets.new(@table_name, [:named_table, :public, :set, {:write_concurrency, true}, {:read_concurrency, true}])
+    table =
+      :ets.new(@table_name, [
+        :named_table,
+        :public,
+        :set,
+        {:write_concurrency, true},
+        {:read_concurrency, true}
+      ])
+
     {:ok, %{table: table}}
   end
 
@@ -127,7 +135,13 @@ defmodule ADK.Workflow.Checkpoint.EtsStore do
 
   defp ensure_raw_table do
     try do
-      :ets.new(@table_name, [:named_table, :public, :set, {:write_concurrency, true}, {:read_concurrency, true}])
+      :ets.new(@table_name, [
+        :named_table,
+        :public,
+        :set,
+        {:write_concurrency, true},
+        {:read_concurrency, true}
+      ])
     rescue
       ArgumentError -> :ok
     end

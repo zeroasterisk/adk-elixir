@@ -80,9 +80,9 @@ defmodule ADK.Models.GeminiContextCacheManagerTest do
 
     expire_time =
       if expired do
-        (now - 300) + 0.0
+        now - 300 + 0.0
       else
-        (now + 1800) + 0.0
+        now + 1800 + 0.0
       end
 
     CacheMetadata.new(
@@ -91,7 +91,7 @@ defmodule ADK.Models.GeminiContextCacheManagerTest do
       fingerprint: "test_fingerprint",
       invocations_used: invocations_used,
       contents_count: contents_count,
-      created_at: (now - 600) + 0.0
+      created_at: now - 600 + 0.0
     )
   end
 
@@ -156,7 +156,11 @@ defmodule ADK.Models.GeminiContextCacheManagerTest do
       # Set the fingerprint to match current state
       correct_fp = Manager.generate_cache_fingerprint(req, existing.contents_count)
       existing = %{existing | fingerprint: correct_fp}
-      req = req |> Map.put(:cache_metadata, existing) |> Map.put(:cacheable_contents_token_count, 2048)
+
+      req =
+        req
+        |> Map.put(:cache_metadata, existing)
+        |> Map.put(:cacheable_contents_token_count, 2048)
 
       result = Manager.handle_context_caching(m, req)
 

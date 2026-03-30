@@ -25,7 +25,8 @@ defmodule ADK.Auth.CredentialStore do
   @type name :: String.t()
 
   @doc "Retrieve a credential by name."
-  @callback get(name(), keyword()) :: {:ok, ADK.Auth.Credential.t()} | :not_found | {:error, term()}
+  @callback get(name(), keyword()) ::
+              {:ok, ADK.Auth.Credential.t()} | :not_found | {:error, term()}
 
   @doc "Store a credential under a name."
   @callback put(name(), ADK.Auth.Credential.t(), keyword()) :: :ok | {:error, term()}

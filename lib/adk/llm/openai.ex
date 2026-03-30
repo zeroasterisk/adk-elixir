@@ -94,8 +94,12 @@ defmodule ADK.LLM.OpenAI do
 
     # Apply generate_config
     case Map.get(request, :generate_config) do
-      nil -> body
-      config when config == %{} -> body
+      nil ->
+        body
+
+      config when config == %{} ->
+        body
+
       config ->
         body
         |> put_if(:temperature, config[:temperature])
@@ -117,7 +121,9 @@ defmodule ADK.LLM.OpenAI do
           nil -> %{type: "json_object"}
           schema -> %{type: "json_schema", json_schema: schema}
         end
-      _ -> nil
+
+      _ ->
+        nil
     end
   end
 
@@ -176,10 +182,13 @@ defmodule ADK.LLM.OpenAI do
     if calls != [] do
       {:function_calls, calls}
     else
-      text = parts |> Enum.map_join("", fn
-        %{text: t} -> t
-        _ -> ""
-      end)
+      text =
+        parts
+        |> Enum.map_join("", fn
+          %{text: t} -> t
+          _ -> ""
+        end)
+
       {:text, text}
     end
   end

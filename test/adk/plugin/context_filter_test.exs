@@ -1,6 +1,6 @@
 defmodule ADK.Plugin.ContextFilterTest do
   use ExUnit.Case, async: true
-  
+
   alias ADK.Plugin.ContextFilter
   alias ADK.Models.LlmRequest
 
@@ -37,8 +37,9 @@ defmodule ADK.Plugin.ContextFilterTest do
         create_content("user", "user_prompt_2"),
         create_content("model", "model_response_2")
       ]
+
       req = %LlmRequest{contents: contents}
-      
+
       {:ok, updated_req} = ContextFilter.before_model(%{}, req)
 
       assert length(updated_req.contents) == 2
@@ -60,6 +61,7 @@ defmodule ADK.Plugin.ContextFilterTest do
         create_content("user", "user_prompt_2"),
         create_content("model", "model_response_2")
       ]
+
       req = %LlmRequest{contents: contents}
 
       {:ok, updated_req} = ContextFilter.before_model(%{}, req)
@@ -82,6 +84,7 @@ defmodule ADK.Plugin.ContextFilterTest do
         create_content("user", "user_prompt_3"),
         create_content("model", "model_response_3")
       ]
+
       req = %LlmRequest{contents: contents}
 
       {:ok, updated_req} = ContextFilter.before_model(%{}, req)
@@ -97,6 +100,7 @@ defmodule ADK.Plugin.ContextFilterTest do
         create_content("user", "user_prompt_1"),
         create_content("model", "model_response_1")
       ]
+
       req = %LlmRequest{contents: contents}
 
       {:ok, updated_req} = ContextFilter.before_model(%{}, req)
@@ -115,6 +119,7 @@ defmodule ADK.Plugin.ContextFilterTest do
         create_content("user", "user_prompt_2b"),
         create_content("model", "model_response_2")
       ]
+
       req = %LlmRequest{contents: contents}
 
       {:ok, updated_req} = ContextFilter.before_model(%{}, req)
@@ -134,6 +139,7 @@ defmodule ADK.Plugin.ContextFilterTest do
         create_content("user", "user_prompt_2"),
         create_content("model", "model_response_2")
       ]
+
       req = %LlmRequest{contents: contents}
 
       {:ok, updated_req} = ContextFilter.before_model(%{}, req)
@@ -151,6 +157,7 @@ defmodule ADK.Plugin.ContextFilterTest do
         create_content("user", "user_prompt_1"),
         create_content("model", "model_response_1")
       ]
+
       req = %LlmRequest{contents: contents}
 
       {:ok, updated_req} = ContextFilter.before_model(%{}, req)
@@ -173,25 +180,28 @@ defmodule ADK.Plugin.ContextFilterTest do
         create_function_call_content("knowledge_base", "call_2"),
         create_function_response_content("knowledge_base", "call_2")
       ]
+
       req = %LlmRequest{contents: contents}
 
       {:ok, updated_req} = ContextFilter.before_model(%{}, req)
 
-      call_ids = MapSet.new(
-        for content <- updated_req.contents,
-            part <- Map.get(content, :parts, []),
-            Map.has_key?(part, :function_call) do
-          part.function_call.id
-        end
-      )
+      call_ids =
+        MapSet.new(
+          for content <- updated_req.contents,
+              part <- Map.get(content, :parts, []),
+              Map.has_key?(part, :function_call) do
+            part.function_call.id
+          end
+        )
 
-      response_ids = MapSet.new(
-        for content <- updated_req.contents,
-            part <- Map.get(content, :parts, []),
-            Map.has_key?(part, :function_response) do
-          part.function_response.id
-        end
-      )
+      response_ids =
+        MapSet.new(
+          for content <- updated_req.contents,
+              part <- Map.get(content, :parts, []),
+              Map.has_key?(part, :function_response) do
+            part.function_response.id
+          end
+        )
 
       assert MapSet.subset?(response_ids, call_ids)
     end
@@ -210,25 +220,28 @@ defmodule ADK.Plugin.ContextFilterTest do
         create_function_response_content("tool_b", "call_b"),
         create_content("model", "Done with tasks")
       ]
+
       req = %LlmRequest{contents: contents}
 
       {:ok, updated_req} = ContextFilter.before_model(%{}, req)
 
-      call_ids = MapSet.new(
-        for content <- updated_req.contents,
-            part <- Map.get(content, :parts, []),
-            Map.has_key?(part, :function_call) do
-          part.function_call.id
-        end
-      )
+      call_ids =
+        MapSet.new(
+          for content <- updated_req.contents,
+              part <- Map.get(content, :parts, []),
+              Map.has_key?(part, :function_call) do
+            part.function_call.id
+          end
+        )
 
-      response_ids = MapSet.new(
-        for content <- updated_req.contents,
-            part <- Map.get(content, :parts, []),
-            Map.has_key?(part, :function_response) do
-          part.function_response.id
-        end
-      )
+      response_ids =
+        MapSet.new(
+          for content <- updated_req.contents,
+              part <- Map.get(content, :parts, []),
+              Map.has_key?(part, :function_response) do
+            part.function_response.id
+          end
+        )
 
       texts =
         for content <- updated_req.contents,
@@ -257,6 +270,7 @@ defmodule ADK.Plugin.ContextFilterTest do
         create_function_response_content("get_weather", "call_1"),
         create_content("model", "final_answer_2")
       ]
+
       req = %LlmRequest{contents: contents}
 
       {:ok, updated_req} = ContextFilter.before_model(%{}, req)

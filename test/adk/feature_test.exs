@@ -76,9 +76,12 @@ defmodule ADK.FeatureTest do
 
     test "mixed known and unknown" do
       import ExUnit.CaptureLog
-      log = capture_log(fn ->
-        {:ok, 1} = Feature.apply_overrides("JSON_SCHEMA_FOR_FUNC_DECL,FAKE_ONE")
-      end)
+
+      log =
+        capture_log(fn ->
+          {:ok, 1} = Feature.apply_overrides("JSON_SCHEMA_FOR_FUNC_DECL,FAKE_ONE")
+        end)
+
       assert Feature.enabled?(:json_schema_for_func_decl)
       assert log =~ "FAKE_ONE"
     end

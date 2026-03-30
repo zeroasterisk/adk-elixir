@@ -45,7 +45,9 @@ defmodule ADK.Context.Compressor.Summarize do
       if length(non_system_msgs) <= keep_recent do
         {:ok, messages}
       else
-        {old_msgs, recent_msgs} = Enum.split(non_system_msgs, length(non_system_msgs) - keep_recent)
+        {old_msgs, recent_msgs} =
+          Enum.split(non_system_msgs, length(non_system_msgs) - keep_recent)
+
         do_summarize(system_msgs, old_msgs, recent_msgs, model, opts)
       end
     end
@@ -59,10 +61,13 @@ defmodule ADK.Context.Compressor.Summarize do
       old_msgs
       |> Enum.map(fn msg ->
         role = to_string(msg.role)
-        parts_text = Enum.map_join(msg.parts, "\n", fn
-          %{text: t} -> t
-          other -> inspect(other)
-        end)
+
+        parts_text =
+          Enum.map_join(msg.parts, "\n", fn
+            %{text: t} -> t
+            other -> inspect(other)
+          end)
+
         "#{role}: #{parts_text}"
       end)
       |> Enum.join("\n")

@@ -29,6 +29,7 @@ defmodule ADK.Plugin.DebugLogging do
   @impl true
   def before_run(context, state) do
     invocation_id = context.invocation_id || "unknown"
+
     session_id =
       if context.session_pid do
         case ADK.Session.get(context.session_pid) do
@@ -83,6 +84,7 @@ defmodule ADK.Plugin.DebugLogging do
                   end
               }
             }
+
             entries ++ [session_entry]
           else
             entries
@@ -116,7 +118,7 @@ defmodule ADK.Plugin.DebugLogging do
       pdict_state ->
         system_instruction = Map.get(request, :system_instruction, "") || ""
         system_instruction = if is_binary(system_instruction), do: system_instruction, else: ""
-        
+
         config_data =
           if pdict_state.config.include_system_instruction do
             %{
@@ -139,7 +141,10 @@ defmodule ADK.Plugin.DebugLogging do
           }
         }
 
-        Process.put({@pdict_key, invocation_id}, %{pdict_state | entries: [entry | pdict_state.entries]})
+        Process.put({@pdict_key, invocation_id}, %{
+          pdict_state
+          | entries: [entry | pdict_state.entries]
+        })
 
         {:ok, request}
     end
@@ -173,7 +178,10 @@ defmodule ADK.Plugin.DebugLogging do
           }
         }
 
-        Process.put({@pdict_key, invocation_id}, %{pdict_state | entries: [entry | pdict_state.entries]})
+        Process.put({@pdict_key, invocation_id}, %{
+          pdict_state
+          | entries: [entry | pdict_state.entries]
+        })
 
         response
     end
@@ -197,7 +205,10 @@ defmodule ADK.Plugin.DebugLogging do
           }
         }
 
-        Process.put({@pdict_key, invocation_id}, %{pdict_state | entries: [entry | pdict_state.entries]})
+        Process.put({@pdict_key, invocation_id}, %{
+          pdict_state
+          | entries: [entry | pdict_state.entries]
+        })
 
         {:ok, args}
     end
@@ -226,7 +237,10 @@ defmodule ADK.Plugin.DebugLogging do
           }
         }
 
-        Process.put({@pdict_key, invocation_id}, %{pdict_state | entries: [entry | pdict_state.entries]})
+        Process.put({@pdict_key, invocation_id}, %{
+          pdict_state
+          | entries: [entry | pdict_state.entries]
+        })
 
         result
     end
@@ -242,7 +256,7 @@ defmodule ADK.Plugin.DebugLogging do
 
       pdict_state ->
         error_type = if is_exception(error), do: inspect(error.__struct__), else: "Error"
-        
+
         entry = %{
           "entry_type" => "llm_error",
           "timestamp" => DateTime.to_iso8601(DateTime.utc_now()),
@@ -252,7 +266,10 @@ defmodule ADK.Plugin.DebugLogging do
           }
         }
 
-        Process.put({@pdict_key, invocation_id}, %{pdict_state | entries: [entry | pdict_state.entries]})
+        Process.put({@pdict_key, invocation_id}, %{
+          pdict_state
+          | entries: [entry | pdict_state.entries]
+        })
 
         err_tuple
     end
@@ -279,7 +296,10 @@ defmodule ADK.Plugin.DebugLogging do
           }
         }
 
-        Process.put({@pdict_key, invocation_id}, %{pdict_state | entries: [entry | pdict_state.entries]})
+        Process.put({@pdict_key, invocation_id}, %{
+          pdict_state
+          | entries: [entry | pdict_state.entries]
+        })
 
         err_tuple
     end
@@ -294,12 +314,13 @@ defmodule ADK.Plugin.DebugLogging do
         :ok
 
       pdict_state ->
-        content_text = if Map.has_key?(event, :content) and is_map(event.content) do
-          Map.get(event.content, :text, "")
-        else
-          ""
-        end
-        
+        content_text =
+          if Map.has_key?(event, :content) and is_map(event.content) do
+            Map.get(event.content, :text, "")
+          else
+            ""
+          end
+
         entry =
           case event.author do
             "user" ->
@@ -325,7 +346,10 @@ defmodule ADK.Plugin.DebugLogging do
               }
           end
 
-        Process.put({@pdict_key, invocation_id}, %{pdict_state | entries: [entry | pdict_state.entries]})
+        Process.put({@pdict_key, invocation_id}, %{
+          pdict_state
+          | entries: [entry | pdict_state.entries]
+        })
 
         :ok
     end

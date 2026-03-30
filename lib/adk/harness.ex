@@ -43,7 +43,13 @@ defmodule ADK.Harness do
           steps: non_neg_integer(),
           tokens: %{input: non_neg_integer(), output: non_neg_integer()},
           duration_ms: non_neg_integer(),
-          status: :ok | :budget_exhausted | :timeout | :guardrail_blocked | :max_steps | :feedback_rejected
+          status:
+            :ok
+            | :budget_exhausted
+            | :timeout
+            | :guardrail_blocked
+            | :max_steps
+            | :feedback_rejected
         }
 
   @doc """
@@ -200,25 +206,25 @@ defmodule ADK.Harness do
     if not Feedback.retries_remaining?(fb, attempt) do
       {:ok, "", [], :feedback_rejected}
     else
-    # Check budget before retrying
-    case Budget.check(budget_pid) do
-      {:exceeded, _} ->
-        {:ok, "", [], :budget_exhausted}
+      # Check budget before retrying
+      case Budget.check(budget_pid) do
+        {:exceeded, _} ->
+          {:ok, "", [], :budget_exhausted}
 
-      :ok ->
-        retry_msg = Feedback.retry_message(fb, reason, attempt)
-        config = Config.from_opts(Keyword.put(opts, :feedback, nil))
-        result = execute_loop(agent, retry_msg, config, budget_pid, opts)
-        output = extract_output(result)
+        :ok ->
+          retry_msg = Feedback.retry_message(fb, reason, attempt)
+          config = Config.from_opts(Keyword.put(opts, :feedback, nil))
+          result = execute_loop(agent, retry_msg, config, budget_pid, opts)
+          output = extract_output(result)
 
-        case Feedback.verify(fb, output) do
-          :ok ->
-            {:ok, output, elem(result, 1), :ok}
+          case Feedback.verify(fb, output) do
+            :ok ->
+              {:ok, output, elem(result, 1), :ok}
 
-          {:reject, new_reason} ->
-            retry_feedback(output, result, agent, fb, budget_pid, opts, new_reason, attempt + 1)
-        end
-    end
+            {:reject, new_reason} ->
+              retry_feedback(output, result, agent, fb, budget_pid, opts, new_reason, attempt + 1)
+          end
+      end
     end
   end
 end

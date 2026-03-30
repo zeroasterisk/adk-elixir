@@ -42,8 +42,8 @@ if Code.ensure_loaded?(Phoenix.Component) do
     - `agent` (required) — The root agent struct
     - `active_agent` (optional) — Name of the currently active agent (string)
     """
-    attr :agent, :any, required: true
-    attr :active_agent, :string, default: nil
+    attr(:agent, :any, required: true)
+    attr(:active_agent, :string, default: nil)
 
     def flow_graph(assigns) do
       ~H"""
@@ -55,9 +55,9 @@ if Code.ensure_loaded?(Phoenix.Component) do
 
     # ── Agent Node Dispatch ─────────────────────────────────────────────
 
-    attr :agent, :any, required: true
-    attr :active_agent, :string, default: nil
-    attr :depth, :integer, default: 0
+    attr(:agent, :any, required: true)
+    attr(:active_agent, :string, default: nil)
+    attr(:depth, :integer, default: 0)
 
     def agent_node(assigns) do
       ~H"""
@@ -317,12 +317,14 @@ if Code.ensure_loaded?(Phoenix.Component) do
 
     defp node_header_style(type) do
       bg = type_header_bg(type)
+
       "padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); " <>
         "background: #{bg}; border-radius: 8px 8px 0 0; display: flex; align-items: center; gap: 8px;"
     end
 
     defp container_header_style(type) do
       bg = type_header_bg(type)
+
       "padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.1); " <>
         "background: #{bg}; border-radius: 10px 10px 0 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;"
     end
@@ -333,6 +335,7 @@ if Code.ensure_loaded?(Phoenix.Component) do
 
     defp badge_style(type) do
       bg = type_badge_bg(type)
+
       "background: #{bg}; color: white; font-size: 0.65rem; font-weight: 700; " <>
         "padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em;"
     end

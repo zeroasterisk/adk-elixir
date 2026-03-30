@@ -123,7 +123,8 @@ defmodule ADK.SupervisionTest do
 
   describe "credential store" do
     test "supervised credential store works" do
-      :ok = ADK.Auth.InMemoryStore.put("test_key", %{token: "abc"}, server: ADK.Auth.InMemoryStore)
+      :ok =
+        ADK.Auth.InMemoryStore.put("test_key", %{token: "abc"}, server: ADK.Auth.InMemoryStore)
 
       assert {:ok, %{token: "abc"}} =
                ADK.Auth.InMemoryStore.get("test_key", server: ADK.Auth.InMemoryStore)

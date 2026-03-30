@@ -41,19 +41,21 @@ defmodule ADK.PythonParityTest do
         %{function_call: %{name: "noop", args: %{}, id: "fc-3"}}
       ])
 
-      tool = ADK.Tool.FunctionTool.new(:noop,
-        description: "Does nothing",
-        func: fn _ctx, _args -> {:ok, %{status: "ok"}} end,
-        parameters: %{}
-      )
+      tool =
+        ADK.Tool.FunctionTool.new(:noop,
+          description: "Does nothing",
+          func: fn _ctx, _args -> {:ok, %{status: "ok"}} end,
+          parameters: %{}
+        )
 
-      agent = ADK.Agent.LlmAgent.new(
-        name: "looper",
-        model: "test",
-        instruction: "Loop.",
-        tools: [tool],
-        max_iterations: 2
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "looper",
+          model: "test",
+          instruction: "Loop.",
+          tools: [tool],
+          max_iterations: 2
+        )
 
       {:ok, session_pid} =
         ADK.Session.start_link(app_name: "test", user_id: "u1", session_id: "max-iter-1")
@@ -107,19 +109,21 @@ defmodule ADK.PythonParityTest do
         "I am the specialist!"
       ])
 
-      specialist = ADK.Agent.LlmAgent.new(
-        name: "specialist",
-        model: "test",
-        instruction: "Specialize.",
-        description: "Domain expert"
-      )
+      specialist =
+        ADK.Agent.LlmAgent.new(
+          name: "specialist",
+          model: "test",
+          instruction: "Specialize.",
+          description: "Domain expert"
+        )
 
-      root = ADK.Agent.LlmAgent.new(
-        name: "root",
-        model: "test",
-        instruction: "Coordinate.",
-        sub_agents: [specialist]
-      )
+      root =
+        ADK.Agent.LlmAgent.new(
+          name: "root",
+          model: "test",
+          instruction: "Coordinate.",
+          sub_agents: [specialist]
+        )
 
       {:ok, session_pid} =
         ADK.Session.start_link(app_name: "test", user_id: "u1", session_id: "transfer-flow-1")
@@ -143,9 +147,11 @@ defmodule ADK.PythonParityTest do
       assert fc.name == "transfer_to_agent_specialist"
 
       # Verify transfer event
-      transfer_event = Enum.find(events, fn e ->
-        e.actions && e.actions.transfer_to_agent == "specialist"
-      end)
+      transfer_event =
+        Enum.find(events, fn e ->
+          e.actions && e.actions.transfer_to_agent == "specialist"
+        end)
+
       assert transfer_event != nil
 
       # Final event should have sub-agent's text response
@@ -168,12 +174,13 @@ defmodule ADK.PythonParityTest do
 
       known = ADK.Agent.LlmAgent.new(name: "known", model: "test", instruction: "Help.")
 
-      root = ADK.Agent.LlmAgent.new(
-        name: "root",
-        model: "test",
-        instruction: "Coordinate.",
-        sub_agents: [known]
-      )
+      root =
+        ADK.Agent.LlmAgent.new(
+          name: "root",
+          model: "test",
+          instruction: "Coordinate.",
+          sub_agents: [known]
+        )
 
       {:ok, session_pid} =
         ADK.Session.start_link(app_name: "test", user_id: "u1", session_id: "transfer-unknown")
@@ -188,10 +195,11 @@ defmodule ADK.PythonParityTest do
       events = ADK.Agent.run(root, ctx)
 
       # The tool response should contain an error about unknown tool
-      tool_response_event = Enum.find(events, fn e ->
-        responses = ADK.Event.function_responses(e)
-        responses != [] && Enum.any?(responses, fn r -> r[:error] end)
-      end) || Enum.at(events, 1)
+      tool_response_event =
+        Enum.find(events, fn e ->
+          responses = ADK.Event.function_responses(e)
+          responses != [] && Enum.any?(responses, fn r -> r[:error] end)
+        end) || Enum.at(events, 1)
 
       responses = ADK.Event.function_responses(tool_response_event)
       assert length(responses) == 1
@@ -239,25 +247,29 @@ defmodule ADK.PythonParityTest do
         "Got the result."
       ])
 
-      tool = ADK.Tool.FunctionTool.new(:expensive_api,
-        description: "Expensive call",
-        func: fn _ctx, _args ->
-          # This should NOT be called if intercepted
-          send(self(), :tool_actually_called)
-          {:ok, %{data: "real"}}
-        end,
-        parameters: %{}
-      )
+      tool =
+        ADK.Tool.FunctionTool.new(:expensive_api,
+          description: "Expensive call",
+          func: fn _ctx, _args ->
+            # This should NOT be called if intercepted
+            send(self(), :tool_actually_called)
+            {:ok, %{data: "real"}}
+          end,
+          parameters: %{}
+        )
 
-      agent = ADK.Agent.LlmAgent.new(
-        name: "bot",
-        model: "test",
-        instruction: "Help.",
-        tools: [tool]
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "bot",
+          model: "test",
+          instruction: "Help.",
+          tools: [tool]
+        )
 
       runner = %ADK.Runner{app_name: "tool-cb", agent: agent}
-      events = ADK.Runner.run(runner, "u1", "s-tool-cb-1", "go", callbacks: [InterceptToolCallback])
+
+      events =
+        ADK.Runner.run(runner, "u1", "s-tool-cb-1", "go", callbacks: [InterceptToolCallback])
 
       assert length(events) > 0
       # Tool should NOT have been actually called
@@ -271,18 +283,20 @@ defmodule ADK.PythonParityTest do
         "Done."
       ])
 
-      tool = ADK.Tool.FunctionTool.new(:simple_fn,
-        description: "Simple",
-        func: fn _ctx, _args -> {:ok, %{result: "original"}} end,
-        parameters: %{}
-      )
+      tool =
+        ADK.Tool.FunctionTool.new(:simple_fn,
+          description: "Simple",
+          func: fn _ctx, _args -> {:ok, %{result: "original"}} end,
+          parameters: %{}
+        )
 
-      agent = ADK.Agent.LlmAgent.new(
-        name: "bot",
-        model: "test",
-        instruction: "Help.",
-        tools: [tool]
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "bot",
+          model: "test",
+          instruction: "Help.",
+          tools: [tool]
+        )
 
       {:ok, session_pid} =
         ADK.Session.start_link(app_name: "test", user_id: "u1", session_id: "after-tool-1")
@@ -319,23 +333,26 @@ defmodule ADK.PythonParityTest do
     test "output_key from step1 is available to step2 via session state" do
       ADK.LLM.Mock.set_responses(["Research: Elixir is great", "Summary: Elixir rocks"])
 
-      step1 = ADK.Agent.LlmAgent.new(
-        name: "researcher",
-        model: "test",
-        instruction: "Research {topic}.",
-        output_key: "research_output"
-      )
+      step1 =
+        ADK.Agent.LlmAgent.new(
+          name: "researcher",
+          model: "test",
+          instruction: "Research {topic}.",
+          output_key: "research_output"
+        )
 
-      step2 = ADK.Agent.LlmAgent.new(
-        name: "summarizer",
-        model: "test",
-        instruction: "Summarize this research: {research_output}"
-      )
+      step2 =
+        ADK.Agent.LlmAgent.new(
+          name: "summarizer",
+          model: "test",
+          instruction: "Summarize this research: {research_output}"
+        )
 
-      pipeline = ADK.Agent.SequentialAgent.new(
-        name: "pipeline",
-        sub_agents: [step1, step2]
-      )
+      pipeline =
+        ADK.Agent.SequentialAgent.new(
+          name: "pipeline",
+          sub_agents: [step1, step2]
+        )
 
       {:ok, session_pid} =
         ADK.Session.start_link(app_name: "test", user_id: "u1", session_id: "chain-1")
@@ -389,12 +406,13 @@ defmodule ADK.PythonParityTest do
     test "different session IDs are isolated" do
       ADK.LLM.Mock.set_responses(["A", "B"])
 
-      agent = ADK.Agent.LlmAgent.new(
-        name: "bot",
-        model: "test",
-        instruction: "Help",
-        output_key: "last_output"
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "bot",
+          model: "test",
+          instruction: "Help",
+          output_key: "last_output"
+        )
 
       runner = %ADK.Runner{app_name: "isolation", agent: agent}
 
@@ -433,10 +451,12 @@ defmodule ADK.PythonParityTest do
     # Mirrors TestContextInitialization.test_state_property
     # Elixir: state lives in Session GenServer, accessed via session_pid (idiomatic OTP)
     test "state is accessible through session" do
-      {:ok, pid} = ADK.Session.start_link(
-        app_name: "test", user_id: "u1",
-        session_id: "ctx-state-#{System.unique_integer([:positive])}"
-      )
+      {:ok, pid} =
+        ADK.Session.start_link(
+          app_name: "test",
+          user_id: "u1",
+          session_id: "ctx-state-#{System.unique_integer([:positive])}"
+        )
 
       ADK.Session.put_state(pid, "key1", "value1")
       ADK.Session.put_state(pid, "key2", "value2")
@@ -462,10 +482,11 @@ defmodule ADK.PythonParityTest do
   describe "event structure parity" do
     # Python: events carry content.parts with mixed types
     test "event supports text parts" do
-      event = ADK.Event.new(%{
-        author: "agent",
-        content: %{role: :model, parts: [%{text: "Hello"}]}
-      })
+      event =
+        ADK.Event.new(%{
+          author: "agent",
+          content: %{role: :model, parts: [%{text: "Hello"}]}
+        })
 
       assert ADK.Event.text(event) == "Hello"
       assert ADK.Event.final_response?(event)
@@ -473,12 +494,16 @@ defmodule ADK.PythonParityTest do
 
     # Python: function_call parts trigger tool execution
     test "event supports function_call parts" do
-      event = ADK.Event.new(%{
-        author: "agent",
-        content: %{role: :model, parts: [
-          %{function_call: %{name: "search", args: %{q: "elixir"}}}
-        ]}
-      })
+      event =
+        ADK.Event.new(%{
+          author: "agent",
+          content: %{
+            role: :model,
+            parts: [
+              %{function_call: %{name: "search", args: %{q: "elixir"}}}
+            ]
+          }
+        })
 
       assert ADK.Event.has_function_calls?(event)
       refute ADK.Event.final_response?(event)
@@ -488,12 +513,16 @@ defmodule ADK.PythonParityTest do
 
     # Python: function_response parts carry tool results
     test "event supports function_response parts" do
-      event = ADK.Event.new(%{
-        author: "agent",
-        content: %{role: :user, parts: [
-          %{function_response: %{name: "search", response: %{results: []}}}
-        ]}
-      })
+      event =
+        ADK.Event.new(%{
+          author: "agent",
+          content: %{
+            role: :user,
+            parts: [
+              %{function_response: %{name: "search", response: %{results: []}}}
+            ]
+          }
+        })
 
       assert ADK.Event.has_function_responses?(event)
       [fr] = ADK.Event.function_responses(event)
@@ -502,10 +531,11 @@ defmodule ADK.PythonParityTest do
 
     # Python: error events carry error info
     test "error event creation" do
-      event = ADK.Event.error(:service_unavailable, %{
-        invocation_id: "inv-1",
-        author: "bot"
-      })
+      event =
+        ADK.Event.error(:service_unavailable, %{
+          invocation_id: "inv-1",
+          author: "bot"
+        })
 
       assert event.error != nil
       assert event.author == "bot"
@@ -585,13 +615,14 @@ defmodule ADK.PythonParityTest do
   describe "instruction compilation parity" do
     # Python: dynamic instructions via callable
     test "function-based instruction receives context" do
-      agent = ADK.Agent.LlmAgent.new(
-        name: "bot",
-        model: "test",
-        instruction: fn ctx ->
-          "Session: #{ctx.invocation_id}"
-        end
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "bot",
+          model: "test",
+          instruction: fn ctx ->
+            "Session: #{ctx.invocation_id}"
+          end
+        )
 
       ctx = %ADK.Context{invocation_id: "inv-dynamic", session_pid: nil, agent: agent}
       result = ADK.InstructionCompiler.compile(agent, ctx)
@@ -601,19 +632,21 @@ defmodule ADK.PythonParityTest do
 
     # Python: sub-agent descriptions included in system instruction
     test "sub-agent info included in compiled instruction" do
-      sub = ADK.Agent.LlmAgent.new(
-        name: "coder",
-        model: "test",
-        instruction: "Code.",
-        description: "Writes code in any language"
-      )
+      sub =
+        ADK.Agent.LlmAgent.new(
+          name: "coder",
+          model: "test",
+          instruction: "Code.",
+          description: "Writes code in any language"
+        )
 
-      agent = ADK.Agent.LlmAgent.new(
-        name: "lead",
-        model: "test",
-        instruction: "Lead the team.",
-        sub_agents: [sub]
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "lead",
+          model: "test",
+          instruction: "Lead the team.",
+          sub_agents: [sub]
+        )
 
       ctx = %ADK.Context{invocation_id: "inv-1", session_pid: nil, agent: agent}
       result = ADK.InstructionCompiler.compile(agent, ctx)
@@ -641,10 +674,11 @@ defmodule ADK.PythonParityTest do
       agent_a = ADK.Agent.LlmAgent.new(name: "a", model: "test", instruction: "Do A")
       agent_b = ADK.Agent.LlmAgent.new(name: "b", model: "test", instruction: "Do B")
 
-      parallel = ADK.Agent.ParallelAgent.new(
-        name: "parallel",
-        sub_agents: [agent_a, agent_b]
-      )
+      parallel =
+        ADK.Agent.ParallelAgent.new(
+          name: "parallel",
+          sub_agents: [agent_a, agent_b]
+        )
 
       {:ok, session_pid} =
         ADK.Session.start_link(app_name: "test", user_id: "u1", session_id: "parallel-parity")
@@ -679,17 +713,18 @@ defmodule ADK.PythonParityTest do
 
   describe "tool declaration" do
     test "function tool produces correct declaration" do
-      tool = ADK.Tool.FunctionTool.new(:search,
-        description: "Search the web",
-        func: fn _ctx, _args -> {:ok, %{}} end,
-        parameters: %{
-          type: "object",
-          properties: %{
-            query: %{type: "string", description: "Search query"}
-          },
-          required: ["query"]
-        }
-      )
+      tool =
+        ADK.Tool.FunctionTool.new(:search,
+          description: "Search the web",
+          func: fn _ctx, _args -> {:ok, %{}} end,
+          parameters: %{
+            type: "object",
+            properties: %{
+              query: %{type: "string", description: "Search query"}
+            },
+            required: ["query"]
+          }
+        )
 
       decl = ADK.Tool.declaration(tool)
       assert decl.name == "search"
@@ -707,13 +742,14 @@ defmodule ADK.PythonParityTest do
 
   describe "event serialization roundtrip" do
     test "to_map/from_map preserves all fields" do
-      original = ADK.Event.new(%{
-        invocation_id: "inv-ser",
-        author: "bot",
-        branch: "search",
-        content: %{role: :model, parts: [%{text: "hello"}]},
-        partial: false
-      })
+      original =
+        ADK.Event.new(%{
+          invocation_id: "inv-ser",
+          author: "bot",
+          branch: "search",
+          content: %{role: :model, parts: [%{text: "hello"}]},
+          partial: false
+        })
 
       roundtripped = original |> ADK.Event.to_map() |> ADK.Event.from_map()
 

@@ -72,9 +72,14 @@ defmodule ADK.Artifact.GCS do
         else
           # Find latest version
           case list_versions(bucket, token, app_name, user_id, session_id, filename) do
-            {:ok, []} -> :not_found
-            {:ok, versions} -> object_path(app_name, user_id, session_id, filename, Enum.max(versions))
-            err -> err
+            {:ok, []} ->
+              :not_found
+
+            {:ok, versions} ->
+              object_path(app_name, user_id, session_id, filename, Enum.max(versions))
+
+            err ->
+              err
           end
         end
 
@@ -236,7 +241,8 @@ defmodule ADK.Artifact.GCS do
          {:ok, creds} <- Jason.decode(json) do
       now = System.system_time(:second)
 
-      header = Base.url_encode64(Jason.encode!(%{"alg" => "RS256", "typ" => "JWT"}), padding: false)
+      header =
+        Base.url_encode64(Jason.encode!(%{"alg" => "RS256", "typ" => "JWT"}), padding: false)
 
       claims =
         Base.url_encode64(
@@ -277,7 +283,8 @@ defmodule ADK.Artifact.GCS do
 
   defp get_metadata_token do
     resp =
-      Req.get!("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
+      Req.get!(
+        "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
         headers: [{"metadata-flavor", "Google"}]
       )
 

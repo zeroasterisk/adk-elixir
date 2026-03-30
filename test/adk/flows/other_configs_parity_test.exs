@@ -86,7 +86,11 @@ defmodule ADK.Flows.OtherConfigsParityTest do
 
       # The response text should be the JSON we provided
       response_event = List.last(model_events)
-      parts = get_in(response_event.content, [:parts]) || get_in(response_event.content, ["parts"]) || []
+
+      parts =
+        get_in(response_event.content, [:parts]) || get_in(response_event.content, ["parts"]) ||
+          []
+
       texts = for p <- parts, t = p[:text] || p["text"], do: t
       assert Enum.any?(texts, &(&1 =~ "custom_field"))
     end

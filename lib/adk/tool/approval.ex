@@ -137,9 +137,14 @@ defmodule ADK.Tool.Approval do
 
   def handle_call({:subscribe, request_id, waiter_pid}, _from, state) do
     updated =
-      Map.update(state.pending, request_id, %{request: %{id: request_id}, waiter: waiter_pid}, fn entry ->
-        %{entry | waiter: waiter_pid}
-      end)
+      Map.update(
+        state.pending,
+        request_id,
+        %{request: %{id: request_id}, waiter: waiter_pid},
+        fn entry ->
+          %{entry | waiter: waiter_pid}
+        end
+      )
 
     {:reply, :ok, %{state | pending: updated}}
   end

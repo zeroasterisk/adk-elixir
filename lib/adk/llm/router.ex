@@ -202,7 +202,10 @@ defmodule ADK.LLM.Router do
           available_at: now + existing.rl_backoff_ms
       })
 
-    Logger.warning("[Router] Backend #{id} rate-limited; cooling down #{existing.rl_backoff_ms}ms")
+    Logger.warning(
+      "[Router] Backend #{id} rate-limited; cooling down #{existing.rl_backoff_ms}ms"
+    )
+
     {:noreply, new_state}
   end
 
@@ -213,7 +216,10 @@ defmodule ADK.LLM.Router do
     new_state =
       Map.put(state, id, %{existing | available_at: now + @transient_error_penalty_ms})
 
-    Logger.debug("[Router] Backend #{id} transient error; penalty #{@transient_error_penalty_ms}ms")
+    Logger.debug(
+      "[Router] Backend #{id} transient error; penalty #{@transient_error_penalty_ms}ms"
+    )
+
     {:noreply, new_state}
   end
 
@@ -235,7 +241,9 @@ defmodule ADK.LLM.Router do
   # ----- Private helpers -----
 
   defp do_generate([], _request, opts, _server) do
-    fallback = Keyword.get(opts, :fallback_error, router_config(:fallback_error, :all_backends_failed))
+    fallback =
+      Keyword.get(opts, :fallback_error, router_config(:fallback_error, :all_backends_failed))
+
     {:error, fallback}
   end
 

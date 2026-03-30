@@ -14,12 +14,15 @@ defmodule ADK.ApigeeLlm do
     api_type = Map.get(request, :apigee_api_type, :unknown)
 
     case parse_model(model, api_type) do
-      {:ok, %{backend: backend, model_id: model_id, api_version: api_version, is_vertexai: is_vertexai}} ->
+      {:ok,
+       %{backend: backend, model_id: model_id, api_version: api_version, is_vertexai: is_vertexai}} ->
         if is_vertexai do
           project = System.get_env("GOOGLE_CLOUD_PROJECT")
           location = System.get_env("GOOGLE_CLOUD_LOCATION")
+
           if is_nil(project) or is_nil(location) do
-            raise ArgumentError, "GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION environment variable must be set"
+            raise ArgumentError,
+                  "GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION environment variable must be set"
           end
         end
 
@@ -41,12 +44,12 @@ defmodule ADK.ApigeeLlm do
       false
     else
       stripped = String.trim_leading(model, "apigee/")
-      
+
       if stripped == "" do
         false
       else
         components = String.split(stripped, "/")
-        
+
         cond do
           length(components) == 1 ->
             true
@@ -107,7 +110,8 @@ defmodule ADK.ApigeeLlm do
             is_vertex = use_vertexai_env in ["true", "1"]
 
             if length(parts) >= 3 and Enum.at(parts, 1) in ["v1", "v1beta"] do
-              {Enum.join(Enum.slice(parts, 2..-1//1), "/"), Enum.at(parts, 1), ADK.LLM.Gemini, is_vertex}
+              {Enum.join(Enum.slice(parts, 2..-1//1), "/"), Enum.at(parts, 1), ADK.LLM.Gemini,
+               is_vertex}
             else
               {Enum.join(Enum.slice(parts, 1..-1//1), "/"), nil, ADK.LLM.Gemini, is_vertex}
             end
@@ -120,7 +124,8 @@ defmodule ADK.ApigeeLlm do
           _ -> default_backend
         end
 
-      {:ok, %{backend: backend, model_id: model_id, api_version: api_version, is_vertexai: is_vertexai}}
+      {:ok,
+       %{backend: backend, model_id: model_id, api_version: api_version, is_vertexai: is_vertexai}}
     end
   end
 
@@ -128,18 +133,19 @@ defmodule ADK.ApigeeLlm do
     proxy_url = String.trim_trailing(proxy_url || "", "/")
 
     if backend == ADK.LLM.OpenAI do
-       version = api_version || "v1"
-       "#{proxy_url}/#{version}"
+      version = api_version || "v1"
+      "#{proxy_url}/#{version}"
     else
-       if is_vertexai do
-         version = api_version || "v1beta"
-         project = System.get_env("GOOGLE_CLOUD_PROJECT")
-         location = System.get_env("GOOGLE_CLOUD_LOCATION")
-         "#{proxy_url}/#{version}/projects/#{project}/locations/#{location}/publishers/google/models"
-       else
-         version = api_version || "v1beta"
-         "#{proxy_url}/#{version}/models"
-       end
+      if is_vertexai do
+        version = api_version || "v1beta"
+        project = System.get_env("GOOGLE_CLOUD_PROJECT")
+        location = System.get_env("GOOGLE_CLOUD_LOCATION")
+
+        "#{proxy_url}/#{version}/projects/#{project}/locations/#{location}/publishers/google/models"
+      else
+        version = api_version || "v1beta"
+        "#{proxy_url}/#{version}/models"
+      end
     end
   end
 end

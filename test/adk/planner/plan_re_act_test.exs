@@ -22,13 +22,19 @@ defmodule ADK.Planner.PlanReActTest do
 
   test "process_planning_response separates reasoning and final answer" do
     parts = [
-      %{text: "Here is my reasoning: /*REASONING*/ This is why. /*FINAL_ANSWER*/ The answer is 42."}
+      %{
+        text:
+          "Here is my reasoning: /*REASONING*/ This is why. /*FINAL_ANSWER*/ The answer is 42."
+      }
     ]
 
     processed = PlanReAct.process_planning_response(nil, parts)
 
     assert length(processed) == 2
-    assert Enum.at(processed, 0).text == "Here is my reasoning: /*REASONING*/ This is why. /*FINAL_ANSWER*/"
+
+    assert Enum.at(processed, 0).text ==
+             "Here is my reasoning: /*REASONING*/ This is why. /*FINAL_ANSWER*/"
+
     assert Enum.at(processed, 0).thought == true
     assert Enum.at(processed, 1).text == " The answer is 42."
     assert Map.get(Enum.at(processed, 1), :thought) == nil

@@ -40,12 +40,16 @@ defmodule ADK.Auth.Exchanger.OAuth2 do
     {:error, "auth_credential is empty. Please create AuthCredential using OAuth2Auth."}
   end
 
-  def check_scheme_credential_type(%{type: type}, _cred) when type not in ["openIdConnect", "oauth2"] do
-    {:error, "Invalid security scheme, expect AuthSchemeType.openIdConnect or AuthSchemeType.oauth2 auth scheme, but got #{type}"}
+  def check_scheme_credential_type(%{type: type}, _cred)
+      when type not in ["openIdConnect", "oauth2"] do
+    {:error,
+     "Invalid security scheme, expect AuthSchemeType.openIdConnect or AuthSchemeType.oauth2 auth scheme, but got #{type}"}
   end
 
-  def check_scheme_credential_type(%{}, %Credential{type: type}) when type not in [:oauth2, :http_bearer, :open_id_connect] do
-    {:error, "auth_credential is not configured with oauth2. Please create AuthCredential and set OAuth2Auth."}
+  def check_scheme_credential_type(%{}, %Credential{type: type})
+      when type not in [:oauth2, :http_bearer, :open_id_connect] do
+    {:error,
+     "auth_credential is not configured with oauth2. Please create AuthCredential and set OAuth2Auth."}
   end
 
   def check_scheme_credential_type(_scheme, _cred) do
@@ -56,7 +60,8 @@ defmodule ADK.Auth.Exchanger.OAuth2 do
   Generates an HTTP Bearer credential from an OAuth2 credential with an access token.
   Mirrors Python's `generate_auth_token`.
   """
-  def generate_auth_token(%Credential{access_token: token} = cred) when is_binary(token) and token != "" do
+  def generate_auth_token(%Credential{access_token: token} = cred)
+      when is_binary(token) and token != "" do
     Credential.http_bearer(token, metadata: cred.metadata)
   end
 
@@ -108,7 +113,7 @@ defmodule ADK.Auth.Exchanger.OAuth2 do
 
   defp exchange_client_credentials(cred, scheme) do
     cred = maybe_inject_token_endpoint(cred, scheme)
-    
+
     http_opts = Map.get(cred.metadata, "http_opts", [])
 
     case OAuth2.client_credentials(cred, http_opts: http_opts) do
@@ -123,7 +128,11 @@ defmodule ADK.Auth.Exchanger.OAuth2 do
     cred = maybe_inject_token_endpoint(cred, scheme)
 
     http_opts = Map.get(cred.metadata, "http_opts", [])
-    opts = if redirect_uri, do: [redirect_uri: redirect_uri, http_opts: http_opts], else: [http_opts: http_opts]
+
+    opts =
+      if redirect_uri,
+        do: [redirect_uri: redirect_uri, http_opts: http_opts],
+        else: [http_opts: http_opts]
 
     case OAuth2.exchange_code(cred, opts) do
       {:ok, exchanged} -> {:ok, exchanged}
@@ -141,7 +150,9 @@ defmodule ADK.Auth.Exchanger.OAuth2 do
     end
   end
 
-  defp maybe_inject_token_endpoint(%Credential{token_endpoint: nil} = cred, %{token_endpoint: endpoint})
+  defp maybe_inject_token_endpoint(%Credential{token_endpoint: nil} = cred, %{
+         token_endpoint: endpoint
+       })
        when is_binary(endpoint) do
     %{cred | token_endpoint: endpoint}
   end

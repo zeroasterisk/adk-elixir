@@ -24,7 +24,12 @@ defmodule ADK.Agent.LlmAgentCallbacksParityTest do
 
     @impl true
     def before_model(_ctx) do
-      {:halt, {:ok, %{content: %{role: :model, parts: [%{text: "before_model_callback"}]}, usage_metadata: nil}}}
+      {:halt,
+       {:ok,
+        %{
+          content: %{role: :model, parts: [%{text: "before_model_callback"}]},
+          usage_metadata: nil
+        }}}
     end
   end
 
@@ -42,7 +47,12 @@ defmodule ADK.Agent.LlmAgentCallbacksParityTest do
 
     @impl true
     def before_model(_ctx) do
-      {:halt, {:ok, %{content: %{role: :model, parts: [%{text: "async_before_model_callback"}]}, usage_metadata: nil}}}
+      {:halt,
+       {:ok,
+        %{
+          content: %{role: :model, parts: [%{text: "async_before_model_callback"}]},
+          usage_metadata: nil
+        }}}
     end
   end
 
@@ -54,7 +64,8 @@ defmodule ADK.Agent.LlmAgentCallbacksParityTest do
 
     @impl true
     def after_model({:ok, _response}, _ctx) do
-      {:ok, %{content: %{role: :model, parts: [%{text: "after_model_callback"}]}, usage_metadata: nil}}
+      {:ok,
+       %{content: %{role: :model, parts: [%{text: "after_model_callback"}]}, usage_metadata: nil}}
     end
 
     def after_model({:error, _} = err, _ctx), do: err
@@ -87,7 +98,11 @@ defmodule ADK.Agent.LlmAgentCallbacksParityTest do
 
     @impl true
     def after_model({:ok, _response}, _ctx) do
-      {:ok, %{content: %{role: :model, parts: [%{text: "async_after_model_callback"}]}, usage_metadata: nil}}
+      {:ok,
+       %{
+         content: %{role: :model, parts: [%{text: "async_after_model_callback"}]},
+         usage_metadata: nil
+       }}
     end
 
     def after_model({:error, _} = err, _ctx), do: err
@@ -188,7 +203,10 @@ defmodule ADK.Agent.LlmAgentCallbacksParityTest do
   describe "after_model callback" do
     test "replaces response entirely" do
       ctx = %{agent: %{name: "root_agent"}, context: %{}}
-      original = {:ok, %{content: %{role: :model, parts: [%{text: "model_response"}]}, usage_metadata: nil}}
+
+      original =
+        {:ok,
+         %{content: %{role: :model, parts: [%{text: "model_response"}]}, usage_metadata: nil}}
 
       result = ADK.Callback.run_after([AfterModelReplace], :after_model, original, ctx)
       assert {:ok, response} = result
@@ -197,7 +215,10 @@ defmodule ADK.Agent.LlmAgentCallbacksParityTest do
 
     test "appends to response text" do
       ctx = %{agent: %{name: "root_agent"}, context: %{}}
-      original = {:ok, %{content: %{role: :model, parts: [%{text: "model_response"}]}, usage_metadata: nil}}
+
+      original =
+        {:ok,
+         %{content: %{role: :model, parts: [%{text: "model_response"}]}, usage_metadata: nil}}
 
       result = ADK.Callback.run_after([AfterModelAppend], :after_model, original, ctx)
       assert {:ok, response} = result
@@ -206,7 +227,10 @@ defmodule ADK.Agent.LlmAgentCallbacksParityTest do
 
     test "async-style replaces response" do
       ctx = %{agent: %{name: "root_agent"}, context: %{}}
-      original = {:ok, %{content: %{role: :model, parts: [%{text: "model_response"}]}, usage_metadata: nil}}
+
+      original =
+        {:ok,
+         %{content: %{role: :model, parts: [%{text: "model_response"}]}, usage_metadata: nil}}
 
       result = ADK.Callback.run_after([AfterModelAsyncReplace], :after_model, original, ctx)
       assert {:ok, response} = result
@@ -215,7 +239,10 @@ defmodule ADK.Agent.LlmAgentCallbacksParityTest do
 
     test "no after_model defined passes through" do
       ctx = %{agent: %{name: "root_agent"}, context: %{}}
-      original = {:ok, %{content: %{role: :model, parts: [%{text: "model_response"}]}, usage_metadata: nil}}
+
+      original =
+        {:ok,
+         %{content: %{role: :model, parts: [%{text: "model_response"}]}, usage_metadata: nil}}
 
       result = ADK.Callback.run_after([NoCallbacks], :after_model, original, ctx)
       assert {:ok, response} = result
@@ -264,7 +291,9 @@ defmodule ADK.Agent.LlmAgentCallbacksParityTest do
       ctx = %{agent: %{name: "root_agent"}, context: %{}}
       original = {:ok, %{content: %{role: :model, parts: [%{text: "base"}]}, usage_metadata: nil}}
 
-      result = ADK.Callback.run_after([AfterModelChainA, AfterModelChainB], :after_model, original, ctx)
+      result =
+        ADK.Callback.run_after([AfterModelChainA, AfterModelChainB], :after_model, original, ctx)
+
       assert {:ok, response} = result
       # A runs first, then B
       assert hd(response.content.parts).text == "base_A_B"
@@ -272,9 +301,13 @@ defmodule ADK.Agent.LlmAgentCallbacksParityTest do
 
     test "after_model chain — replace then append" do
       ctx = %{agent: %{name: "root_agent"}, context: %{}}
-      original = {:ok, %{content: %{role: :model, parts: [%{text: "ignored"}]}, usage_metadata: nil}}
 
-      result = ADK.Callback.run_after([AfterModelReplace, AfterModelAppend], :after_model, original, ctx)
+      original =
+        {:ok, %{content: %{role: :model, parts: [%{text: "ignored"}]}, usage_metadata: nil}}
+
+      result =
+        ADK.Callback.run_after([AfterModelReplace, AfterModelAppend], :after_model, original, ctx)
+
       assert {:ok, response} = result
       assert hd(response.content.parts).text == "after_model_callback_appended"
     end
@@ -283,7 +316,11 @@ defmodule ADK.Agent.LlmAgentCallbacksParityTest do
       ctx = %{agent: %{name: "root_agent"}, context: %{}}
 
       assert {:cont, _} =
-               ADK.Callback.run_before([NoCallbacks, BeforeModelNoop, NoCallbacks], :before_model, ctx)
+               ADK.Callback.run_before(
+                 [NoCallbacks, BeforeModelNoop, NoCallbacks],
+                 :before_model,
+                 ctx
+               )
     end
   end
 

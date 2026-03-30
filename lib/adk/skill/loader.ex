@@ -64,7 +64,9 @@ defmodule ADK.Skill.Loader do
       case File.read(auth_path) do
         {:ok, content} ->
           case Jason.decode(content) do
-            {:ok, %{"credentials" => creds}} when is_list(creds) -> creds
+            {:ok, %{"credentials" => creds}} when is_list(creds) ->
+              creds
+
             _ ->
               Logger.warning("Malformed auth.json in #{dir}")
               []
@@ -191,7 +193,9 @@ defmodule ADK.Skill.Loader do
             opts = build_mcp_opts(server)
 
             case SkillSupervisor.start_mcp_toolset(sup, opts) do
-              {:ok, pid} -> [pid]
+              {:ok, pid} ->
+                [pid]
+
               {:error, reason} ->
                 Logger.warning("Failed to start MCP server #{server["name"]}: #{inspect(reason)}")
                 []

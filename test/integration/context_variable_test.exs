@@ -145,8 +145,14 @@ defmodule ADK.Integration.ContextVariableTest do
     test "state persists across separate ToolContext access on same session",
          %{session_pid: session_pid} do
       # First tool call
-      ctx = %Context{invocation_id: "inv-A", session_pid: session_pid,
-                     agent: nil, callbacks: [], policies: []}
+      ctx = %Context{
+        invocation_id: "inv-A",
+        session_pid: session_pid,
+        agent: nil,
+        callbacks: [],
+        policies: []
+      }
+
       tc1 = ToolContext.new(ctx, "call-1", %{name: "update_fc"})
       {:ok, _tc1} = ToolContext.put_state(tc1, "customerId", "CUSTOMER-XYZ")
 
@@ -248,7 +254,9 @@ defmodule ADK.Integration.ContextVariableTest do
       assert compiled =~ "inv-test-42"
     end
 
-    test "static-string function instruction provider returns constant", %{session_pid: session_pid} do
+    test "static-string function instruction provider returns constant", %{
+      session_pid: session_pid
+    } do
       # Mirrors build_sub_agent_instruction(invocation_context) fixture
       provider = fn _ctx -> "This is the plain text sub agent instruction." end
 

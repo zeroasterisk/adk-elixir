@@ -225,66 +225,72 @@ defmodule ADK.Flows.LlmFlows.InteractionsProcessorParityTest do
 
   describe "is_event_in_branch (mirrors Python _is_event_in_branch)" do
     test "no current branch — root events included" do
-      event = Event.new(%{
-        invocation_id: "inv1",
-        author: "test",
-        content: %{parts: [%{text: "test"}]}
-      })
+      event =
+        Event.new(%{
+          invocation_id: "inv1",
+          author: "test",
+          content: %{parts: [%{text: "test"}]}
+        })
 
       assert is_event_in_branch(nil, event) == true
     end
 
     test "no current branch — branched events excluded" do
-      event = Event.new(%{
-        invocation_id: "inv2",
-        author: "test",
-        content: %{parts: [%{text: "test"}]},
-        branch: "some_branch"
-      })
+      event =
+        Event.new(%{
+          invocation_id: "inv2",
+          author: "test",
+          content: %{parts: [%{text: "test"}]},
+          branch: "some_branch"
+        })
 
       assert is_event_in_branch(nil, event) == false
     end
 
     test "same branch — events included" do
-      event = Event.new(%{
-        invocation_id: "inv1",
-        author: "test",
-        content: %{parts: [%{text: "test"}]},
-        branch: "root.child"
-      })
+      event =
+        Event.new(%{
+          invocation_id: "inv1",
+          author: "test",
+          content: %{parts: [%{text: "test"}]},
+          branch: "root.child"
+        })
 
       assert is_event_in_branch("root.child", event) == true
     end
 
     test "different branch — events excluded" do
-      event = Event.new(%{
-        invocation_id: "inv1",
-        author: "test",
-        content: %{parts: [%{text: "test"}]},
-        branch: "root.other"
-      })
+      event =
+        Event.new(%{
+          invocation_id: "inv1",
+          author: "test",
+          content: %{parts: [%{text: "test"}]},
+          branch: "root.other"
+        })
 
       assert is_event_in_branch("root.child", event) == false
     end
 
     test "root events included in child branches" do
-      event = Event.new(%{
-        invocation_id: "inv1",
-        author: "test",
-        content: %{parts: [%{text: "test"}]},
-        branch: nil
-      })
+      event =
+        Event.new(%{
+          invocation_id: "inv1",
+          author: "test",
+          content: %{parts: [%{text: "test"}]},
+          branch: nil
+        })
 
       assert is_event_in_branch("root.child", event) == true
     end
 
     test "child branch events NOT visible from parent branch" do
-      event = Event.new(%{
-        invocation_id: "inv1",
-        author: "test",
-        content: %{parts: [%{text: "test"}]},
-        branch: "root.child.grandchild"
-      })
+      event =
+        Event.new(%{
+          invocation_id: "inv1",
+          author: "test",
+          content: %{parts: [%{text: "test"}]},
+          branch: "root.child.grandchild"
+        })
 
       assert is_event_in_branch("root.child", event) == false
     end

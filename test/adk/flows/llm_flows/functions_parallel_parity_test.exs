@@ -237,6 +237,7 @@ defmodule ADK.Flows.LlmFlows.FunctionsParallelParityTest do
 
       # Final text response should come from sub-agent run
       texts = text_events(events)
+
       assert Enum.any?(texts, &String.contains?(&1, "response1")) or
                Enum.any?(texts, &String.contains?(&1, "Transferring"))
     end

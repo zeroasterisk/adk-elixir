@@ -92,18 +92,21 @@ defmodule ADK.CLI.ToolsOptionMismatchTest do
 
     test ":port has type :integer", %{source: source} do
       switches = parse_switches(source)
+
       assert Keyword.get(switches, :port) == :integer,
              "Expected :port => :integer, got: #{inspect(switches[:port])}"
     end
 
     test ":agent has type :string", %{source: source} do
       switches = parse_switches(source)
+
       assert Keyword.get(switches, :agent) == :string,
              "Expected :agent => :string, got: #{inspect(switches[:agent])}"
     end
 
     test ":model has type :string", %{source: source} do
       switches = parse_switches(source)
+
       assert Keyword.get(switches, :model) == :string,
              "Expected :model => :string, got: #{inspect(switches[:model])}"
     end
@@ -126,7 +129,9 @@ defmodule ADK.CLI.ToolsOptionMismatchTest do
       # OptionParser.parse/2 with the declared switches should correctly
       # parse known flags and ignore unknowns without raising.
       switches = [port: :integer, agent: :string, model: :string]
-      {opts, _argv, _invalid} = OptionParser.parse(["--port", "8080", "--agent", "MyAgent"], strict: switches)
+
+      {opts, _argv, _invalid} =
+        OptionParser.parse(["--port", "8080", "--agent", "MyAgent"], strict: switches)
 
       assert opts[:port] == 8080
       assert opts[:agent] == "MyAgent"
@@ -171,18 +176,21 @@ defmodule ADK.CLI.ToolsOptionMismatchTest do
 
     test ":path has type :string", %{source: source} do
       switches = parse_switches(source)
+
       assert Keyword.get(switches, :path) == :string,
              "Expected :path => :string, got: #{inspect(switches[:path])}"
     end
 
     test ":model has type :string", %{source: source} do
       switches = parse_switches(source)
+
       assert Keyword.get(switches, :model) == :string,
              "Expected :model => :string, got: #{inspect(switches[:model])}"
     end
 
     test ":phoenix has type :boolean", %{source: source} do
       switches = parse_switches(source)
+
       assert Keyword.get(switches, :phoenix) == :boolean,
              "Expected :phoenix => :boolean, got: #{inspect(switches[:phoenix])}"
     end
@@ -203,10 +211,12 @@ defmodule ADK.CLI.ToolsOptionMismatchTest do
 
     test "parses --path and --model from args at runtime" do
       switches = [path: :string, model: :string, phoenix: :boolean]
-      {opts, _argv, _invalid} = OptionParser.parse(
-        ["--path", "./projects", "--model", "gemini-flash-latest"],
-        strict: switches
-      )
+
+      {opts, _argv, _invalid} =
+        OptionParser.parse(
+          ["--path", "./projects", "--model", "gemini-flash-latest"],
+          strict: switches
+        )
 
       assert opts[:path] == "./projects"
       assert opts[:model] == "gemini-flash-latest"

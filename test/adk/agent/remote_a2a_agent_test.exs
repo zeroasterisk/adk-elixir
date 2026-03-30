@@ -59,7 +59,7 @@ defmodule ADK.Agent.RemoteA2aAgentTest do
 
   test "agent sends events and returns response", %{url: url} do
     agent = RemoteA2aAgent.new(name: "remote_agent", target: url)
-    
+
     ctx = %Context{
       invocation_id: "inv-1",
       user_content: %{parts: [%{text: "Hello!"}]}
@@ -75,11 +75,24 @@ defmodule ADK.Agent.RemoteA2aAgentTest do
 
   test "agent correctly limits events to only those after its last reply", %{url: url} do
     agent = RemoteA2aAgent.new(name: "remote_agent", target: url)
-    
+
     {:ok, session_pid} = ADK.Session.start_link([])
-    ADK.Session.append_event(session_pid, Event.new(%{author: "user", content: %{parts: [%{text: "Old stuff"}]}}))
-    ADK.Session.append_event(session_pid, Event.new(%{author: "remote_agent", content: %{parts: [%{text: "Reply 1"}]}}))
-    ADK.Session.append_event(session_pid, Event.new(%{author: "user", content: %{parts: [%{text: "New stuff"}]}}))
+
+    ADK.Session.append_event(
+      session_pid,
+      Event.new(%{author: "user", content: %{parts: [%{text: "Old stuff"}]}})
+    )
+
+    ADK.Session.append_event(
+      session_pid,
+      Event.new(%{author: "remote_agent", content: %{parts: [%{text: "Reply 1"}]}})
+    )
+
+    ADK.Session.append_event(
+      session_pid,
+      Event.new(%{author: "user", content: %{parts: [%{text: "New stuff"}]}})
+    )
+
     ADK.Session.put_state(session_pid, "a2a_context_id_remote_agent", "existing-ctx-456")
 
     ctx = %Context{
@@ -96,12 +109,25 @@ defmodule ADK.Agent.RemoteA2aAgentTest do
   end
 
   test "agent respects full_history_when_stateless when false", %{url: url} do
-    agent = RemoteA2aAgent.new(name: "remote_agent", target: url, full_history_when_stateless: false)
-    
+    agent =
+      RemoteA2aAgent.new(name: "remote_agent", target: url, full_history_when_stateless: false)
+
     {:ok, session_pid} = ADK.Session.start_link([])
-    ADK.Session.append_event(session_pid, Event.new(%{author: "user", content: %{parts: [%{text: "Msg 1"}]}}))
-    ADK.Session.append_event(session_pid, Event.new(%{author: "remote_agent", content: %{parts: [%{text: "Reply 1"}]}}))
-    ADK.Session.append_event(session_pid, Event.new(%{author: "user", content: %{parts: [%{text: "Msg 2"}]}}))
+
+    ADK.Session.append_event(
+      session_pid,
+      Event.new(%{author: "user", content: %{parts: [%{text: "Msg 1"}]}})
+    )
+
+    ADK.Session.append_event(
+      session_pid,
+      Event.new(%{author: "remote_agent", content: %{parts: [%{text: "Reply 1"}]}})
+    )
+
+    ADK.Session.append_event(
+      session_pid,
+      Event.new(%{author: "user", content: %{parts: [%{text: "Msg 2"}]}})
+    )
 
     ctx = %Context{
       invocation_id: "inv-3",
@@ -115,12 +141,25 @@ defmodule ADK.Agent.RemoteA2aAgentTest do
   end
 
   test "agent respects full_history_when_stateless when true", %{url: url} do
-    agent = RemoteA2aAgent.new(name: "remote_agent", target: url, full_history_when_stateless: true)
-    
+    agent =
+      RemoteA2aAgent.new(name: "remote_agent", target: url, full_history_when_stateless: true)
+
     {:ok, session_pid} = ADK.Session.start_link([])
-    ADK.Session.append_event(session_pid, Event.new(%{author: "user", content: %{parts: [%{text: "Msg 1"}]}}))
-    ADK.Session.append_event(session_pid, Event.new(%{author: "remote_agent", content: %{parts: [%{text: "Reply 1"}]}}))
-    ADK.Session.append_event(session_pid, Event.new(%{author: "user", content: %{parts: [%{text: "Msg 2"}]}}))
+
+    ADK.Session.append_event(
+      session_pid,
+      Event.new(%{author: "user", content: %{parts: [%{text: "Msg 1"}]}})
+    )
+
+    ADK.Session.append_event(
+      session_pid,
+      Event.new(%{author: "remote_agent", content: %{parts: [%{text: "Reply 1"}]}})
+    )
+
+    ADK.Session.append_event(
+      session_pid,
+      Event.new(%{author: "user", content: %{parts: [%{text: "Msg 2"}]}})
+    )
 
     ctx = %Context{
       invocation_id: "inv-4",
@@ -134,8 +173,13 @@ defmodule ADK.Agent.RemoteA2aAgentTest do
   end
 
   test "agent gracefully handles errors" do
-    agent = RemoteA2aAgent.new(name: "remote_agent", target: "http://127.0.0.1:9999", client_opts: [req_opts: [retry: false]])
-    
+    agent =
+      RemoteA2aAgent.new(
+        name: "remote_agent",
+        target: "http://127.0.0.1:9999",
+        client_opts: [req_opts: [retry: false]]
+      )
+
     ctx = %Context{
       invocation_id: "inv-5",
       user_content: %{parts: [%{text: "Hello!"}]}

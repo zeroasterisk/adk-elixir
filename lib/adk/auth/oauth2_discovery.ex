@@ -10,20 +10,29 @@ defmodule ADK.Auth.OAuth2Discovery do
   def discover_auth_server_metadata(issuer) do
     parsed = URI.parse(issuer)
     issuer_path = parsed.path || ""
-    
+
     path_relative = Path.join(issuer_path, "/.well-known/openid-configuration")
-    path_relative = if String.starts_with?(path_relative, "/"), do: path_relative, else: "/" <> path_relative
+
+    path_relative =
+      if String.starts_with?(path_relative, "/"), do: path_relative, else: "/" <> path_relative
 
     # RFC 8414: try standard well-known URLs, then path-prefixed variants
-    candidate_urls = [
-      Map.put(parsed, :path, "/.well-known/oauth-authorization-server") |> URI.to_string(),
-      Map.put(parsed, :path, "/.well-known/openid-configuration") |> URI.to_string(),
-      # Path-relative: issuer_path + /.well-known/...
-      Map.put(parsed, :path, path_relative) |> URI.to_string()
-    ]
-    |> Enum.uniq()
+    candidate_urls =
+      [
+        Map.put(parsed, :path, "/.well-known/oauth-authorization-server") |> URI.to_string(),
+        Map.put(parsed, :path, "/.well-known/openid-configuration") |> URI.to_string(),
+        # Path-relative: issuer_path + /.well-known/...
+        Map.put(parsed, :path, path_relative) |> URI.to_string()
+      ]
+      |> Enum.uniq()
 
-    try_candidates(candidate_urls, issuer, AuthorizationServerMetadata, :mismatched_issuer, :issuer)
+    try_candidates(
+      candidate_urls,
+      issuer,
+      AuthorizationServerMetadata,
+      :mismatched_issuer,
+      :issuer
+    )
   end
 
   defp try_candidates([url], match_val, struct_mod, error_tag, match_key) do
@@ -34,7 +43,9 @@ defmodule ADK.Auth.OAuth2Discovery do
         else
           {:error, error_tag}
         end
-      error -> error
+
+      error ->
+        error
     end
   end
 
@@ -46,6 +57,7 @@ defmodule ADK.Auth.OAuth2Discovery do
         else
           try_candidates(rest, match_val, struct_mod, error_tag, match_key)
         end
+
       _error ->
         try_candidates(rest, match_val, struct_mod, error_tag, match_key)
     end
@@ -73,9 +85,12 @@ defmodule ADK.Auth.OAuth2Discovery do
           {:ok, data} -> {:ok, atomize_keys(data)}
           _ -> {:error, :invalid_json}
         end
+
       {:ok, %{status: 200, body: body}} when is_map(body) ->
         {:ok, atomize_keys(body)}
-      _ -> {:error, :http_error}
+
+      _ ->
+        {:error, :http_error}
     end
   end
 
@@ -87,7 +102,9 @@ defmodule ADK.Auth.OAuth2Discovery do
         rescue
           ArgumentError -> {k, v}
         end
-      {k, v} -> {k, v}
+
+      {k, v} ->
+        {k, v}
     end)
   end
 end

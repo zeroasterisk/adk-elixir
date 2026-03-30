@@ -43,12 +43,13 @@ defmodule ADK.Workflow.Collaboration do
       end)
       |> Enum.join("\n\n")
 
-    synthesis = ADK.Event.new(
-      author: "debate_synthesis",
-      content: %{
-        "parts" => [%{"text" => "## Debate Results\n\n#{positions}"}]
-      }
-    )
+    synthesis =
+      ADK.Event.new(
+        author: "debate_synthesis",
+        content: %{
+          "parts" => [%{"text" => "## Debate Results\n\n#{positions}"}]
+        }
+      )
 
     all_events = Enum.flat_map(results, fn {_name, events} -> events end)
     %{events: all_events ++ [synthesis], output: positions}
@@ -67,16 +68,17 @@ defmodule ADK.Workflow.Collaboration do
       |> Enum.max_by(fn {_text, count} -> count end, fn -> {nil, 0} end)
       |> elem(0)
 
-    vote_event = ADK.Event.new(
-      author: "vote_result",
-      content: %{
-        "parts" => [%{"text" => winner || "(no consensus)"}]
-      },
-      custom_metadata: %{
-        "votes" => Enum.frequencies(votes),
-        "winner" => winner
-      }
-    )
+    vote_event =
+      ADK.Event.new(
+        author: "vote_result",
+        content: %{
+          "parts" => [%{"text" => winner || "(no consensus)"}]
+        },
+        custom_metadata: %{
+          "votes" => Enum.frequencies(votes),
+          "winner" => winner
+        }
+      )
 
     all_events = Enum.flat_map(results, fn {_name, events} -> events end)
     %{events: all_events ++ [vote_event], output: winner}

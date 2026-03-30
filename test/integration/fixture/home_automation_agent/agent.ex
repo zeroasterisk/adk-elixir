@@ -116,20 +116,30 @@ defmodule ADK.Integration.Fixture.HomeAutomationAgent do
         parameters: %{
           "type" => "object",
           "properties" => %{
-            "device_id" => %{"type" => "string", "description" => "The unique identifier of the device."}
+            "device_id" => %{
+              "type" => "string",
+              "description" => "The unique identifier of the device."
+            }
           },
           "required" => ["device_id"]
         }
       ),
       ADK.Tool.FunctionTool.new(:set_device_info,
-        description: "Update the information of an AC device, specifically its status and/or location.",
+        description:
+          "Update the information of an AC device, specifically its status and/or location.",
         func: &set_device_info/1,
         parameters: %{
           "type" => "object",
           "properties" => %{
-            "device_id" => %{"type" => "string", "description" => "The unique identifier of the device."},
+            "device_id" => %{
+              "type" => "string",
+              "description" => "The unique identifier of the device."
+            },
             "status" => %{"type" => "string", "description" => "The new status: 'ON' or 'OFF'."},
-            "location" => %{"type" => "string", "description" => "The new location: 'Living Room', 'Bedroom', 'Kitchen'."}
+            "location" => %{
+              "type" => "string",
+              "description" => "The new location: 'Living Room', 'Bedroom', 'Kitchen'."
+            }
           },
           "required" => ["device_id"]
         }
@@ -140,7 +150,10 @@ defmodule ADK.Integration.Fixture.HomeAutomationAgent do
         parameters: %{
           "type" => "object",
           "properties" => %{
-            "location" => %{"type" => "string", "description" => "The location (e.g., 'Living Room', 'Bedroom', 'Kitchen')."}
+            "location" => %{
+              "type" => "string",
+              "description" => "The location (e.g., 'Living Room', 'Bedroom', 'Kitchen')."
+            }
           },
           "required" => ["location"]
         }
@@ -151,8 +164,14 @@ defmodule ADK.Integration.Fixture.HomeAutomationAgent do
         parameters: %{
           "type" => "object",
           "properties" => %{
-            "location" => %{"type" => "string", "description" => "The location where the temperature should be set."},
-            "temperature" => %{"type" => "integer", "description" => "The desired temperature (18-30°C)."}
+            "location" => %{
+              "type" => "string",
+              "description" => "The location where the temperature should be set."
+            },
+            "temperature" => %{
+              "type" => "integer",
+              "description" => "The desired temperature (18-30°C)."
+            }
           },
           "required" => ["location", "temperature"]
         }
@@ -163,7 +182,10 @@ defmodule ADK.Integration.Fixture.HomeAutomationAgent do
         parameters: %{
           "type" => "object",
           "properties" => %{
-            "user_id" => %{"type" => "string", "description" => "The unique identifier of the user."}
+            "user_id" => %{
+              "type" => "string",
+              "description" => "The unique identifier of the user."
+            }
           },
           "required" => ["user_id"]
         }
@@ -174,7 +196,10 @@ defmodule ADK.Integration.Fixture.HomeAutomationAgent do
         parameters: %{
           "type" => "object",
           "properties" => %{
-            "device_id" => %{"type" => "string", "description" => "The unique identifier of the device."},
+            "device_id" => %{
+              "type" => "string",
+              "description" => "The unique identifier of the device."
+            },
             "time" => %{"type" => "string", "description" => "Time in HH:MM format."},
             "status" => %{"type" => "string", "description" => "Status to set: 'ON' or 'OFF'."}
           },
@@ -187,7 +212,10 @@ defmodule ADK.Integration.Fixture.HomeAutomationAgent do
         parameters: %{
           "type" => "object",
           "properties" => %{
-            "device_id" => %{"type" => "string", "description" => "The unique identifier of the device."}
+            "device_id" => %{
+              "type" => "string",
+              "description" => "The unique identifier of the device."
+            }
           },
           "required" => ["device_id"]
         }
@@ -215,7 +243,8 @@ defmodule ADK.Integration.Fixture.HomeAutomationAgent do
         }
       ),
       ADK.Tool.FunctionTool.new(:list_devices,
-        description: "Retrieve a list of AC devices, optionally filtered by status and/or location.",
+        description:
+          "Retrieve a list of AC devices, optionally filtered by status and/or location.",
         func: &list_devices/1,
         parameters: %{
           "type" => "object",
@@ -234,7 +263,8 @@ defmodule ADK.Integration.Fixture.HomeAutomationAgent do
     ADK.Agent.LlmAgent.new(
       name: "home_automation_agent",
       model: "test",
-      instruction: "You are Home Automation Agent. You are responsible for controlling the devices in the home.",
+      instruction:
+        "You are Home Automation Agent. You are responsible for controlling the devices in the home.",
       tools: tools()
     )
   end

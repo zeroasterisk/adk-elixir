@@ -50,12 +50,17 @@ defmodule ADK.Artifact.InMemory do
 
     Agent.get(pid, fn state ->
       case Map.get(state, key) do
-        nil -> :not_found
-        [] -> :not_found
+        nil ->
+          :not_found
+
+        [] ->
+          :not_found
+
         versions ->
           if version do
             # versions are stored newest-first, so index from end
             idx = length(versions) - 1 - version
+
             if idx >= 0 and idx < length(versions) do
               {:ok, Enum.at(versions, idx)}
             else

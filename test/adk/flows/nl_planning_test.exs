@@ -135,8 +135,7 @@ defmodule ADK.Flows.NlPlanningTest do
     test "FINAL_ANSWER splits thought from answer" do
       parts = [
         %{
-          text:
-            "/*REASONING*/ I analyzed the data. /*FINAL_ANSWER*/ The answer is 42."
+          text: "/*REASONING*/ I analyzed the data. /*FINAL_ANSWER*/ The answer is 42."
         }
       ]
 
@@ -190,5 +189,4 @@ defmodule ADK.Flows.NlPlanningTest do
       assert length(processed) == 2
     end
   end
-
 end

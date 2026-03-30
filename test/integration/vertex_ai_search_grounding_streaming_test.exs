@@ -77,7 +77,13 @@ defmodule ADK.Integration.VertexAiSearchGroundingStreamingTest do
     end
 
     test "ADK.Event can be constructed as partial" do
-      event = ADK.Event.new(%{author: "test_agent", content: %{parts: [%{text: "chunk"}]}, partial: true})
+      event =
+        ADK.Event.new(%{
+          author: "test_agent",
+          content: %{parts: [%{text: "chunk"}]},
+          partial: true
+        })
+
       assert event.partial == true
     end
 

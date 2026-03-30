@@ -112,8 +112,17 @@ defmodule ADK.Plugin.CacheTest do
     key_fn = fn ctx -> ctx.user_id end
     {:ok, state} = Cache.init(key_fn: key_fn)
 
-    ctx_alice = %ADK.Context{invocation_id: "1", user_id: "alice", user_content: %{parts: [%{text: "hi"}]}}
-    ctx_bob = %ADK.Context{invocation_id: "2", user_id: "bob", user_content: %{parts: [%{text: "hi"}]}}
+    ctx_alice = %ADK.Context{
+      invocation_id: "1",
+      user_id: "alice",
+      user_content: %{parts: [%{text: "hi"}]}
+    }
+
+    ctx_bob = %ADK.Context{
+      invocation_id: "2",
+      user_id: "bob",
+      user_content: %{parts: [%{text: "hi"}]}
+    }
 
     events = [ADK.Event.new(%{author: "a", content: %{parts: [%{text: "hello"}]}})]
 

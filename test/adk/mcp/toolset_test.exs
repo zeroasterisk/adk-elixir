@@ -67,7 +67,8 @@ defmodule ADK.MCP.ToolsetTest do
         tool_def: nil
       }
 
-      assert {:ok, "hello from MCP"} = FunctionTool.run(echo, ctx, %{"message" => "hello from MCP"})
+      assert {:ok, "hello from MCP"} =
+               FunctionTool.run(echo, ctx, %{"message" => "hello from MCP"})
     end
 
     test "calling returned add tool works", %{toolset: toolset} do

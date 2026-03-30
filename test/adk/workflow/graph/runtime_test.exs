@@ -21,9 +21,10 @@ defmodule ADK.Workflow.Graph.RuntimeTest do
     test "applies a successful mutation" do
       {:ok, pid} = Runtime.start_link(simple_graph())
 
-      assert :ok = Runtime.mutate(pid, fn g ->
-        Mutation.add_node(g, :b, :agent_b)
-      end)
+      assert :ok =
+               Runtime.mutate(pid, fn g ->
+                 Mutation.add_node(g, :b, :agent_b)
+               end)
 
       g = Runtime.get(pid)
       assert Map.has_key?(g.nodes, :b)
@@ -32,9 +33,10 @@ defmodule ADK.Workflow.Graph.RuntimeTest do
     test "rejects a failed mutation (state unchanged)" do
       {:ok, pid} = Runtime.start_link(simple_graph())
 
-      assert {:error, _} = Runtime.mutate(pid, fn g ->
-        Mutation.add_node(g, :a, :dup)
-      end)
+      assert {:error, _} =
+               Runtime.mutate(pid, fn g ->
+                 Mutation.add_node(g, :a, :dup)
+               end)
 
       g = Runtime.get(pid)
       assert g.nodes[:a] == :agent_a

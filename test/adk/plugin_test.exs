@@ -61,13 +61,16 @@ defmodule ADK.PluginTest do
       {:ok, _} = Registry.start_link()
       on_exit(fn -> if Process.whereis(Registry), do: Agent.stop(Registry) end)
     end
+
     :ok
   end
 
   describe "Registry" do
     test "register and list plugins" do
       Registry.register({PassthroughPlugin, %{test_pid: self(), name: "p1"}})
-      assert [{PassthroughPlugin, %{name: "p1"}}] = Registry.list() |> Enum.map(fn {m, s} -> {m, Map.delete(s, :test_pid)} end)
+
+      assert [{PassthroughPlugin, %{name: "p1"}}] =
+               Registry.list() |> Enum.map(fn {m, s} -> {m, Map.delete(s, :test_pid)} end)
     end
 
     test "clear removes all plugins" do

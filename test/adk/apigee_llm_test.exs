@@ -18,20 +18,31 @@ defmodule ADK.ApigeeLlmTest do
     # Stub Gemini
     Req.Test.stub(ADK.LLM.Gemini, fn conn ->
       send(self(), {:gemini_req, conn})
+
       Req.Test.json(conn, %{
-        "candidates" => [%{"content" => %{"role" => "model", "parts" => [%{"text" => "Test response"}]}}]
+        "candidates" => [
+          %{"content" => %{"role" => "model", "parts" => [%{"text" => "Test response"}]}}
+        ]
       })
     end)
+
     Application.put_env(:adk, :gemini_test_plug, true)
 
     # Stub OpenAI
     Req.Test.stub(ADK.LLM.OpenAI, fn conn ->
       send(self(), {:openai_req, conn})
+
       Req.Test.json(conn, %{
         "choices" => [%{"message" => %{"role" => "assistant", "content" => "Test response"}}],
-        "usage" => %{"prompt_tokens" => 10, "completion_tokens" => 5, "total_tokens" => 15, "completion_tokens_details" => %{"reasoning_tokens" => 4}}
+        "usage" => %{
+          "prompt_tokens" => 10,
+          "completion_tokens" => 5,
+          "total_tokens" => 15,
+          "completion_tokens_details" => %{"reasoning_tokens" => 4}
+        }
       })
     end)
+
     Application.put_env(:adk, :openai_test_plug, true)
 
     # Stub keys to avoid errors
@@ -44,16 +55,20 @@ defmodule ADK.ApigeeLlmTest do
       Application.delete_env(:adk, :gemini_api_key)
       Application.delete_env(:adk, :openai_api_key)
     end)
+
     :ok
   end
 
   def request(opts \\ []) do
-    Map.merge(%{
-      messages: [
-        %{role: :user, parts: [%{text: "Test prompt"}]}
-      ],
-      apigee_proxy_url: @proxy_url
-    }, Map.new(opts))
+    Map.merge(
+      %{
+        messages: [
+          %{role: :user, parts: [%{text: "Test prompt"}]}
+        ],
+        apigee_proxy_url: @proxy_url
+      },
+      Map.new(opts)
+    )
   end
 
   test "generate content non streaming (Gemini model)" do
@@ -83,7 +98,9 @@ defmodule ADK.ApigeeLlmTest do
 
     assert_receive {:gemini_req, conn}
     assert conn.host == "test.apigee.net"
-    assert conn.request_path == "/v1beta/projects/test-project/locations/test-location/publishers/google/models/#{@vertex_base_model_id}:generateContent"
+
+    assert conn.request_path ==
+             "/v1beta/projects/test-project/locations/test-location/publishers/google/models/#{@vertex_base_model_id}:generateContent"
   end
 
   test "proxy url from env variable" do
@@ -100,23 +117,27 @@ defmodule ADK.ApigeeLlmTest do
   test "vertex model missing project or location raises error" do
     System.delete_env("GOOGLE_CLOUD_PROJECT")
     System.delete_env("GOOGLE_CLOUD_LOCATION")
+
     assert_raise ArgumentError, ~r/environment variable must be set/, fn ->
       ApigeeLlm.generate("apigee/vertex_ai/gemini-2.5-flash", request())
     end
   end
 
   test "invalid model strings raise argument error" do
-    Enum.each([
-      "apigee/",
-      "apigee",
-      "gemini-pro",
-      "apigee/vertex_ai/v1/model/extra",
-      "apigee/unknown/model"
-    ], fn invalid_model ->
-      assert_raise ArgumentError, ~r/Invalid model string/, fn ->
-        ApigeeLlm.generate(invalid_model, request())
+    Enum.each(
+      [
+        "apigee/",
+        "apigee",
+        "gemini-pro",
+        "apigee/vertex_ai/v1/model/extra",
+        "apigee/unknown/model"
+      ],
+      fn invalid_model ->
+        assert_raise ArgumentError, ~r/Invalid model string/, fn ->
+          ApigeeLlm.generate(invalid_model, request())
+        end
       end
-    end)
+    )
   end
 
   test "validate model for chat completion providers" do
@@ -140,5 +161,4 @@ defmodule ADK.ApigeeLlmTest do
     assert response.usage_metadata["total_tokens"] == 15
     assert response.usage_metadata["completion_tokens_details"]["reasoning_tokens"] == 4
   end
-
 end

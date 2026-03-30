@@ -24,14 +24,21 @@ defmodule Adk.Agents.McpInstructionProvider do
     %__MODULE__{
       connection_params: connection_params,
       prompt_name: prompt_name,
-      mcp_session_manager_mod: Application.get_env(:adk, :mcp_session_manager_mod, SessionManagerImpl)
+      mcp_session_manager_mod:
+        Application.get_env(:adk, :mcp_session_manager_mod, SessionManagerImpl)
     }
   end
 
   @impl true
   def invoke(%__MODULE__{} = provider, %ReadonlyContext{} = context) do
-    with {:ok, session} <- provider.mcp_session_manager_mod.new(provider.connection_params) |> provider.mcp_session_manager_mod.create_session(),
-         {:ok, %{prompts: prompts}} <- provider.mcp_session_manager_mod.list_prompts(provider.mcp_session_manager_mod, session),
+    with {:ok, session} <-
+           provider.mcp_session_manager_mod.new(provider.connection_params)
+           |> provider.mcp_session_manager_mod.create_session(),
+         {:ok, %{prompts: prompts}} <-
+           provider.mcp_session_manager_mod.list_prompts(
+             provider.mcp_session_manager_mod,
+             session
+           ),
          prompt <- Enum.find(prompts, &(&1.name == provider.prompt_name)),
          arguments <- build_arguments(prompt, context),
          {:ok, %{messages: messages}} <-
@@ -46,7 +53,7 @@ defmodule Adk.Agents.McpInstructionProvider do
       else
         messages
         |> Enum.filter(&(&1.content.type == "text"))
-        |> Enum.map(&(&1.content.text))
+        |> Enum.map(& &1.content.text)
         |> Enum.join()
       end
     else
@@ -68,4 +75,3 @@ defmodule Adk.Agents.McpInstructionProvider do
     end)
   end
 end
-

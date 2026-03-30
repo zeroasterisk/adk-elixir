@@ -18,6 +18,7 @@ defmodule ADK.MCP.StdioIntegrationTest do
     setup do
       elixir = System.find_executable("elixir")
       {:ok, toolset} = Toolset.start_link(command: elixir, args: [@mock_server])
+
       on_exit(fn ->
         try do
           if Process.alive?(toolset), do: Toolset.close(toolset)
@@ -25,6 +26,7 @@ defmodule ADK.MCP.StdioIntegrationTest do
           :exit, _ -> :ok
         end
       end)
+
       %{toolset: toolset}
     end
 
@@ -53,7 +55,8 @@ defmodule ADK.MCP.StdioIntegrationTest do
         tool_def: nil
       }
 
-      assert {:ok, "integration test"} = FunctionTool.run(echo, ctx, %{"message" => "integration test"})
+      assert {:ok, "integration test"} =
+               FunctionTool.run(echo, ctx, %{"message" => "integration test"})
     end
 
     test "MCP tool round-trip: call add via adapted tool", %{toolset: toolset} do
@@ -208,6 +211,7 @@ defmodule ADK.MCP.StdioIntegrationTest do
     setup do
       elixir = System.find_executable("elixir")
       {:ok, toolset} = Toolset.start_link(command: elixir, args: [@mock_server])
+
       on_exit(fn ->
         try do
           if Process.alive?(toolset), do: Toolset.close(toolset)
@@ -215,6 +219,7 @@ defmodule ADK.MCP.StdioIntegrationTest do
           :exit, _ -> :ok
         end
       end)
+
       %{toolset: toolset}
     end
 

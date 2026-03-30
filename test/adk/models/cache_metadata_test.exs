@@ -111,18 +111,19 @@ defmodule ADK.Models.CacheMetadataTest do
         )
       end
     end
-    
+
     test "test_immutability" do
       # In Elixir structs are inherently immutable. We can just assert that 
       # trying to mutate via map update doesn't change the original.
-      meta = CacheMetadata.new(
+      meta =
+        CacheMetadata.new(
           cache_name: "projects/123/locations/us-central1/cachedContents/456",
           expire_time: :os.system_time(:second) + 1800.0,
           fingerprint: "abc123",
           invocations_used: 5,
           contents_count: 3
-      )
-      
+        )
+
       _new_meta = %{meta | invocations_used: 10}
       assert meta.invocations_used == 5
     end
@@ -149,6 +150,7 @@ defmodule ADK.Models.CacheMetadataTest do
     test "test_expire_soon_property" do
       # Cache that expires in 10 minutes (should not expire soon)
       future_time = :os.system_time(:second) + 600.0
+
       meta =
         CacheMetadata.new(
           cache_name: "projects/123/locations/us-central1/cachedContents/456",
@@ -162,6 +164,7 @@ defmodule ADK.Models.CacheMetadataTest do
 
       # Cache that expires in 1 minute (should expire soon)
       soon_time = :os.system_time(:second) + 60.0
+
       meta =
         CacheMetadata.new(
           cache_name: "projects/123/locations/us-central1/cachedContents/456",
@@ -195,7 +198,7 @@ defmodule ADK.Models.CacheMetadataTest do
       assert str_repr =~ "cached 4 contents"
       assert str_repr =~ "expires in"
     end
-    
+
     test "test_cache_name_extraction" do
       meta =
         CacheMetadata.new(
@@ -235,48 +238,55 @@ defmodule ADK.Models.CacheMetadataTest do
       current_time = :os.system_time(:second) + 0.0
 
       # Fresh cache
-      fresh_cache = CacheMetadata.new(
-        cache_name: "projects/123/locations/us-central1/cachedContents/fresh123",
-        expire_time: current_time + 1800.0,
-        fingerprint: "fresh_fingerprint",
-        invocations_used: 1,
-        contents_count: 5,
-        created_at: current_time
-      )
+      fresh_cache =
+        CacheMetadata.new(
+          cache_name: "projects/123/locations/us-central1/cachedContents/fresh123",
+          expire_time: current_time + 1800.0,
+          fingerprint: "fresh_fingerprint",
+          invocations_used: 1,
+          contents_count: 5,
+          created_at: current_time
+        )
+
       assert fresh_cache.invocations_used == 1
       refute CacheMetadata.expire_soon?(fresh_cache)
 
       # Well-used cache
-      used_cache = CacheMetadata.new(
-        cache_name: "projects/123/locations/us-central1/cachedContents/used456",
-        expire_time: current_time + 600.0,
-        fingerprint: "used_fingerprint",
-        invocations_used: 8,
-        contents_count: 3,
-        created_at: current_time - 1200.0
-      )
+      used_cache =
+        CacheMetadata.new(
+          cache_name: "projects/123/locations/us-central1/cachedContents/used456",
+          expire_time: current_time + 600.0,
+          fingerprint: "used_fingerprint",
+          invocations_used: 8,
+          contents_count: 3,
+          created_at: current_time - 1200.0
+        )
+
       assert used_cache.invocations_used == 8
 
       # Expiring cache
-      expiring_cache = CacheMetadata.new(
-        cache_name: "projects/123/locations/us-central1/cachedContents/expiring789",
-        expire_time: current_time + 60.0,
-        fingerprint: "expiring_fingerprint",
-        invocations_used: 15,
-        contents_count: 10
-      )
+      expiring_cache =
+        CacheMetadata.new(
+          cache_name: "projects/123/locations/us-central1/cachedContents/expiring789",
+          expire_time: current_time + 60.0,
+          fingerprint: "expiring_fingerprint",
+          invocations_used: 15,
+          contents_count: 10
+        )
+
       assert CacheMetadata.expire_soon?(expiring_cache)
     end
-    
+
     test "test_no_performance_metrics" do
-      meta = CacheMetadata.new(
-        cache_name: "projects/123/locations/us-central1/cachedContents/456",
-        expire_time: :os.system_time(:second) + 1800.0,
-        fingerprint: "abc123",
-        invocations_used: 5,
-        contents_count: 3
-      )
-      
+      meta =
+        CacheMetadata.new(
+          cache_name: "projects/123/locations/us-central1/cachedContents/456",
+          expire_time: :os.system_time(:second) + 1800.0,
+          fingerprint: "abc123",
+          invocations_used: 5,
+          contents_count: 3
+        )
+
       # Verify that token counts are NOT in CacheMetadata struct fields
       refute Map.has_key?(meta, :cached_tokens)
       refute Map.has_key?(meta, :total_tokens)

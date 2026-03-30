@@ -46,7 +46,7 @@ defmodule ADK.Session.Migration do
   def get_db_schema_version(repo) do
     # Since Ecto doesn't have a direct "inspector" like SQLAlchemy,
     # we use SQL queries to check for table and column existence.
-    
+
     # Check for adk_internal_metadata table
     if table_exists?(repo, "adk_internal_metadata") do
       case query_metadata(repo, @schema_version_key) do
@@ -56,7 +56,8 @@ defmodule ADK.Session.Migration do
     else
       # Check for events table structure
       if table_exists?(repo, "events") do
-        if column_exists?(repo, "events", "actions") and not column_exists?(repo, "events", "event_data") do
+        if column_exists?(repo, "events", "actions") and
+             not column_exists?(repo, "events", "event_data") do
           @schema_version_0
         else
           @latest_schema_version
@@ -77,6 +78,7 @@ defmodule ADK.Session.Migration do
   def to_sync_url(url) when is_binary(url) do
     if String.contains?(url, "://") do
       [scheme, rest] = String.split(url, "://", parts: 2)
+
       if String.contains?(scheme, "+") do
         [dialect, _driver] = String.split(scheme, "+", parts: 2)
         "#{dialect}://#{rest}"
@@ -94,14 +96,17 @@ defmodule ADK.Session.Migration do
 
   defp table_exists?(repo, table_name) do
     # adapter specific query
-    query = case repo.__adapter__() do
-      Ecto.Adapters.SQLite3 ->
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='#{table_name}'"
-      Ecto.Adapters.Postgres ->
-        "SELECT table_name FROM information_schema.tables WHERE table_name='#{table_name}'"
-      _ ->
-        nil
-    end
+    query =
+      case repo.__adapter__() do
+        Ecto.Adapters.SQLite3 ->
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='#{table_name}'"
+
+        Ecto.Adapters.Postgres ->
+          "SELECT table_name FROM information_schema.tables WHERE table_name='#{table_name}'"
+
+        _ ->
+          nil
+      end
 
     if query do
       case Ecto.Adapters.SQL.query(repo, query) do
@@ -114,14 +119,17 @@ defmodule ADK.Session.Migration do
   end
 
   defp column_exists?(repo, table_name, column_name) do
-    query = case repo.__adapter__() do
-      Ecto.Adapters.SQLite3 ->
-        "PRAGMA table_info(#{table_name})"
-      Ecto.Adapters.Postgres ->
-        "SELECT column_name FROM information_schema.columns WHERE table_name='#{table_name}' AND column_name='#{column_name}'"
-      _ ->
-        nil
-    end
+    query =
+      case repo.__adapter__() do
+        Ecto.Adapters.SQLite3 ->
+          "PRAGMA table_info(#{table_name})"
+
+        Ecto.Adapters.Postgres ->
+          "SELECT column_name FROM information_schema.columns WHERE table_name='#{table_name}' AND column_name='#{column_name}'"
+
+        _ ->
+          nil
+      end
 
     if query do
       case Ecto.Adapters.SQL.query(repo, query) do
@@ -129,11 +137,16 @@ defmodule ADK.Session.Migration do
           case repo.__adapter__() do
             Ecto.Adapters.SQLite3 ->
               Enum.any?(rows, fn row -> Enum.at(row, 1) == column_name end)
+
             Ecto.Adapters.Postgres ->
               Enum.any?(rows, fn row -> Enum.at(row, 0) == column_name end)
-            _ -> false
+
+            _ ->
+              false
           end
-        _ -> false
+
+        _ ->
+          false
       end
     else
       false
@@ -142,6 +155,7 @@ defmodule ADK.Session.Migration do
 
   defp query_metadata(repo, key) do
     query = "SELECT value FROM adk_internal_metadata WHERE key = '#{key}'"
+
     case Ecto.Adapters.SQL.query(repo, query) do
       {:ok, %{rows: [[value]]}} -> {:ok, value}
       _ -> :error

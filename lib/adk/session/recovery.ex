@@ -52,14 +52,10 @@ defmodule ADK.Session.Recovery do
         {ok, failed} = Enum.split_with(results, &match?({:ok, _}, &1))
 
         if failed != [] do
-          Logger.warning(
-            "[Session.Recovery] #{length(failed)} session(s) failed to recover"
-          )
+          Logger.warning("[Session.Recovery] #{length(failed)} session(s) failed to recover")
         end
 
-        Logger.info(
-          "[Session.Recovery] Recovered #{length(ok)}/#{length(to_recover)} session(s)"
-        )
+        Logger.info("[Session.Recovery] Recovered #{length(ok)}/#{length(to_recover)} session(s)")
 
         {:ok, length(ok)}
 

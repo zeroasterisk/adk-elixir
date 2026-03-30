@@ -47,16 +47,22 @@ defmodule ADK.Plugin.ReflectRetryIntegrationTest do
     end
 
     test "plugin retries via run_after when agent fails then recovers" do
-      agent = ADK.Agent.Custom.new(
-        name: "pipeline_agent",
-        run_fn: fn _agent, ctx ->
-          if ADK.Context.get_temp(ctx, :reflection_feedback) do
-            [ADK.Event.new(%{author: "pipeline_agent", content: %{parts: [%{text: "success"}]}})]
-          else
-            [ADK.Event.new(%{author: "pipeline_agent", error: "fail"})]
+      agent =
+        ADK.Agent.Custom.new(
+          name: "pipeline_agent",
+          run_fn: fn _agent, ctx ->
+            if ADK.Context.get_temp(ctx, :reflection_feedback) do
+              [
+                ADK.Event.new(%{
+                  author: "pipeline_agent",
+                  content: %{parts: [%{text: "success"}]}
+                })
+              ]
+            else
+              [ADK.Event.new(%{author: "pipeline_agent", error: "fail"})]
+            end
           end
-        end
-      )
+        )
 
       {:ok, state} = ReflectRetry.init(max_retries: 2)
       plugins = [{ReflectRetry, state}]
@@ -73,23 +79,25 @@ defmodule ADK.Plugin.ReflectRetryIntegrationTest do
     test "end-to-end: validator-based retry through plugin pipeline" do
       call_count = :counters.new(1, [:atomics])
 
-      agent = ADK.Agent.Custom.new(
-        name: "quality_agent",
-        run_fn: fn _agent, _ctx ->
-          n = :counters.get(call_count, 1) + 1
-          :counters.put(call_count, 1, n)
+      agent =
+        ADK.Agent.Custom.new(
+          name: "quality_agent",
+          run_fn: fn _agent, _ctx ->
+            n = :counters.get(call_count, 1) + 1
+            :counters.put(call_count, 1, n)
 
-          text =
-            if n >= 2,
-              do: "The capital of France is Paris.",
-              else: "I'm not sure about that."
+            text =
+              if n >= 2,
+                do: "The capital of France is Paris.",
+                else: "I'm not sure about that."
 
-          [ADK.Event.new(%{author: "quality_agent", content: %{parts: [%{text: text}]}})]
-        end
-      )
+            [ADK.Event.new(%{author: "quality_agent", content: %{parts: [%{text: text}]}})]
+          end
+        )
 
       validator = fn events ->
         text = events |> Enum.map_join(" ", &(ADK.Event.text(&1) || ""))
+
         if String.contains?(text, "not sure"),
           do: {:error, "Response was uncertain — be definitive"},
           else: :ok
@@ -99,7 +107,13 @@ defmodule ADK.Plugin.ReflectRetryIntegrationTest do
       plugins = [{ReflectRetry, state}]
 
       ctx = %ADK.Context{invocation_id: "e2e-val", agent: agent}
-      initial = [ADK.Event.new(%{author: "quality_agent", content: %{parts: [%{text: "I'm not sure about that."}]}})]
+
+      initial = [
+        ADK.Event.new(%{
+          author: "quality_agent",
+          content: %{parts: [%{text: "I'm not sure about that."}]}
+        })
+      ]
 
       {result, _} = ADK.Plugin.run_after(plugins, initial, ctx)
 

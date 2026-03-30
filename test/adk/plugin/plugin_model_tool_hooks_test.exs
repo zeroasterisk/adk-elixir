@@ -223,8 +223,10 @@ defmodule ADK.Plugin.ModelToolHooksTest do
       if pid = ctx.temp_state[:log_pid] do
         Agent.update(pid, &[:a | &1])
       end
+
       {:ok, request}
     end
+
     @impl true
     def after_model(_ctx, resp), do: resp
   end
@@ -238,8 +240,10 @@ defmodule ADK.Plugin.ModelToolHooksTest do
       if pid = ctx.temp_state[:log_pid] do
         Agent.update(pid, &[:b | &1])
       end
+
       {:ok, request}
     end
+
     @impl true
     def after_model(_ctx, resp), do: resp
   end
@@ -424,7 +428,8 @@ defmodule ADK.Plugin.ModelToolHooksTest do
       ctx = %ADK.Context{invocation_id: "inv-1"}
       result = {:ok, "raw"}
 
-      assert {:ok, "transformed: raw"} = ADK.Plugin.run_after_tool(plugins, ctx, "my_tool", result)
+      assert {:ok, "transformed: raw"} =
+               ADK.Plugin.run_after_tool(plugins, ctx, "my_tool", result)
     end
 
     test "chains multiple after_tool plugins" do
@@ -441,7 +446,8 @@ defmodule ADK.Plugin.ModelToolHooksTest do
       ctx = %ADK.Context{invocation_id: "inv-1"}
       result = {:error, "something broke"}
 
-      assert {:error, "something broke"} = ADK.Plugin.run_after_tool(plugins, ctx, "my_tool", result)
+      assert {:error, "something broke"} =
+               ADK.Plugin.run_after_tool(plugins, ctx, "my_tool", result)
     end
   end
 
@@ -450,7 +456,13 @@ defmodule ADK.Plugin.ModelToolHooksTest do
       {:ok, log_agent} = Agent.start_link(fn -> [] end)
 
       ctx = %ADK.Context{invocation_id: "inv-1", temp_state: %{log_pid: log_agent}}
-      event = ADK.Event.new(%{author: "bot", invocation_id: "inv-1", content: %{parts: [%{text: "hi"}]}})
+
+      event =
+        ADK.Event.new(%{
+          author: "bot",
+          invocation_id: "inv-1",
+          content: %{parts: [%{text: "hi"}]}
+        })
 
       plugins = [{EventCollectorPlugin, nil}]
       assert :ok = ADK.Plugin.run_on_event(plugins, ctx, event)
@@ -478,10 +490,13 @@ defmodule ADK.Plugin.ModelToolHooksTest do
       assert :ok = ADK.Plugin.run_on_event(plugins, ctx, event)
 
       calls = Agent.get(log_agent, & &1)
-      event_calls = Enum.filter(calls, fn
-        {:event, _} -> true
-        _ -> false
-      end)
+
+      event_calls =
+        Enum.filter(calls, fn
+          {:event, _} -> true
+          _ -> false
+        end)
+
       # Called twice (two EventCollectorPlugin instances)
       assert length(event_calls) == 2
 
@@ -509,7 +524,13 @@ defmodule ADK.Plugin.ModelToolHooksTest do
         plugins: [{EventCollectorPlugin, nil}]
       }
 
-      event = ADK.Event.new(%{author: "agent", invocation_id: "inv-emit-1", content: %{parts: [%{text: "hello"}]}})
+      event =
+        ADK.Event.new(%{
+          author: "agent",
+          invocation_id: "inv-emit-1",
+          content: %{parts: [%{text: "hello"}]}
+        })
+
       ADK.Context.emit_event(ctx, event)
 
       calls = Agent.get(log_agent, & &1)
@@ -533,12 +554,24 @@ defmodule ADK.Plugin.ModelToolHooksTest do
         plugins: [{EventCollectorPlugin, nil}]
       }
 
-      event = ADK.Event.new(%{author: "agent", invocation_id: "inv-emit-3", content: %{parts: [%{text: "hi"}]}})
+      event =
+        ADK.Event.new(%{
+          author: "agent",
+          invocation_id: "inv-emit-3",
+          content: %{parts: [%{text: "hi"}]}
+        })
+
       ADK.Context.emit_event(ctx, event)
       ADK.Context.emit_event(ctx, event)
 
       calls = Agent.get(log_agent, & &1)
-      event_calls = Enum.filter(calls, fn {:event, _} -> true; _ -> false end)
+
+      event_calls =
+        Enum.filter(calls, fn
+          {:event, _} -> true
+          _ -> false
+        end)
+
       assert length(event_calls) == 1
 
       Agent.stop(log_agent)

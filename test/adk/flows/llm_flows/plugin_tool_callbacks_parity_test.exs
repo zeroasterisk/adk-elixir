@@ -116,7 +116,7 @@ defmodule ADK.Flows.LlmFlows.PluginToolCallbacksParityTest do
 
     runner = ADK.Runner.new(app_name: "test", agent: agent)
     events = ADK.Runner.run(runner, "u1", "sess1", "test", callbacks: callbacks)
-    
+
     events
   end
 
@@ -129,10 +129,12 @@ defmodule ADK.Flows.LlmFlows.PluginToolCallbacksParityTest do
     events = invoke_tool_with_plugin(plugin_config, tool_fun)
 
     assert [_call_event, result_event | _] = Enum.reverse(events)
-    
+
     parts = result_event.content[:parts] || result_event.content.parts
     part = hd(parts)
-    assert Map.get(part.function_response.response, :mock_plugin) == "before_tool_response from MockPlugin"
+
+    assert Map.get(part.function_response.response, :mock_plugin) ==
+             "before_tool_response from MockPlugin"
   end
 
   test "after_tool_callback_with_plugin: transforms tool response" do
@@ -144,10 +146,12 @@ defmodule ADK.Flows.LlmFlows.PluginToolCallbacksParityTest do
     events = invoke_tool_with_plugin(plugin_config, tool_fun)
 
     assert [_call_event, result_event | _] = Enum.reverse(events)
-    
+
     parts = result_event.content[:parts] || result_event.content.parts
     part = hd(parts)
-    assert Map.get(part.function_response.response, :mock_plugin) == "after_tool_response from MockPlugin"
+
+    assert Map.get(part.function_response.response, :mock_plugin) ==
+             "after_tool_response from MockPlugin"
   end
 
   test "on_tool_error_callback_with_plugin: plugin handles tool error" do
@@ -159,10 +163,12 @@ defmodule ADK.Flows.LlmFlows.PluginToolCallbacksParityTest do
     events = invoke_tool_with_plugin(plugin_config, tool_fun)
 
     assert [_call_event, result_event | _] = Enum.reverse(events)
-    
+
     parts = result_event.content[:parts] || result_event.content.parts
     part = hd(parts)
-    assert Map.get(part.function_response.response, :mock_plugin) == "on_tool_error_response from MockPlugin"
+
+    assert Map.get(part.function_response.response, :mock_plugin) ==
+             "on_tool_error_response from MockPlugin"
   end
 
   test "on_tool_error_callback_fallback_to_runner: error falls back when plugin ignores it" do
@@ -174,10 +180,10 @@ defmodule ADK.Flows.LlmFlows.PluginToolCallbacksParityTest do
     events = invoke_tool_with_plugin(plugin_config, tool_fun)
 
     assert [_call_event, result_event | _] = Enum.reverse(events)
-    
+
     parts = result_event.content[:parts] || result_event.content.parts
     part = hd(parts)
-    
+
     err = Map.get(part.function_response, :error) || inspect(part.function_response.response)
     assert String.contains?(err, "Quota")
   end
@@ -186,29 +192,35 @@ defmodule ADK.Flows.LlmFlows.PluginToolCallbacksParityTest do
     plugin_config = [
       enable_before_tool_callback: true
     ]
+
     tool_fun = fn _, _ -> {:ok, %{initial: "response"}} end
 
     events = invoke_tool_with_plugin(plugin_config, tool_fun, [MockToolCallbackBefore])
 
     assert [_call_event, result_event | _] = Enum.reverse(events)
-    
+
     parts = result_event.content[:parts] || result_event.content.parts
     part = hd(parts)
-    assert Map.get(part.function_response.response, :mock_plugin) == "before_tool_response from MockPlugin"
+
+    assert Map.get(part.function_response.response, :mock_plugin) ==
+             "before_tool_response from MockPlugin"
   end
 
   test "plugin_after_tool_callback_takes_priority_over_agent" do
     plugin_config = [
       enable_after_tool_callback: true
     ]
+
     tool_fun = fn _, _ -> {:ok, %{initial: "response"}} end
 
     events = invoke_tool_with_plugin(plugin_config, tool_fun, [MockToolCallback])
 
     assert [_call_event, result_event | _] = Enum.reverse(events)
-    
+
     parts = result_event.content[:parts] || result_event.content.parts
     part = hd(parts)
-    assert Map.get(part.function_response.response, :mock_plugin) == "after_tool_response from MockPlugin"
+
+    assert Map.get(part.function_response.response, :mock_plugin) ==
+             "after_tool_response from MockPlugin"
   end
 end

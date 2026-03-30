@@ -6,8 +6,10 @@ defmodule ADK.Session.Store.InMemoryTest do
   setup do
     # Start a fresh ETS-backed store for each test
     case GenServer.whereis(InMemory) do
-      nil -> InMemory.start_link([])
-      pid -> 
+      nil ->
+        InMemory.start_link([])
+
+      pid ->
         :ets.delete_all_objects(InMemory)
         {:ok, pid}
     end

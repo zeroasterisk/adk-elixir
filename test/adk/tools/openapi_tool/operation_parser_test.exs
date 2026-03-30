@@ -9,41 +9,46 @@ defmodule ADK.Tool.OpenApiTool.OperationParserTest do
       "info" => %{"title" => "Operation API", "version" => "1.0.0"},
       "paths" => %{
         "/test" => %{
-          "post" => Map.merge(%{
-            "operationId" => "test_operation",
-            "responses" => %{
-              "200" => %{
-                "description" => "Success",
-                "content" => %{
-                  "application/json" => %{"schema" => %{"type" => "string"}}
+          "post" =>
+            Map.merge(
+              %{
+                "operationId" => "test_operation",
+                "responses" => %{
+                  "200" => %{
+                    "description" => "Success",
+                    "content" => %{
+                      "application/json" => %{"schema" => %{"type" => "string"}}
+                    }
+                  }
                 }
-              }
-            }
-          }, operation_overrides)
+              },
+              operation_overrides
+            )
         }
       }
     }
   end
 
   test "process_request_body_array" do
-    spec = create_operation_spec(%{
-      "requestBody" => %{
-        "content" => %{
-          "application/json" => %{
-            "schema" => %{
-              "type" => "array",
-              "items" => %{
-                "type" => "object",
-                "properties" => %{
-                  "item_prop1" => %{"type" => "string", "description" => "Item Property 1"},
-                  "item_prop2" => %{"type" => "integer", "description" => "Item Property 2"}
+    spec =
+      create_operation_spec(%{
+        "requestBody" => %{
+          "content" => %{
+            "application/json" => %{
+              "schema" => %{
+                "type" => "array",
+                "items" => %{
+                  "type" => "object",
+                  "properties" => %{
+                    "item_prop1" => %{"type" => "string", "description" => "Item Property 1"},
+                    "item_prop2" => %{"type" => "integer", "description" => "Item Property 2"}
+                  }
                 }
               }
             }
           }
         }
-      }
-    })
+      })
 
     [parsed_op] = SpecParser.parse(spec)
     assert length(parsed_op.parameters) == 1
@@ -55,19 +60,22 @@ defmodule ADK.Tool.OpenApiTool.OperationParserTest do
     assert param.param_schema["items"]["type"] == "object"
     assert Map.has_key?(param.param_schema["items"]["properties"], "item_prop1")
     assert Map.has_key?(param.param_schema["items"]["properties"], "item_prop2")
-    assert param.param_schema["items"]["properties"]["item_prop1"]["description"] == "Item Property 1"
+
+    assert param.param_schema["items"]["properties"]["item_prop1"]["description"] ==
+             "Item Property 1"
   end
 
   test "process_request_body_no_name" do
-    spec = create_operation_spec(%{
-      "requestBody" => %{
-        "content" => %{
-          "application/json" => %{
-            "schema" => %{"type" => "string"}
+    spec =
+      create_operation_spec(%{
+        "requestBody" => %{
+          "content" => %{
+            "application/json" => %{
+              "schema" => %{"type" => "string"}
+            }
           }
         }
-      }
-    })
+      })
 
     [parsed_op] = SpecParser.parse(spec)
     assert length(parsed_op.parameters) == 1
@@ -80,27 +88,28 @@ defmodule ADK.Tool.OpenApiTool.OperationParserTest do
   end
 
   test "process_request_body_one_of_schema_assigns_name" do
-    spec = create_operation_spec(%{
-      "operationId" => "one_of_request",
-      "requestBody" => %{
-        "content" => %{
-          "application/json" => %{
-            "schema" => %{
-              "oneOf" => [
-                %{
-                  "type" => "object",
-                  "properties" => %{
-                    "type" => %{"type" => "string"},
-                    "stage" => %{"type" => "string"}
+    spec =
+      create_operation_spec(%{
+        "operationId" => "one_of_request",
+        "requestBody" => %{
+          "content" => %{
+            "application/json" => %{
+              "schema" => %{
+                "oneOf" => [
+                  %{
+                    "type" => "object",
+                    "properties" => %{
+                      "type" => %{"type" => "string"},
+                      "stage" => %{"type" => "string"}
+                    }
                   }
-                }
-              ],
-              "discriminator" => %{"propertyName" => "type"}
+                ],
+                "discriminator" => %{"propertyName" => "type"}
+              }
             }
           }
         }
-      }
-    })
+      })
 
     [parsed_op] = SpecParser.parse(spec)
     assert length(parsed_op.parameters) == 1
@@ -113,26 +122,28 @@ defmodule ADK.Tool.OpenApiTool.OperationParserTest do
   end
 
   test "process_request_body_empty_object" do
-    spec = create_operation_spec(%{
-      "requestBody" => %{
-        "content" => %{
-          "application/json" => %{
-            "schema" => %{"type" => "object"}
+    spec =
+      create_operation_spec(%{
+        "requestBody" => %{
+          "content" => %{
+            "application/json" => %{
+              "schema" => %{"type" => "object"}
+            }
           }
         }
-      }
-    })
+      })
 
     [parsed_op] = SpecParser.parse(spec)
     assert parsed_op.parameters == []
   end
 
   test "process_return_value_no_2xx" do
-    spec = create_operation_spec(%{
-      "responses" => %{
-        "400" => %{"description" => "Client Error"}
-      }
-    })
+    spec =
+      create_operation_spec(%{
+        "responses" => %{
+          "400" => %{"description" => "Client Error"}
+        }
+      })
 
     [parsed_op] = SpecParser.parse(spec)
     # When no 2xx response exists, return schema should be empty map
@@ -140,26 +151,27 @@ defmodule ADK.Tool.OpenApiTool.OperationParserTest do
   end
 
   test "process_return_value_multiple_2xx" do
-    spec = create_operation_spec(%{
-      "responses" => %{
-        "201" => %{
-          "description" => "Success 201",
-          "content" => %{"application/json" => %{"schema" => %{"type" => "integer"}}}
-        },
-        "202" => %{
-          "description" => "Success 202",
-          "content" => %{"text/plain" => %{"schema" => %{"type" => "string"}}}
-        },
-        "200" => %{
-          "description" => "Success 200",
-          "content" => %{"application/pdf" => %{"schema" => %{"type" => "boolean"}}}
-        },
-        "400" => %{
-          "description" => "Failure",
-          "content" => %{"application/xml" => %{"schema" => %{"type" => "object"}}}
+    spec =
+      create_operation_spec(%{
+        "responses" => %{
+          "201" => %{
+            "description" => "Success 201",
+            "content" => %{"application/json" => %{"schema" => %{"type" => "integer"}}}
+          },
+          "202" => %{
+            "description" => "Success 202",
+            "content" => %{"text/plain" => %{"schema" => %{"type" => "string"}}}
+          },
+          "200" => %{
+            "description" => "Success 200",
+            "content" => %{"application/pdf" => %{"schema" => %{"type" => "boolean"}}}
+          },
+          "400" => %{
+            "description" => "Failure",
+            "content" => %{"application/xml" => %{"schema" => %{"type" => "object"}}}
+          }
         }
-      }
-    })
+      })
 
     [parsed_op] = SpecParser.parse(spec)
     # Should take the 200 response since it's the smallest response code
@@ -167,25 +179,28 @@ defmodule ADK.Tool.OpenApiTool.OperationParserTest do
   end
 
   test "process_return_value_no_content" do
-    spec = create_operation_spec(%{
-      "responses" => %{
-        "200" => %{"description" => "Success", "content" => %{}}
-      }
-    })
+    spec =
+      create_operation_spec(%{
+        "responses" => %{
+          "200" => %{"description" => "Success", "content" => %{}}
+        }
+      })
 
     [parsed_op] = SpecParser.parse(spec)
     assert parsed_op.return_value.param_schema == %{}
   end
 
   test "process_return_value_no_schema" do
-    spec = create_operation_spec(%{
-      "responses" => %{
-        "200" => %{
-          "description" => "Success",
-          "content" => %{"application/json" => %{}} # no schema key
+    spec =
+      create_operation_spec(%{
+        "responses" => %{
+          "200" => %{
+            "description" => "Success",
+            # no schema key
+            "content" => %{"application/json" => %{}}
+          }
         }
-      }
-    })
+      })
 
     [parsed_op] = SpecParser.parse(spec)
     assert parsed_op.return_value.param_schema == %{}

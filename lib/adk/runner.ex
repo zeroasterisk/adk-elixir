@@ -130,55 +130,55 @@ defmodule ADK.Runner do
       |> Enum.uniq_by(fn {mod, _} -> mod end)
 
     telemetry_meta = %{
-  agent_name: ADK.Agent.name(runner.agent),
-  session_id: session_id,
-  "gen_ai.system": "gcp.vertex.agent",
-  "gen_ai.operation.name": "invoke_agent",
-  "gen_ai.agent.name": ADK.Agent.name(runner.agent),
-  "gen_ai.conversation.id": session_id,
-  "gen_ai.agent.description": Map.get(runner.agent, :description, "")
-}
+      agent_name: ADK.Agent.name(runner.agent),
+      session_id: session_id,
+      "gen_ai.system": "gcp.vertex.agent",
+      "gen_ai.operation.name": "invoke_agent",
+      "gen_ai.agent.name": ADK.Agent.name(runner.agent),
+      "gen_ai.conversation.id": session_id,
+      "gen_ai.agent.description": Map.get(runner.agent, :description, "")
+    }
 
     # Run before_run plugins — emit telemetry around the full agent execution
     {agent_events, _plugins} =
       ADK.Telemetry.span([:adk, :agent], telemetry_meta, fn ->
         case ADK.Plugin.run_before(plugins, ctx) do
-        {:halt, result, updated_plugins} ->
-          {result, updated_plugins}
+          {:halt, result, updated_plugins} ->
+            {result, updated_plugins}
 
-        {:cont, ctx, updated_plugins} ->
-          # Store updated plugin states in context so LlmAgent can call
-          # per-model/per-tool/on_event plugin hooks inline during execution.
-          ctx = %{ctx | plugins: updated_plugins}
+          {:cont, ctx, updated_plugins} ->
+            # Store updated plugin states in context so LlmAgent can call
+            # per-model/per-tool/on_event plugin hooks inline during execution.
+            ctx = %{ctx | plugins: updated_plugins}
 
-          # Run input policy filters
-          case ADK.Policy.run_input_filters(policies, ctx.user_content, ctx) do
-            {:halt, events} ->
-              {events, updated_plugins}
+            # Run input policy filters
+            case ADK.Policy.run_input_filters(policies, ctx.user_content, ctx) do
+              {:halt, events} ->
+                {events, updated_plugins}
 
-            {:cont, filtered_content} ->
-              ctx = %{ctx | user_content: filtered_content}
+              {:cont, filtered_content} ->
+                ctx = %{ctx | user_content: filtered_content}
 
-              # Run before_agent callbacks
-              cb_ctx = %{agent: runner.agent, context: ctx}
+                # Run before_agent callbacks
+                cb_ctx = %{agent: runner.agent, context: ctx}
 
-              events =
-                case ADK.Callback.run_before(callbacks, :before_agent, cb_ctx) do
-                  {:halt, events} ->
-                    events
+                events =
+                  case ADK.Callback.run_before(callbacks, :before_agent, cb_ctx) do
+                    {:halt, events} ->
+                      events
 
-                  {:cont, cb_ctx} ->
-                    events = ADK.Agent.run(cb_ctx.context.agent, cb_ctx.context)
-                    ADK.Callback.run_after(callbacks, :after_agent, events, cb_ctx)
-                end
+                    {:cont, cb_ctx} ->
+                      events = ADK.Agent.run(cb_ctx.context.agent, cb_ctx.context)
+                      ADK.Callback.run_after(callbacks, :after_agent, events, cb_ctx)
+                  end
 
-              # Run output policy filters
-              events = ADK.Policy.run_output_filters(policies, events, ctx)
+                # Run output policy filters
+                events = ADK.Policy.run_output_filters(policies, events, ctx)
 
-              # Run after_run plugins
-              ADK.Plugin.run_after(updated_plugins, events, ctx)
-          end
-      end
+                # Run after_run plugins
+                ADK.Plugin.run_after(updated_plugins, events, ctx)
+            end
+        end
       end)
 
     # Append events to session and emit via on_event callback.
@@ -226,7 +226,9 @@ defmodule ADK.Runner do
       ADK.Runner.run_streaming(runner, "user1", "sess1", "hi",
         on_event: fn event -> IO.inspect(event) end)
   """
-  @spec run_streaming(t(), String.t(), String.t(), map() | String.t(), keyword()) :: [ADK.Event.t()]
+  @spec run_streaming(t(), String.t(), String.t(), map() | String.t(), keyword()) :: [
+          ADK.Event.t()
+        ]
   def run_streaming(%__MODULE__{} = runner, user_id, session_id, message, opts \\ []) do
     # on_event is threaded through context — fires for each event as the agent produces it.
     # This is a synchronous call; the on_event callback is invoked inline during execution.
@@ -252,41 +254,48 @@ defmodule ADK.Runner do
         {:adk_done, events} -> IO.puts("Done, \#{length(events)} events")
       end
   """
-  @spec run_async(t(), String.t(), String.t(), map() | String.t(), keyword()) :: {:ok, pid()} | {:error, term()}
+  @spec run_async(t(), String.t(), String.t(), map() | String.t(), keyword()) ::
+          {:ok, pid()} | {:error, term()}
   def run_async(%__MODULE__{} = runner, user_id, session_id, message, opts \\ []) do
     reply_to = Keyword.get(opts, :reply_to, self())
     runner_opts = Keyword.drop(opts, [:reply_to])
 
     # Wrap on_event to also send {:adk_event, event} messages
     caller_on_event = Keyword.get(runner_opts, :on_event)
+
     streaming_on_event = fn event ->
       send(reply_to, {:adk_event, event})
       if caller_on_event, do: caller_on_event.(event)
     end
+
     runner_opts = Keyword.put(runner_opts, :on_event, streaming_on_event)
 
     supervisor = ADK.RunnerSupervisor
 
     if Process.whereis(supervisor) do
-      {:ok, pid} = Task.Supervisor.start_child(supervisor, fn ->
-        try do
-          events = run(runner, user_id, session_id, message, runner_opts)
-          send(reply_to, {:adk_done, events})
-        rescue
-          e -> send(reply_to, {:adk_error, Exception.message(e)})
-        end
-      end)
+      {:ok, pid} =
+        Task.Supervisor.start_child(supervisor, fn ->
+          try do
+            events = run(runner, user_id, session_id, message, runner_opts)
+            send(reply_to, {:adk_done, events})
+          rescue
+            e -> send(reply_to, {:adk_error, Exception.message(e)})
+          end
+        end)
+
       {:ok, pid}
     else
       # Fallback: spawn unsupervised
-      pid = spawn(fn ->
-        try do
-          events = run(runner, user_id, session_id, message, runner_opts)
-          send(reply_to, {:adk_done, events})
-        rescue
-          e -> send(reply_to, {:adk_error, Exception.message(e)})
-        end
-      end)
+      pid =
+        spawn(fn ->
+          try do
+            events = run(runner, user_id, session_id, message, runner_opts)
+            send(reply_to, {:adk_done, events})
+          rescue
+            e -> send(reply_to, {:adk_error, Exception.message(e)})
+          end
+        end)
+
       {:ok, pid}
     end
   end

@@ -21,17 +21,20 @@ defmodule ADK.Context.Compressor.TokenBudgetTest do
     end
 
     test "estimates ~4 chars per token by default" do
-      msgs = [msg(:user, "abcdefgh")]  # 8 chars → 2 tokens
+      # 8 chars → 2 tokens
+      msgs = [msg(:user, "abcdefgh")]
       assert TokenBudget.estimate_tokens(msgs) == 2
     end
 
     test "sums across multiple messages" do
-      msgs = [msg(:user, "abcdefgh"), msg(:model, "ijklmnop")]  # 8+8=16 → 4 tokens
+      # 8+8=16 → 4 tokens
+      msgs = [msg(:user, "abcdefgh"), msg(:model, "ijklmnop")]
       assert TokenBudget.estimate_tokens(msgs) == 4
     end
 
     test "respects custom chars_per_token" do
-      msgs = [msg(:user, "abcdefgh")]  # 8 chars / 2 = 4 tokens
+      # 8 chars / 2 = 4 tokens
+      msgs = [msg(:user, "abcdefgh")]
       assert TokenBudget.estimate_tokens(msgs, 2) == 4
     end
 
@@ -159,11 +162,12 @@ defmodule ADK.Context.Compressor.TokenBudgetTest do
       msgs = for _ <- 1..5, do: msg_of_size(:user, 100)
 
       # 100 tokens per message (chars_per_token: 1); budget 150 → fits 1 old + 1 recent
-      assert {:ok, result} = TokenBudget.compress(msgs,
-        token_budget: 250,
-        chars_per_token: 1,
-        keep_recent: 1
-      )
+      assert {:ok, result} =
+               TokenBudget.compress(msgs,
+                 token_budget: 250,
+                 chars_per_token: 1,
+                 keep_recent: 1
+               )
 
       assert length(result) < 5
     end
@@ -176,11 +180,12 @@ defmodule ADK.Context.Compressor.TokenBudgetTest do
       ]
 
       # With keep_system: false, system message can be dropped
-      assert {:ok, result} = TokenBudget.compress(msgs,
-        token_budget: 1,
-        keep_system: false,
-        keep_recent: 1
-      )
+      assert {:ok, result} =
+               TokenBudget.compress(msgs,
+                 token_budget: 1,
+                 keep_system: false,
+                 keep_recent: 1
+               )
 
       # System message should not be preserved
       refute Enum.any?(result, fn m -> m.role == :system end)

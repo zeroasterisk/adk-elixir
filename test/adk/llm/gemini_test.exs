@@ -159,7 +159,9 @@ defmodule ADK.LLM.GeminiTest do
 
     test "returns :api_error on 500" do
       stub_gemini(500, %{"error" => %{"message" => "Internal error"}})
-      assert {:error, {:api_error, 500, _}} = Gemini.generate("gemini-flash-latest", %{messages: []})
+
+      assert {:error, {:api_error, 500, _}} =
+               Gemini.generate("gemini-flash-latest", %{messages: []})
     end
 
     test "returns :missing_api_key when no key configured" do

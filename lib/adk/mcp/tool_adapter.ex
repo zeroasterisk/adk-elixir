@@ -26,7 +26,9 @@ defmodule ADK.MCP.ToolAdapter do
 
       {:ok, other} ->
         # Some servers return tools directly as a list
-        if is_list(other), do: {:ok, Enum.map(other, &to_function_tool(client, &1))}, else: {:error, {:unexpected, other}}
+        if is_list(other),
+          do: {:ok, Enum.map(other, &to_function_tool(client, &1))},
+          else: {:error, {:unexpected, other}}
 
       {:error, _} = err ->
         err

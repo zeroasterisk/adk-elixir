@@ -171,7 +171,9 @@ defmodule ADK.Tool.ExitLoopTest do
       # Must have an escalate event
       assert Enum.any?(events, fn e -> e.actions.escalate == true end)
       # Must NOT continue running more iterations
-      refute Enum.any?(events, fn e -> is_binary(ADK.Event.text(e)) and ADK.Event.text(e) =~ "working" end)
+      refute Enum.any?(events, fn e ->
+               is_binary(ADK.Event.text(e)) and ADK.Event.text(e) =~ "working"
+             end)
     end
 
     test "LoopAgent without exit_loop still runs max_iterations" do
@@ -200,7 +202,13 @@ defmodule ADK.Tool.ExitLoopTest do
 
     test "exit_loop reason is preserved in escalate event content" do
       ADK.LLM.Mock.set_responses([
-        %{function_call: %{name: "exit_loop", args: %{"reason" => "Found the answer: 42"}, id: "fc-4"}}
+        %{
+          function_call: %{
+            name: "exit_loop",
+            args: %{"reason" => "Found the answer: 42"},
+            id: "fc-4"
+          }
+        }
       ])
 
       agent =

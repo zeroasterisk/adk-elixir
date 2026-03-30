@@ -84,9 +84,15 @@ defmodule ADK.Telemetry do
   @spec events() :: [list(atom())]
   def events do
     [
-      @agent_start, @agent_stop, @agent_exception,
-      @llm_start, @llm_stop, @llm_exception,
-      @tool_start, @tool_stop, @tool_exception
+      @agent_start,
+      @agent_stop,
+      @agent_exception,
+      @llm_start,
+      @llm_stop,
+      @llm_exception,
+      @tool_start,
+      @tool_stop,
+      @tool_exception
     ]
   end
 
@@ -126,22 +132,29 @@ defmodule ADK.Telemetry do
     span_name = Enum.join(event_prefix, ".")
     tracer = :opentelemetry.get_tracer(:adk)
 
-    :otel_tracer.with_span(tracer, span_name, %{attributes: map_to_otel_attrs(metadata)}, fn span_ctx ->
-      telemetry_fun = fn ->
-        case fun.() do
-          {res, stop_metadata} ->
-            :otel_span.set_attributes(span_ctx, map_to_otel_attrs(stop_metadata))
-            {res, stop_metadata}
+    :otel_tracer.with_span(
+      tracer,
+      span_name,
+      %{attributes: map_to_otel_attrs(metadata)},
+      fn span_ctx ->
+        telemetry_fun = fn ->
+          case fun.() do
+            {res, stop_metadata} ->
+              :otel_span.set_attributes(span_ctx, map_to_otel_attrs(stop_metadata))
+              {res, stop_metadata}
+          end
         end
-      end
 
-      telemetry_span(event_prefix, metadata, telemetry_fun)
-    end)
+        telemetry_span(event_prefix, metadata, telemetry_fun)
+      end
+    )
   end
 
   defp map_to_otel_attrs(map) do
     Map.to_list(map)
-    |> Enum.filter(fn {_k, v} -> is_binary(v) or is_number(v) or is_boolean(v) or is_atom(v) or is_list(v) end)
+    |> Enum.filter(fn {_k, v} ->
+      is_binary(v) or is_number(v) or is_boolean(v) or is_atom(v) or is_list(v)
+    end)
     |> Map.new()
   end
 

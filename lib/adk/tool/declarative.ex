@@ -63,7 +63,7 @@ defmodule ADK.Tool.Declarative do
           %ADK.Tool.FunctionTool{
             name: unquote(name),
             description: unquote(desc),
-            func: &__MODULE__.unquote(func_name) / 2,
+            func: &(__MODULE__.unquote(func_name) / 2),
             parameters: %{}
           }
         end

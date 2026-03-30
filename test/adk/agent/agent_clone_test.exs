@@ -21,7 +21,13 @@ defmodule ADK.Agent.AgentCloneTest do
 
   # test 1
   test "basic LlmAgent clone with name update" do
-    original = llm(name: "llm_agent", description: "An LLM agent", instruction: "You are a helpful assistant.")
+    original =
+      llm(
+        name: "llm_agent",
+        description: "An LLM agent",
+        instruction: "You are a helpful assistant."
+      )
+
     cloned = Clone.clone(original, %{name: "cloned_llm_agent"})
 
     assert cloned.name == "cloned_llm_agent"
@@ -38,7 +44,10 @@ defmodule ADK.Agent.AgentCloneTest do
   test "clone agent with sub-agents" do
     sub1 = llm(name: "sub_agent1", description: "First sub-agent")
     sub2 = llm(name: "sub_agent2", description: "Second sub-agent")
-    original = SequentialAgent.new(name: "parent_agent", description: "Parent", sub_agents: [sub1, sub2])
+
+    original =
+      SequentialAgent.new(name: "parent_agent", description: "Parent", sub_agents: [sub1, sub2])
+
     cloned = Clone.clone(original, %{name: "cloned_parent"})
 
     assert cloned.name == "cloned_parent"
@@ -50,7 +59,8 @@ defmodule ADK.Agent.AgentCloneTest do
     assert_parent_name(Enum.at(cloned.sub_agents, 1), "cloned_parent")
 
     # Cloned sub-agents are independent copies (different name lineage)
-    assert Enum.at(cloned.sub_agents, 0).parent_agent.name != Enum.at(original.sub_agents, 0).parent_agent
+    assert Enum.at(cloned.sub_agents, 0).parent_agent.name !=
+             Enum.at(original.sub_agents, 0).parent_agent
 
     assert original.name == "parent_agent"
     assert length(original.sub_agents) == 2
@@ -60,9 +70,20 @@ defmodule ADK.Agent.AgentCloneTest do
   test "three-level nested agent clone" do
     leaf1 = llm(name: "leaf1", description: "First leaf agent")
     leaf2 = llm(name: "leaf2", description: "Second leaf agent")
-    middle1 = SequentialAgent.new(name: "middle1", description: "First middle agent", sub_agents: [leaf1])
-    middle2 = ParallelAgent.new(name: "middle2", description: "Second middle agent", sub_agents: [leaf2])
-    root = LoopAgent.new(name: "root_agent", description: "Root", max_iterations: 5, sub_agents: [middle1, middle2])
+
+    middle1 =
+      SequentialAgent.new(name: "middle1", description: "First middle agent", sub_agents: [leaf1])
+
+    middle2 =
+      ParallelAgent.new(name: "middle2", description: "Second middle agent", sub_agents: [leaf2])
+
+    root =
+      LoopAgent.new(
+        name: "root_agent",
+        description: "Root",
+        max_iterations: 5,
+        sub_agents: [middle1, middle2]
+      )
 
     cloned_root = Clone.clone(root, %{name: "cloned_root"})
 
@@ -111,15 +132,17 @@ defmodule ADK.Agent.AgentCloneTest do
 
   # test 5
   test "clone with complex configuration preserves all fields" do
-    original = LlmAgent.new(
-      name: "complex_agent",
-      model: "test",
-      description: "A complex agent with many settings",
-      instruction: "You are a specialized assistant.",
-      global_instruction: "Always be helpful and accurate.",
-      disallow_transfer_to_parent: true,
-      disallow_transfer_to_peers: true
-    )
+    original =
+      LlmAgent.new(
+        name: "complex_agent",
+        model: "test",
+        description: "A complex agent with many settings",
+        instruction: "You are a specialized assistant.",
+        global_instruction: "Always be helpful and accurate.",
+        disallow_transfer_to_parent: true,
+        disallow_transfer_to_peers: true
+      )
+
     cloned = Clone.clone(original, %{name: "complex_clone"})
 
     assert cloned.name == "complex_clone"
@@ -143,8 +166,19 @@ defmodule ADK.Agent.AgentCloneTest do
 
   # test 7
   test "clone with multiple updates" do
-    original = llm(name: "original_agent", description: "Original description", instruction: "Original instruction")
-    cloned = Clone.clone(original, %{name: "updated_agent", description: "Updated description", instruction: "Updated instruction"})
+    original =
+      llm(
+        name: "original_agent",
+        description: "Original description",
+        instruction: "Original instruction"
+      )
+
+    cloned =
+      Clone.clone(original, %{
+        name: "updated_agent",
+        description: "Updated description",
+        instruction: "Updated instruction"
+      })
 
     assert cloned.name == "updated_agent"
     assert cloned.description == "Updated description"
@@ -154,7 +188,10 @@ defmodule ADK.Agent.AgentCloneTest do
   # test 8
   test "clone with sub_agents deep copy - new objects" do
     sub = llm(name: "sub_agent", description: "Sub agent")
-    original = LlmAgent.new(name: "root_agent", model: "test", instruction: "h", sub_agents: [sub])
+
+    original =
+      LlmAgent.new(name: "root_agent", model: "test", instruction: "h", sub_agents: [sub])
+
     cloned = Clone.clone(original, %{name: "cloned_root"})
 
     assert cloned.sub_agents |> Enum.at(0) |> Map.get(:name) == "sub_agent"
@@ -170,6 +207,7 @@ defmodule ADK.Agent.AgentCloneTest do
   # test 9
   test "clone with invalid field raises ArgumentError" do
     original = llm(name: "test_agent")
+
     assert_raise ArgumentError, ~r/Cannot update nonexistent fields/, fn ->
       Clone.clone(original, %{invalid_field: "value"})
     end
@@ -178,6 +216,7 @@ defmodule ADK.Agent.AgentCloneTest do
   # test 10
   test "clone with parent_agent field raises ArgumentError" do
     original = llm(name: "test_agent")
+
     assert_raise ArgumentError, ~r/Cannot update `parent_agent` field in clone/, fn ->
       Clone.clone(original, %{parent_agent: nil})
     end
@@ -245,12 +284,16 @@ defmodule ADK.Agent.AgentCloneTest do
 
   # test 16
   test "clone shallow copies tools list (new list, same tool references)" do
-    tool = ADK.Tool.FunctionTool.new(:my_tool,
-      description: "A tool",
-      func: fn _ctx, _args -> {:ok, "result"} end,
-      parameters: %{}
-    )
-    original = LlmAgent.new(name: "original_agent", model: "test", instruction: "h", tools: [tool])
+    tool =
+      ADK.Tool.FunctionTool.new(:my_tool,
+        description: "A tool",
+        func: fn _ctx, _args -> {:ok, "result"} end,
+        parameters: %{}
+      )
+
+    original =
+      LlmAgent.new(name: "original_agent", model: "test", instruction: "h", tools: [tool])
+
     cloned = Clone.clone(original)
 
     # Both have the same tool by name/description

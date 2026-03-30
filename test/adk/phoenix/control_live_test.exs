@@ -26,17 +26,21 @@ defmodule ADK.Phoenix.ControlLiveTest do
 
     test "accumulates runner stop events", %{store: store} do
       # Simulate a telemetry event via GenServer cast
-      GenServer.cast(store, {:telemetry_event, :runs, %{
-        id: 1,
-        phase: :stop,
-        agent_name: "test_agent",
-        session_id: "s1",
-        user_id: "u1",
-        app_name: "test_app",
-        duration: 1234,
-        status: :ok,
-        timestamp: DateTime.utc_now()
-      }})
+      GenServer.cast(
+        store,
+        {:telemetry_event, :runs,
+         %{
+           id: 1,
+           phase: :stop,
+           agent_name: "test_agent",
+           session_id: "s1",
+           user_id: "u1",
+           app_name: "test_app",
+           duration: 1234,
+           status: :ok,
+           timestamp: DateTime.utc_now()
+         }}
+      )
 
       # Give the cast time to process
       Process.sleep(10)
@@ -47,16 +51,20 @@ defmodule ADK.Phoenix.ControlLiveTest do
     end
 
     test "accumulates tool events", %{store: store} do
-      GenServer.cast(store, {:telemetry_event, :tools, %{
-        id: 1,
-        phase: :stop,
-        tool_name: "get_weather",
-        agent_name: "weather_bot",
-        session_id: "s1",
-        duration: 500,
-        status: :ok,
-        timestamp: DateTime.utc_now()
-      }})
+      GenServer.cast(
+        store,
+        {:telemetry_event, :tools,
+         %{
+           id: 1,
+           phase: :stop,
+           tool_name: "get_weather",
+           agent_name: "weather_bot",
+           session_id: "s1",
+           duration: 500,
+           status: :ok,
+           timestamp: DateTime.utc_now()
+         }}
+      )
 
       Process.sleep(10)
 
@@ -66,18 +74,22 @@ defmodule ADK.Phoenix.ControlLiveTest do
     end
 
     test "accumulates LLM events", %{store: store} do
-      GenServer.cast(store, {:telemetry_event, :llm, %{
-        id: 1,
-        phase: :stop,
-        model: "gemini-2.0-flash",
-        agent_name: "bot",
-        session_id: "s1",
-        duration: 2000,
-        input_tokens: 100,
-        output_tokens: 50,
-        status: :ok,
-        timestamp: DateTime.utc_now()
-      }})
+      GenServer.cast(
+        store,
+        {:telemetry_event, :llm,
+         %{
+           id: 1,
+           phase: :stop,
+           model: "gemini-2.0-flash",
+           agent_name: "bot",
+           session_id: "s1",
+           duration: 2000,
+           input_tokens: 100,
+           output_tokens: 50,
+           status: :ok,
+           timestamp: DateTime.utc_now()
+         }}
+      )
 
       Process.sleep(10)
 
@@ -88,15 +100,19 @@ defmodule ADK.Phoenix.ControlLiveTest do
 
     test "ring buffer respects max_events", %{store: store} do
       for i <- 1..10 do
-        GenServer.cast(store, {:telemetry_event, :runs, %{
-          id: i,
-          phase: :stop,
-          agent_name: "agent_#{i}",
-          session_id: "s1",
-          duration: i * 100,
-          status: :ok,
-          timestamp: DateTime.utc_now()
-        }})
+        GenServer.cast(
+          store,
+          {:telemetry_event, :runs,
+           %{
+             id: i,
+             phase: :stop,
+             agent_name: "agent_#{i}",
+             session_id: "s1",
+             duration: i * 100,
+             status: :ok,
+             timestamp: DateTime.utc_now()
+           }}
+        )
       end
 
       Process.sleep(50)
@@ -108,16 +124,20 @@ defmodule ADK.Phoenix.ControlLiveTest do
 
     test "ring buffer keeps most recent events", %{store: store} do
       for i <- 1..10 do
-        GenServer.cast(store, {:telemetry_event, :tools, %{
-          id: i,
-          phase: :stop,
-          tool_name: "tool_#{i}",
-          agent_name: "bot",
-          session_id: "s1",
-          duration: i * 10,
-          status: :ok,
-          timestamp: DateTime.utc_now()
-        }})
+        GenServer.cast(
+          store,
+          {:telemetry_event, :tools,
+           %{
+             id: i,
+             phase: :stop,
+             tool_name: "tool_#{i}",
+             agent_name: "bot",
+             session_id: "s1",
+             duration: i * 10,
+             status: :ok,
+             timestamp: DateTime.utc_now()
+           }}
+        )
       end
 
       Process.sleep(50)
@@ -131,10 +151,19 @@ defmodule ADK.Phoenix.ControlLiveTest do
     end
 
     test "clear resets all buffers", %{store: store} do
-      GenServer.cast(store, {:telemetry_event, :runs, %{
-        id: 1, phase: :stop, agent_name: "a", session_id: "s",
-        duration: 100, status: :ok, timestamp: DateTime.utc_now()
-      }})
+      GenServer.cast(
+        store,
+        {:telemetry_event, :runs,
+         %{
+           id: 1,
+           phase: :stop,
+           agent_name: "a",
+           session_id: "s",
+           duration: 100,
+           status: :ok,
+           timestamp: DateTime.utc_now()
+         }}
+      )
 
       Process.sleep(10)
       assert length(Store.get_state(store).runs) == 1
@@ -147,15 +176,19 @@ defmodule ADK.Phoenix.ControlLiveTest do
     end
 
     test "accumulates session events", %{store: store} do
-      GenServer.cast(store, {:telemetry_event, :sessions, %{
-        id: 1,
-        phase: :start,
-        session_id: "sess-123",
-        user_id: "user-1",
-        app_name: "myapp",
-        duration: nil,
-        timestamp: DateTime.utc_now()
-      }})
+      GenServer.cast(
+        store,
+        {:telemetry_event, :sessions,
+         %{
+           id: 1,
+           phase: :start,
+           session_id: "sess-123",
+           user_id: "user-1",
+           app_name: "myapp",
+           duration: nil,
+           timestamp: DateTime.utc_now()
+         }}
+      )
 
       Process.sleep(10)
 
@@ -165,17 +198,21 @@ defmodule ADK.Phoenix.ControlLiveTest do
     end
 
     test "accumulates error events", %{store: store} do
-      GenServer.cast(store, {:telemetry_event, :errors, %{
-        id: 1,
-        phase: :exception,
-        category: :tool,
-        tool_name: "bad_tool",
-        agent_name: "bot",
-        session_id: "s1",
-        duration: 50,
-        status: :error,
-        timestamp: DateTime.utc_now()
-      }})
+      GenServer.cast(
+        store,
+        {:telemetry_event, :errors,
+         %{
+           id: 1,
+           phase: :exception,
+           category: :tool,
+           tool_name: "bad_tool",
+           agent_name: "bot",
+           session_id: "s1",
+           duration: 50,
+           status: :error,
+           timestamp: DateTime.utc_now()
+         }}
+      )
 
       Process.sleep(10)
 
@@ -190,7 +227,9 @@ defmodule ADK.Phoenix.ControlLiveTest do
   describe "Store with PubSub" do
     setup do
       pubsub_name = :"pubsub_#{System.unique_integer([:positive])}"
-      {:ok, _} = Phoenix.PubSub.Supervisor.start_link(name: pubsub_name, adapter: Phoenix.PubSub.PG2)
+
+      {:ok, _} =
+        Phoenix.PubSub.Supervisor.start_link(name: pubsub_name, adapter: Phoenix.PubSub.PG2)
 
       store_name = :"store_ps_#{System.unique_integer([:positive])}"
       {:ok, pid} = Store.start_link(name: store_name, pubsub: pubsub_name, max_events: 10)
@@ -202,10 +241,19 @@ defmodule ADK.Phoenix.ControlLiveTest do
     test "broadcasts on new events", %{store: store, pubsub: pubsub} do
       Phoenix.PubSub.subscribe(pubsub, Store.topic())
 
-      GenServer.cast(store, {:telemetry_event, :runs, %{
-        id: 1, phase: :stop, agent_name: "bot", session_id: "s1",
-        duration: 100, status: :ok, timestamp: DateTime.utc_now()
-      }})
+      GenServer.cast(
+        store,
+        {:telemetry_event, :runs,
+         %{
+           id: 1,
+           phase: :stop,
+           agent_name: "bot",
+           session_id: "s1",
+           duration: 100,
+           status: :ok,
+           timestamp: DateTime.utc_now()
+         }}
+      )
 
       assert_receive {:control_plane_update, state}, 1000
       assert length(state.runs) == 1
@@ -344,8 +392,13 @@ defmodule ADK.Phoenix.ControlLiveTest do
     test "renders session data" do
       assigns = %{
         sessions: [
-          %{session_id: "sess-abc", user_id: "alice", app_name: "myapp",
-            phase: :start, timestamp: ~U[2026-03-18 00:00:00Z]}
+          %{
+            session_id: "sess-abc",
+            user_id: "alice",
+            app_name: "myapp",
+            phase: :start,
+            timestamp: ~U[2026-03-18 00:00:00Z]
+          }
         ],
         runs: [],
         tools: [],
@@ -366,8 +419,13 @@ defmodule ADK.Phoenix.ControlLiveTest do
       assigns = %{
         sessions: [],
         runs: [
-          %{agent_name: "weather_bot", phase: :stop, status: :ok,
-            duration: 1_500_000, timestamp: ~U[2026-03-18 00:00:00Z]}
+          %{
+            agent_name: "weather_bot",
+            phase: :stop,
+            status: :ok,
+            duration: 1_500_000,
+            timestamp: ~U[2026-03-18 00:00:00Z]
+          }
         ],
         tools: [],
         llm: [],
@@ -386,8 +444,13 @@ defmodule ADK.Phoenix.ControlLiveTest do
         sessions: [],
         runs: [],
         tools: [
-          %{tool_name: "get_weather", agent_name: "bot", status: :ok,
-            duration: 500_000, timestamp: ~U[2026-03-18 00:00:00Z]}
+          %{
+            tool_name: "get_weather",
+            agent_name: "bot",
+            status: :ok,
+            duration: 500_000,
+            timestamp: ~U[2026-03-18 00:00:00Z]
+          }
         ],
         llm: [],
         errors: [],
@@ -406,9 +469,15 @@ defmodule ADK.Phoenix.ControlLiveTest do
         runs: [],
         tools: [],
         llm: [
-          %{model: "gemini-2.0-flash", agent_name: "bot", status: :ok,
-            duration: 2_000_000, input_tokens: 150, output_tokens: 75,
-            timestamp: ~U[2026-03-18 00:00:00Z]}
+          %{
+            model: "gemini-2.0-flash",
+            agent_name: "bot",
+            status: :ok,
+            duration: 2_000_000,
+            input_tokens: 150,
+            output_tokens: 75,
+            timestamp: ~U[2026-03-18 00:00:00Z]
+          }
         ],
         errors: [],
         beam: beam_fixture(),
@@ -429,8 +498,12 @@ defmodule ADK.Phoenix.ControlLiveTest do
         tools: [],
         llm: [],
         errors: [
-          %{category: :tool, tool_name: "bad_tool", agent_name: "bot",
-            timestamp: ~U[2026-03-18 00:00:00Z]}
+          %{
+            category: :tool,
+            tool_name: "bad_tool",
+            agent_name: "bot",
+            timestamp: ~U[2026-03-18 00:00:00Z]
+          }
         ],
         beam: beam_fixture(),
         page_title: "Test"

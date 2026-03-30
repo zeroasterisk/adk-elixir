@@ -51,12 +51,15 @@ defmodule ADK.Skill.LoaderTest do
     test "parses auth.json" do
       dir = tmp_skill_dir("auth")
 
-      File.write!(Path.join(dir, "auth.json"), Jason.encode!(%{
-        "credentials" => [
-          %{"name" => "github_token", "env_var" => "GITHUB_TOKEN", "required" => true},
-          %{"name" => "slack_oauth", "env_var" => "SLACK_TOKEN", "required" => false}
-        ]
-      }))
+      File.write!(
+        Path.join(dir, "auth.json"),
+        Jason.encode!(%{
+          "credentials" => [
+            %{"name" => "github_token", "env_var" => "GITHUB_TOKEN", "required" => true},
+            %{"name" => "slack_oauth", "env_var" => "SLACK_TOKEN", "required" => false}
+          ]
+        })
+      )
 
       auth = Loader.load_auth(dir)
       assert length(auth) == 2
@@ -81,16 +84,19 @@ defmodule ADK.Skill.LoaderTest do
       dir = tmp_skill_dir("mcp")
       path = Path.join(dir, "mcp.json")
 
-      File.write!(path, Jason.encode!(%{
-        "servers" => [
-          %{
-            "name" => "filesystem",
-            "command" => "npx",
-            "args" => ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
-            "tool_filter" => ["read_file"]
-          }
-        ]
-      }))
+      File.write!(
+        path,
+        Jason.encode!(%{
+          "servers" => [
+            %{
+              "name" => "filesystem",
+              "command" => "npx",
+              "args" => ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+              "tool_filter" => ["read_file"]
+            }
+          ]
+        })
+      )
 
       assert {:ok, [server]} = Loader.parse_mcp_config(path)
       assert server["name"] == "filesystem"
@@ -116,9 +122,12 @@ defmodule ADK.Skill.LoaderTest do
       File.mkdir_p!(tools_dir)
       File.write!(Path.join(tools_dir, "helper.sh"), "# description: Help\necho help")
 
-      File.write!(Path.join(dir, "auth.json"), Jason.encode!(%{
-        "credentials" => [%{"name" => "token", "env_var" => "TOKEN", "required" => true}]
-      }))
+      File.write!(
+        Path.join(dir, "auth.json"),
+        Jason.encode!(%{
+          "credentials" => [%{"name" => "token", "env_var" => "TOKEN", "required" => true}]
+        })
+      )
 
       result = Loader.load(dir)
       assert length(result.tools) == 1

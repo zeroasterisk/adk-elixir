@@ -8,7 +8,9 @@ defmodule ADK.Context.Compressor.SummarizeTest do
   describe "compress/3" do
     test "returns error without model in context" do
       msgs = for i <- 1..15, do: msg(:user, "msg #{i}")
-      assert {:error, :no_model_for_summarization} = Summarize.compress(msgs, [keep_recent: 5], %{})
+
+      assert {:error, :no_model_for_summarization} =
+               Summarize.compress(msgs, [keep_recent: 5], %{})
     end
 
     test "returns messages unchanged when under keep_recent" do
@@ -23,8 +25,8 @@ defmodule ADK.Context.Compressor.SummarizeTest do
 
       msgs =
         [msg(:system, "Be helpful")] ++
-        (for i <- 1..10, do: msg(:user, "msg #{i}")) ++
-        [msg(:user, "recent 1"), msg(:user, "recent 2")]
+          for(i <- 1..10, do: msg(:user, "msg #{i}")) ++
+          [msg(:user, "recent 1"), msg(:user, "recent 2")]
 
       assert {:ok, result} = Summarize.compress(msgs, [keep_recent: 2], %{model: "test"})
 
@@ -50,7 +52,8 @@ defmodule ADK.Context.Compressor.SummarizeTest do
 
       assert {:ok, result} = Summarize.compress(msgs, [keep_recent: 5], %{model: "test"})
       # Should succeed (echo response has text)
-      assert length(result) <= 7  # summary + 5 recent (no system)
+      # summary + 5 recent (no system)
+      assert length(result) <= 7
     end
   end
 end

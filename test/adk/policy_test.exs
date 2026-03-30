@@ -31,7 +31,14 @@ defmodule ADK.PolicyTest do
     @impl true
     def filter_input(%{text: text} = content, _ctx) do
       if String.contains?(text, "bad_word") do
-        {:halt, [ADK.Event.new(%{invocation_id: "test", author: "policy", content: %{parts: [%{text: "Input blocked"}]}})]}
+        {:halt,
+         [
+           ADK.Event.new(%{
+             invocation_id: "test",
+             author: "policy",
+             content: %{parts: [%{text: "Input blocked"}]}
+           })
+         ]}
       else
         {:cont, content}
       end
@@ -46,12 +53,16 @@ defmodule ADK.PolicyTest do
       Enum.map(events, fn event ->
         case event.content do
           %{parts: parts} ->
-            new_parts = Enum.map(parts, fn
-              %{text: t} -> %{text: String.upcase(t)}
-              other -> other
-            end)
+            new_parts =
+              Enum.map(parts, fn
+                %{text: t} -> %{text: String.upcase(t)}
+                other -> other
+              end)
+
             %{event | content: %{parts: new_parts}}
-          _ -> event
+
+          _ ->
+            event
         end
       end)
     end
@@ -65,12 +76,16 @@ defmodule ADK.PolicyTest do
       Enum.map(events, fn event ->
         case event.content do
           %{parts: parts} ->
-            new_parts = Enum.map(parts, fn
-              %{text: t} -> %{text: String.replace(t, "secret", "[REDACTED]")}
-              other -> other
-            end)
+            new_parts =
+              Enum.map(parts, fn
+                %{text: t} -> %{text: String.replace(t, "secret", "[REDACTED]")}
+                other -> other
+              end)
+
             %{event | content: %{parts: new_parts}}
-          _ -> event
+
+          _ ->
+            event
         end
       end)
     end
@@ -84,16 +99,23 @@ defmodule ADK.PolicyTest do
     end
 
     test "allows with permissive policy" do
-      assert :allow == Policy.check_tool_authorization([AllowAllPolicy], %{name: "foo"}, %{}, ctx())
+      assert :allow ==
+               Policy.check_tool_authorization([AllowAllPolicy], %{name: "foo"}, %{}, ctx())
     end
 
     test "denies dangerous tool" do
       assert {:deny, "tool is dangerous"} ==
-               Policy.check_tool_authorization([DenyDangerousPolicy], %{name: "dangerous"}, %{}, ctx())
+               Policy.check_tool_authorization(
+                 [DenyDangerousPolicy],
+                 %{name: "dangerous"},
+                 %{},
+                 ctx()
+               )
     end
 
     test "allows safe tool through deny policy" do
-      assert :allow == Policy.check_tool_authorization([DenyDangerousPolicy], %{name: "safe"}, %{}, ctx())
+      assert :allow ==
+               Policy.check_tool_authorization([DenyDangerousPolicy], %{name: "safe"}, %{}, ctx())
     end
 
     test "first deny wins in composition" do
@@ -130,19 +152,34 @@ defmodule ADK.PolicyTest do
 
   describe "run_output_filters/3" do
     test "returns events unchanged with no policies" do
-      events = [ADK.Event.new(%{invocation_id: "test", author: "bot", content: %{parts: [%{text: "hi"}]}})]
+      events = [
+        ADK.Event.new(%{invocation_id: "test", author: "bot", content: %{parts: [%{text: "hi"}]}})
+      ]
+
       assert events == Policy.run_output_filters([], events, ctx())
     end
 
     test "transforms output" do
-      events = [ADK.Event.new(%{invocation_id: "test", author: "bot", content: %{parts: [%{text: "hi"}]}})]
+      events = [
+        ADK.Event.new(%{invocation_id: "test", author: "bot", content: %{parts: [%{text: "hi"}]}})
+      ]
+
       [event] = Policy.run_output_filters([UppercaseOutputPolicy], events, ctx())
       assert %{parts: [%{text: "HI"}]} = event.content
     end
 
     test "chains multiple output filters" do
-      events = [ADK.Event.new(%{invocation_id: "test", author: "bot", content: %{parts: [%{text: "my secret data"}]}})]
-      [event] = Policy.run_output_filters([RedactOutputPolicy, UppercaseOutputPolicy], events, ctx())
+      events = [
+        ADK.Event.new(%{
+          invocation_id: "test",
+          author: "bot",
+          content: %{parts: [%{text: "my secret data"}]}
+        })
+      ]
+
+      [event] =
+        Policy.run_output_filters([RedactOutputPolicy, UppercaseOutputPolicy], events, ctx())
+
       assert %{parts: [%{text: "MY [REDACTED] DATA"}]} = event.content
     end
   end
@@ -169,7 +206,10 @@ defmodule ADK.PolicyTest do
 
     test "skips modules without callbacks" do
       assert :allow == Policy.check_tool_authorization([EmptyPolicy], %{name: "foo"}, %{}, ctx())
-      assert {:cont, %{text: "hi"}} == Policy.run_input_filters([EmptyPolicy], %{text: "hi"}, ctx())
+
+      assert {:cont, %{text: "hi"}} ==
+               Policy.run_input_filters([EmptyPolicy], %{text: "hi"}, ctx())
+
       events = [ADK.Event.new(%{invocation_id: "test", author: "bot"})]
       assert ^events = Policy.run_output_filters([EmptyPolicy], events, ctx())
     end

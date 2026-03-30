@@ -187,11 +187,12 @@ defmodule ADK.InvocationContextParityTest do
     end
 
     test "session_pid can be set" do
-      {:ok, pid} = ADK.Session.start_link(
-        app_name: "test",
-        user_id: "user1",
-        session_id: "ctx-init-test-#{System.unique_integer([:positive])}"
-      )
+      {:ok, pid} =
+        ADK.Session.start_link(
+          app_name: "test",
+          user_id: "user1",
+          session_id: "ctx-init-test-#{System.unique_integer([:positive])}"
+        )
 
       ctx = %Context{invocation_id: "inv_1", session_pid: pid}
       assert ctx.session_pid == pid
@@ -207,20 +208,23 @@ defmodule ADK.InvocationContextParityTest do
   describe "session wiring" do
     test "events stored via session_pid are retrievable" do
       sid = "session-wiring-#{System.unique_integer([:positive])}"
-      {:ok, pid} = ADK.Session.start_link(
-        app_name: "test",
-        user_id: "user1",
-        session_id: sid
-      )
+
+      {:ok, pid} =
+        ADK.Session.start_link(
+          app_name: "test",
+          user_id: "user1",
+          session_id: sid
+        )
 
       ctx = %Context{invocation_id: "inv_1", session_pid: pid, branch: "agent_1"}
 
-      event = Event.new(%{
-        invocation_id: ctx.invocation_id,
-        branch: ctx.branch,
-        author: "agent_1",
-        content: %{parts: [%{text: "hello"}]}
-      })
+      event =
+        Event.new(%{
+          invocation_id: ctx.invocation_id,
+          branch: ctx.branch,
+          author: "agent_1",
+          content: %{parts: [%{text: "hello"}]}
+        })
 
       ADK.Session.append_event(pid, event)
 
@@ -234,27 +238,31 @@ defmodule ADK.InvocationContextParityTest do
 
     test "filtering session events by invocation_id and branch" do
       sid = "session-filter-#{System.unique_integer([:positive])}"
-      {:ok, pid} = ADK.Session.start_link(
-        app_name: "test",
-        user_id: "user1",
-        session_id: sid
-      )
+
+      {:ok, pid} =
+        ADK.Session.start_link(
+          app_name: "test",
+          user_id: "user1",
+          session_id: sid
+        )
 
       ctx = %Context{invocation_id: "inv_1", session_pid: pid, branch: "agent_1"}
 
       # Add events from different invocations and branches
       for {inv, br, author} <- [
-        {"inv_1", "agent_1", "a1"},
-        {"inv_1", "agent_2", "a2"},
-        {"inv_2", "agent_1", "a1"},
-        {"inv_2", "agent_2", "a2"}
-      ] do
-        event = Event.new(%{
-          invocation_id: inv,
-          branch: br,
-          author: author,
-          content: %{parts: [%{text: "msg from #{author}"}]}
-        })
+            {"inv_1", "agent_1", "a1"},
+            {"inv_1", "agent_2", "a2"},
+            {"inv_2", "agent_1", "a1"},
+            {"inv_2", "agent_2", "a2"}
+          ] do
+        event =
+          Event.new(%{
+            invocation_id: inv,
+            branch: br,
+            author: author,
+            content: %{parts: [%{text: "msg from #{author}"}]}
+          })
+
         ADK.Session.append_event(pid, event)
       end
 
@@ -389,21 +397,23 @@ defmodule ADK.InvocationContextParityTest do
     end
 
     test "event with end_of_agent action" do
-      event = Event.new(%{
-        invocation_id: "inv_1",
-        author: "agent1",
-        actions: %EventActions{end_of_agent: true}
-      })
+      event =
+        Event.new(%{
+          invocation_id: "inv_1",
+          author: "agent1",
+          actions: %EventActions{end_of_agent: true}
+        })
 
       assert event.actions.end_of_agent == true
     end
 
     test "event without end_of_agent defaults correctly" do
-      event = Event.new(%{
-        invocation_id: "inv_1",
-        author: "agent1",
-        actions: %EventActions{}
-      })
+      event =
+        Event.new(%{
+          invocation_id: "inv_1",
+          author: "agent1",
+          actions: %EventActions{}
+        })
 
       assert event.actions.end_of_agent == false
     end

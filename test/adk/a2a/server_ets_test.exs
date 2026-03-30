@@ -7,6 +7,7 @@ defmodule ADK.A2A.ServerETSTest do
     runner = %ADK.Runner{app_name: "test", agent: agent}
 
     uid = System.unique_integer([:positive])
+
     opts = [
       agent: agent,
       runner: runner,

@@ -170,8 +170,11 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
       assert Map.has_key?(actions1.requested_auth_configs, "call_1")
       assert Map.has_key?(actions2.requested_auth_configs, "call_2")
 
-      assert actions1.requested_auth_configs["call_1"].raw_credential.client_id == "oauth_client_id_1"
-      assert actions2.requested_auth_configs["call_2"].raw_credential.client_id == "oauth_client_id_2"
+      assert actions1.requested_auth_configs["call_1"].raw_credential.client_id ==
+               "oauth_client_id_1"
+
+      assert actions2.requested_auth_configs["call_2"].raw_credential.client_id ==
+               "oauth_client_id_2"
     end
 
     test "merged event actions contain both auth configs" do
@@ -235,14 +238,16 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
       auth_response = make_auth_response("client_1", "secret_1", "token1")
 
       # Event 1: model called the EUC function (adk_request_credential)
-      euc_event = euc_function_call_event([
-        {"euc_fc_1", "original_call_1", auth_config}
-      ])
+      euc_event =
+        euc_function_call_event([
+          {"euc_fc_1", "original_call_1", auth_config}
+        ])
 
       # Event 2: user responded with the credential
-      user_event = user_auth_response_event([
-        {"euc_fc_1", auth_response}
-      ])
+      user_event =
+        user_auth_response_event([
+          {"euc_fc_1", auth_response}
+        ])
 
       events = [euc_event, user_event]
 
@@ -256,15 +261,17 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
       auth_response1 = make_auth_response("client_1", "secret_1", "token1")
       auth_response2 = make_auth_response("client_2", "secret_2", "token2")
 
-      euc_event = euc_function_call_event([
-        {"euc_fc_1", "original_call_1", auth_config1},
-        {"euc_fc_2", "original_call_2", auth_config2}
-      ])
+      euc_event =
+        euc_function_call_event([
+          {"euc_fc_1", "original_call_1", auth_config1},
+          {"euc_fc_2", "original_call_2", auth_config2}
+        ])
 
-      user_event = user_auth_response_event([
-        {"euc_fc_1", auth_response1},
-        {"euc_fc_2", auth_response2}
-      ])
+      user_event =
+        user_auth_response_event([
+          {"euc_fc_1", auth_response1},
+          {"euc_fc_2", auth_response2}
+        ])
 
       events = [euc_event, user_event]
 
@@ -281,15 +288,17 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
       auth_config2 = make_auth_config("client_2", "secret_2")
       auth_response1 = make_auth_response("client_1", "secret_1", "token1")
 
-      euc_event = euc_function_call_event([
-        {"euc_fc_1", "original_call_1", auth_config1},
-        {"euc_fc_2", "original_call_2", auth_config2}
-      ])
+      euc_event =
+        euc_function_call_event([
+          {"euc_fc_1", "original_call_1", auth_config1},
+          {"euc_fc_2", "original_call_2", auth_config2}
+        ])
 
       # User only responds to the first auth request
-      user_event = user_auth_response_event([
-        {"euc_fc_1", auth_response1}
-      ])
+      user_event =
+        user_auth_response_event([
+          {"euc_fc_1", auth_response1}
+        ])
 
       events = [euc_event, user_event]
 
@@ -304,13 +313,15 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
       auth_config2 = make_auth_config("client_2", "secret_2")
       auth_response2 = make_auth_response("client_2", "secret_2", "token2")
 
-      euc_event = euc_function_call_event([
-        {"euc_fc_2", "original_call_2", auth_config2}
-      ])
+      euc_event =
+        euc_function_call_event([
+          {"euc_fc_2", "original_call_2", auth_config2}
+        ])
 
-      user_event = user_auth_response_event([
-        {"euc_fc_2", auth_response2}
-      ])
+      user_event =
+        user_auth_response_event([
+          {"euc_fc_2", auth_response2}
+        ])
 
       events = [euc_event, user_event]
 
@@ -325,19 +336,21 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
 
   describe "preprocessor — non-auth scenarios" do
     test "returns :noop when user event has no function responses" do
-      user_event = Event.new(%{
-        author: "user",
-        content: %{"parts" => [%{"text" => "hello"}]}
-      })
+      user_event =
+        Event.new(%{
+          author: "user",
+          content: %{"parts" => [%{"text" => "hello"}]}
+        })
 
       assert :noop = Preprocessor.process([user_event], mock_llm_agent())
     end
 
     test "returns :noop when last event is not from user" do
-      agent_event = Event.new(%{
-        author: "model",
-        content: %{"parts" => [%{"text" => "response"}]}
-      })
+      agent_event =
+        Event.new(%{
+          author: "model",
+          content: %{"parts" => [%{"text" => "response"}]}
+        })
 
       assert :noop = Preprocessor.process([agent_event], mock_llm_agent())
     end
@@ -345,9 +358,10 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
     test "returns :noop for non-LLM agents" do
       auth_config = make_auth_config("client_1", "secret_1")
 
-      user_event = user_auth_response_event([
-        {"euc_fc_1", auth_config}
-      ])
+      user_event =
+        user_auth_response_event([
+          {"euc_fc_1", auth_config}
+        ])
 
       non_llm_agent = %{__struct__: MyApp.CustomAgent, name: "custom"}
       assert :noop = Preprocessor.process([user_event], non_llm_agent)
@@ -450,16 +464,18 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
         })
 
       # Manually build the matching system event for the preprocessor
-      euc_system_event = euc_function_call_event([
-        {"euc_for_original_tool_call", "original_tool_call", config}
-      ])
+      euc_system_event =
+        euc_function_call_event([
+          {"euc_for_original_tool_call", "original_tool_call", config}
+        ])
 
       # Step 3: User provides the credential
       auth_response = make_auth_response("client_1", "secret_1", "my_access_token")
 
-      user_response = user_auth_response_event([
-        {"euc_for_original_tool_call", auth_response}
-      ])
+      user_response =
+        user_auth_response_event([
+          {"euc_for_original_tool_call", auth_response}
+        ])
 
       # Step 4: Preprocessor identifies tool to resume
       events = [euc_system_event, user_response]
@@ -480,18 +496,20 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
       assert {:ok, _tc2} = ToolContext.request_credential(tc2, auth_config2)
 
       # Build preprocessor input
-      euc_event = euc_function_call_event([
-        {"euc_1", "tool_call_1", auth_config1},
-        {"euc_2", "tool_call_2", auth_config2}
-      ])
+      euc_event =
+        euc_function_call_event([
+          {"euc_1", "tool_call_1", auth_config1},
+          {"euc_2", "tool_call_2", auth_config2}
+        ])
 
       auth_response1 = make_auth_response("client_1", "secret_1", "token1")
       auth_response2 = make_auth_response("client_2", "secret_2", "token2")
 
-      user_event = user_auth_response_event([
-        {"euc_1", auth_response1},
-        {"euc_2", auth_response2}
-      ])
+      user_event =
+        user_auth_response_event([
+          {"euc_1", auth_response1},
+          {"euc_2", auth_response2}
+        ])
 
       events = [euc_event, user_event]
 
@@ -514,17 +532,21 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
 
     test "preprocessor stores exchanged credential from auth response", %{store: store} do
       auth_config = make_auth_config("client_1", "secret_1", credential_key: "my_api_cred")
-      auth_response = make_auth_response("client_1", "secret_1", "access_token_123",
-        credential_key: "my_api_cred"
-      )
 
-      euc_event = euc_function_call_event([
-        {"euc_fc_1", "tool_call_1", auth_config}
-      ])
+      auth_response =
+        make_auth_response("client_1", "secret_1", "access_token_123",
+          credential_key: "my_api_cred"
+        )
 
-      user_event = user_auth_response_event([
-        {"euc_fc_1", auth_response}
-      ])
+      euc_event =
+        euc_function_call_event([
+          {"euc_fc_1", "tool_call_1", auth_config}
+        ])
+
+      user_event =
+        user_auth_response_event([
+          {"euc_fc_1", auth_response}
+        ])
 
       events = [euc_event, user_event]
 
@@ -557,13 +579,15 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
       auth_config = make_auth_config("client_1", "secret_1")
 
       # Toolset auth entries should NOT produce resume targets
-      euc_event = euc_function_call_event([
-        {"euc_fc_1", "#{prefix}some_toolset", auth_config}
-      ])
+      euc_event =
+        euc_function_call_event([
+          {"euc_fc_1", "#{prefix}some_toolset", auth_config}
+        ])
 
-      user_event = user_auth_response_event([
-        {"euc_fc_1", make_auth_response("client_1", "secret_1", "token")}
-      ])
+      user_event =
+        user_auth_response_event([
+          {"euc_fc_1", make_auth_response("client_1", "secret_1", "token")}
+        ])
 
       events = [euc_event, user_event]
       assert :noop = Preprocessor.process(events, mock_llm_agent())

@@ -408,7 +408,9 @@ defmodule ADK.LLM.GoogleLLMParityTest do
 
     test "returns :api_error on 403" do
       stub(403, %{"error" => %{"message" => "Permission denied"}})
-      assert {:error, {:api_error, 403, _}} = Gemini.generate("gemini-flash-latest", %{messages: []})
+
+      assert {:error, {:api_error, 403, _}} =
+               Gemini.generate("gemini-flash-latest", %{messages: []})
     end
   end
 

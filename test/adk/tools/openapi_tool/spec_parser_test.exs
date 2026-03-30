@@ -51,11 +51,13 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
 
   test "parse_spec_with_multiple_methods" do
     spec = create_minimal_openapi_spec()
+
     post_method = %{
       "summary" => "Test POST endpoint",
       "operationId" => "testPost",
       "responses" => %{"200" => %{"description" => "Successful response"}}
     }
+
     spec = put_in(spec, ["paths", "/test", "post"], post_method)
 
     parsed = SpecParser.parse(spec)
@@ -68,10 +70,12 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
 
   test "parse_spec_with_parameters" do
     spec = create_minimal_openapi_spec()
+
     params = [
       %{"name" => "param1", "in" => "query", "schema" => %{"type" => "string"}},
       %{"name" => "param2", "in" => "header", "schema" => %{"type" => "integer"}}
     ]
+
     spec = put_in(spec, ["paths", "/test", "get", "parameters"], params)
 
     parsed = SpecParser.parse(spec)
@@ -89,6 +93,7 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
 
   test "parse_spec_with_request_body" do
     spec = create_minimal_openapi_spec()
+
     post_method = %{
       "summary" => "Endpoint with request body",
       "operationId" => "testPostWithBody",
@@ -104,6 +109,7 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
       },
       "responses" => %{"200" => %{"description" => "OK"}}
     }
+
     spec = put_in(spec, ["paths", "/test", "post"], post_method)
 
     parsed = SpecParser.parse(spec)
@@ -194,7 +200,7 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
 
     op = hd(parsed)
     assert op.return_value.param_schema["type"] == "object"
-    
+
     # In circular references, we expect the reference to be resolved up to the cycle point,
     # where the nested object's "$ref" is removed to prevent infinite loops.
     assert Map.has_key?(op.return_value.param_schema["properties"], "b")
@@ -205,6 +211,7 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
       "openapi" => "3.1.0",
       "info" => %{"title" => "No Paths API", "version" => "1.0.0"}
     }
+
     assert SpecParser.parse(spec) == []
   end
 
@@ -214,17 +221,20 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
       "info" => %{"title" => "Empty Path Item API", "version" => "1.0.0"},
       "paths" => %{"/empty" => nil}
     }
+
     assert SpecParser.parse(spec) == []
   end
 
   test "parse_spec_with_global_auth_scheme" do
     spec = create_minimal_openapi_spec()
     spec = Map.put(spec, "security", [%{"api_key" => []}])
-    spec = Map.put(spec, "components", %{
-      "securitySchemes" => %{
-        "api_key" => %{"type" => "apiKey", "in" => "header", "name" => "X-API-Key"}
-      }
-    })
+
+    spec =
+      Map.put(spec, "components", %{
+        "securitySchemes" => %{
+          "api_key" => %{"type" => "apiKey", "in" => "header", "name" => "X-API-Key"}
+        }
+      })
 
     parsed = SpecParser.parse(spec)
     op = hd(parsed)
@@ -237,11 +247,13 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
   test "parse_spec_with_local_auth_scheme" do
     spec = create_minimal_openapi_spec()
     spec = put_in(spec, ["paths", "/test", "get", "security"], [%{"local_auth" => []}])
-    spec = Map.put(spec, "components", %{
-      "securitySchemes" => %{
-        "local_auth" => %{"type" => "http", "scheme" => "bearer"}
-      }
-    })
+
+    spec =
+      Map.put(spec, "components", %{
+        "securitySchemes" => %{
+          "local_auth" => %{"type" => "http", "scheme" => "bearer"}
+        }
+      })
 
     parsed = SpecParser.parse(spec)
     op = hd(parsed)
@@ -253,10 +265,12 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
 
   test "parse_spec_with_servers" do
     spec = create_minimal_openapi_spec()
-    spec = Map.put(spec, "servers", [
-      %{"url" => "https://api.example.com"},
-      %{"url" => "http://localhost:8000"}
-    ])
+
+    spec =
+      Map.put(spec, "servers", [
+        %{"url" => "https://api.example.com"},
+        %{"url" => "http://localhost:8000"}
+      ])
 
     parsed = SpecParser.parse(spec)
     assert hd(parsed).endpoint.base_url == "https://api.example.com"
@@ -294,7 +308,9 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
               "200" => %{
                 "content" => %{
                   "application/json" => %{
-                    "schema" => %{"$ref" => "external_file.json#/components/schemas/ExternalSchema"}
+                    "schema" => %{
+                      "$ref" => "external_file.json#/components/schemas/ExternalSchema"
+                    }
                   }
                 }
               }
@@ -410,13 +426,28 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
 
     op = hd(parsed)
     assert op.name == "post_path1"
-    
+
     assert length(op.parameters) == 1
     p = hd(op.parameters)
     assert p.original_name == "req1_prop1"
-    assert get_in(p.param_schema, ["properties", "level1_1_prop1", "properties", "level2_1_prop1", "type"]) == "integer"
-    
-    assert get_in(op.return_value.param_schema, ["properties", "res1_prop1", "properties", "level1_2_prop1", "properties", "level2_2_prop1", "type"]) == "string"
+
+    assert get_in(p.param_schema, [
+             "properties",
+             "level1_1_prop1",
+             "properties",
+             "level2_1_prop1",
+             "type"
+           ]) == "integer"
+
+    assert get_in(op.return_value.param_schema, [
+             "properties",
+             "res1_prop1",
+             "properties",
+             "level1_2_prop1",
+             "properties",
+             "level2_2_prop1",
+             "type"
+           ]) == "string"
   end
 
   test "parse_spec_with_duplicate_parameter_names" do
@@ -458,7 +489,8 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
     assert query_param.py_name == "name"
 
     assert body_param.original_name == "name"
-    assert body_param.py_name == "name_1" # In Elixir I used `_1` starting suffix, python used `_0`. Parity is fine since it dedupes.
+    # In Elixir I used `_1` starting suffix, python used `_0`. Parity is fine since it dedupes.
+    assert body_param.py_name == "name_1"
   end
 
   test "parse_spec_with_path_level_parameters" do
@@ -534,7 +566,7 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
     parsed = SpecParser.parse(spec)
     assert length(parsed) == 1
     op = hd(parsed)
-    
+
     param_names = Enum.map(op.parameters, & &1.original_name)
     assert "valid_prop" in param_names
     assert "invalid_prop" in param_names
@@ -597,5 +629,5 @@ defmodule ADK.Tool.OpenApiTool.SpecParserTest do
     spec = %{"schema" => %{"type" => ["Any", "Unknown", "Custom"]}}
     sanitized = SpecParser.sanitize_schema_types(spec)
     assert Map.has_key?(sanitized["schema"], "type") == false
-end
+  end
 end

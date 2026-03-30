@@ -35,7 +35,9 @@ defmodule ADK.Agent.ModelCallbackChainParityTest do
     @behaviour ADK.Callback
     @impl true
     def before_model(_ctx) do
-      {:halt, {:ok, %{content: %{role: :model, parts: [%{text: "callback_2_response"}]}, usage_metadata: nil}}}
+      {:halt,
+       {:ok,
+        %{content: %{role: :model, parts: [%{text: "callback_2_response"}]}, usage_metadata: nil}}}
     end
   end
 
@@ -43,7 +45,9 @@ defmodule ADK.Agent.ModelCallbackChainParityTest do
     @behaviour ADK.Callback
     @impl true
     def before_model(_ctx) do
-      {:halt, {:ok, %{content: %{role: :model, parts: [%{text: "callback_3_response"}]}, usage_metadata: nil}}}
+      {:halt,
+       {:ok,
+        %{content: %{role: :model, parts: [%{text: "callback_3_response"}]}, usage_metadata: nil}}}
     end
   end
 
@@ -51,7 +55,9 @@ defmodule ADK.Agent.ModelCallbackChainParityTest do
     @behaviour ADK.Callback
     @impl true
     def before_model(_ctx) do
-      {:halt, {:ok, %{content: %{role: :model, parts: [%{text: "callback_1_response"}]}, usage_metadata: nil}}}
+      {:halt,
+       {:ok,
+        %{content: %{role: :model, parts: [%{text: "callback_1_response"}]}, usage_metadata: nil}}}
     end
   end
 
@@ -66,7 +72,8 @@ defmodule ADK.Agent.ModelCallbackChainParityTest do
     @behaviour ADK.Callback
     @impl true
     def after_model({:ok, _response}, _ctx) do
-      {:ok, %{content: %{role: :model, parts: [%{text: "callback_2_response"}]}, usage_metadata: nil}}
+      {:ok,
+       %{content: %{role: :model, parts: [%{text: "callback_2_response"}]}, usage_metadata: nil}}
     end
 
     def after_model(err, _ctx), do: err
@@ -76,7 +83,8 @@ defmodule ADK.Agent.ModelCallbackChainParityTest do
     @behaviour ADK.Callback
     @impl true
     def after_model({:ok, _response}, _ctx) do
-      {:ok, %{content: %{role: :model, parts: [%{text: "callback_3_response"}]}, usage_metadata: nil}}
+      {:ok,
+       %{content: %{role: :model, parts: [%{text: "callback_3_response"}]}, usage_metadata: nil}}
     end
 
     def after_model(err, _ctx), do: err
@@ -86,7 +94,8 @@ defmodule ADK.Agent.ModelCallbackChainParityTest do
     @behaviour ADK.Callback
     @impl true
     def after_model({:ok, _response}, _ctx) do
-      {:ok, %{content: %{role: :model, parts: [%{text: "callback_1_response"}]}, usage_metadata: nil}}
+      {:ok,
+       %{content: %{role: :model, parts: [%{text: "callback_1_response"}]}, usage_metadata: nil}}
     end
 
     def after_model(err, _ctx), do: err
@@ -322,7 +331,14 @@ defmodule ADK.Agent.ModelCallbackChainParityTest do
       @impl true
       def before_model(ctx) do
         order = Map.get(ctx, :call_order, []) ++ [:halter]
-        {:halt, {:ok, %{content: %{role: :model, parts: [%{text: "halted_at_#{length(order)}"}]}, usage_metadata: nil, call_order: order}}}
+
+        {:halt,
+         {:ok,
+          %{
+            content: %{role: :model, parts: [%{text: "halted_at_#{length(order)}"}]},
+            usage_metadata: nil,
+            call_order: order
+          }}}
       end
     end
 

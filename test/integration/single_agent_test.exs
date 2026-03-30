@@ -23,7 +23,11 @@ defmodule ADK.Integration.SingleAgentTest do
       if tool_call do
         %{score: 1.0, pass: true, details: "Tool #{tool_name} was called with correct arguments."}
       else
-        %{score: 0.0, pass: false, details: "Tool #{tool_name} was not called with correct arguments."}
+        %{
+          score: 0.0,
+          pass: false,
+          details: "Tool #{tool_name} was not called with correct arguments."
+        }
       end
     end
   end
@@ -50,7 +54,10 @@ defmodule ADK.Integration.SingleAgentTest do
           |> Enum.at(0)
           |> Map.get("text")
 
-        scorers = [{ToolUsedScorer, [tool_name: "set_device_info", args: %{"device_id" => "device_2", "status" => "OFF"}]}]
+        scorers = [
+          {ToolUsedScorer,
+           [tool_name: "set_device_info", args: %{"device_id" => "device_2", "status" => "OFF"}]}
+        ]
 
         Case.new(
           name: eval_case["eval_id"],
@@ -62,7 +69,12 @@ defmodule ADK.Integration.SingleAgentTest do
     runner = Runner.new(app_name: "test", agent: agent_module.agent())
 
     ADK.LLM.Mock.set_responses([
-      %{function_call: %{name: "set_device_info", args: %{"device_id" => "device_2", "status" => "OFF"}}},
+      %{
+        function_call: %{
+          name: "set_device_info",
+          args: %{"device_id" => "device_2", "status" => "OFF"}
+        }
+      },
       %{text: "I have set the device_2 status to off."}
     ])
 

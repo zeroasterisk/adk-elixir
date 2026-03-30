@@ -53,7 +53,14 @@ defmodule ADK.ToolContextTest do
     end
 
     test "put_state returns error when no session" do
-      ctx = %ADK.Context{invocation_id: "inv-1", session_pid: nil, agent: nil, callbacks: [], policies: []}
+      ctx = %ADK.Context{
+        invocation_id: "inv-1",
+        session_pid: nil,
+        agent: nil,
+        callbacks: [],
+        policies: []
+      }
+
       tc = ToolContext.new(ctx, "call-1", %{name: "test"})
       assert {:error, :no_session} = ToolContext.put_state(tc, "key", "val")
     end
@@ -66,7 +73,11 @@ defmodule ADK.ToolContextTest do
   describe "artifacts without service" do
     test "save_artifact returns error without service", %{tool_ctx: tc} do
       assert {:error, :no_artifact_service} =
-               ToolContext.save_artifact(tc, "file.txt", %{data: "hello", content_type: "text/plain", metadata: %{}})
+               ToolContext.save_artifact(tc, "file.txt", %{
+                 data: "hello",
+                 content_type: "text/plain",
+                 metadata: %{}
+               })
     end
 
     test "load_artifact returns error without service", %{tool_ctx: tc} do
@@ -235,16 +246,20 @@ defmodule ADK.ToolContextTest do
         @impl true
         def save(_app, _user, session_id, filename, artifact, _opts) do
           key = {session_id, filename}
-          version = Agent.get_and_update(@store_pid, fn state ->
-            v = Map.get(state, {:version, key}, 0) + 1
-            {v, state |> Map.put(key, artifact) |> Map.put({:version, key}, v)}
-          end)
+
+          version =
+            Agent.get_and_update(@store_pid, fn state ->
+              v = Map.get(state, {:version, key}, 0) + 1
+              {v, state |> Map.put(key, artifact) |> Map.put({:version, key}, v)}
+            end)
+
           {:ok, version}
         end
 
         @impl true
         def load(_app, _user, session_id, filename, _opts) do
           key = {session_id, filename}
+
           case Agent.get(@store_pid, &Map.get(&1, key)) do
             nil -> :not_found
             artifact -> {:ok, artifact}
@@ -253,15 +268,17 @@ defmodule ADK.ToolContextTest do
 
         @impl true
         def list(_app, _user, session_id, _opts) do
-          files = Agent.get(@store_pid, fn state ->
-            state
-            |> Enum.filter(fn
-              {{^session_id, _name}, _val} -> true
-              _ -> false
+          files =
+            Agent.get(@store_pid, fn state ->
+              state
+              |> Enum.filter(fn
+                {{^session_id, _name}, _val} -> true
+                _ -> false
+              end)
+              |> Enum.map(fn {{_, name}, _} -> name end)
+              |> Enum.uniq()
             end)
-            |> Enum.map(fn {{_, name}, _} -> name end)
-            |> Enum.uniq()
-          end)
+
           {:ok, files}
         end
 

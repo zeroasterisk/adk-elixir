@@ -12,6 +12,7 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
         client_id: "client",
         client_secret: "secret"
       }
+
       scheme = %{type: "openIdConnect"}
 
       assert {:ok, result} = OAuth2.exchange(cred, scheme)
@@ -32,6 +33,7 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
         client_id: "client",
         token_endpoint: "https://example.com/token"
       }
+
       scheme = %{type: "openIdConnect"}
 
       assert {:ok, result} = OAuth2.exchange(cred, scheme)
@@ -53,6 +55,7 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
         token_endpoint: "https://example.com/token",
         metadata: %{"http_opts" => [plug: plug]}
       }
+
       scheme = %{type: "openIdConnect"}
 
       assert {:ok, result} = OAuth2.exchange(cred, scheme)
@@ -63,7 +66,7 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
     test "exchange_success exchanges auth_code for token" do
       plug = fn conn ->
         assert conn.request_path == "/token"
-        
+
         {:ok, body, _conn} = Plug.Conn.read_body(conn)
         params = URI.decode_query(body)
         assert params["grant_type"] == "authorization_code"
@@ -72,11 +75,14 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{
-          "access_token" => "new_token",
-          "refresh_token" => "new_refresh",
-          "expires_in" => 3600
-        }))
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "access_token" => "new_token",
+            "refresh_token" => "new_refresh",
+            "expires_in" => 3600
+          })
+        )
       end
 
       cred = %Credential{
@@ -91,6 +97,7 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
           "http_opts" => [plug: plug]
         }
       }
+
       scheme = %{type: "openIdConnect"}
 
       assert {:ok, result} = OAuth2.exchange(cred, scheme)
@@ -102,7 +109,7 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
     test "exchange_client_credentials_success exchanges for token" do
       plug = fn conn ->
         assert conn.request_path == "/token"
-        
+
         {:ok, body, _conn} = Plug.Conn.read_body(conn)
         params = URI.decode_query(body)
         assert params["grant_type"] == "client_credentials"
@@ -110,10 +117,13 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{
-          "access_token" => "client_token",
-          "expires_in" => 3600
-        }))
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "access_token" => "client_token",
+            "expires_in" => 3600
+          })
+        )
       end
 
       cred = %Credential{
@@ -125,6 +135,7 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
           "http_opts" => [plug: plug]
         }
       }
+
       scheme = %{
         flows: %{
           clientCredentials: %{
@@ -152,6 +163,7 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
           "http_opts" => [plug: plug]
         }
       }
+
       scheme = %{
         flows: %{
           clientCredentials: %{
@@ -173,9 +185,12 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{
-          "access_token" => "new_token"
-        }))
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "access_token" => "new_token"
+          })
+        )
       end
 
       cred = %Credential{
@@ -190,6 +205,7 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
           "http_opts" => [plug: plug]
         }
       }
+
       scheme = %{type: "openIdConnect"}
 
       assert {:ok, result} = OAuth2.exchange(cred, scheme)
@@ -207,14 +223,18 @@ defmodule ADK.Auth.Exchanger.OAuth2Test do
     end
 
     test "determines client_credentials from openIdConnect with supported grants" do
-      scheme = %{type: "openIdConnect", grant_types_supported: ["authorization_code", "client_credentials"]}
+      scheme = %{
+        type: "openIdConnect",
+        grant_types_supported: ["authorization_code", "client_credentials"]
+      }
+
       assert OAuth2.determine_grant_type(scheme) == :client_credentials
     end
 
     test "defaults to authorization_code for openIdConnect" do
       scheme = %{type: "openIdConnect"}
       assert OAuth2.determine_grant_type(scheme) == :authorization_code
-      
+
       scheme_unsupported = %{type: "openIdConnect", grant_types_supported: ["authorization_code"]}
       assert OAuth2.determine_grant_type(scheme_unsupported) == :authorization_code
     end

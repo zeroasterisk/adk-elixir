@@ -28,7 +28,8 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
               "description" => "See, edit, create, and delete all of your Google Drive files"
             },
             "https://www.googleapis.com/auth/drive.file" => %{
-              "description" => "View and manage Google Drive files and folders that you have opened or created with this app"
+              "description" =>
+                "View and manage Google Drive files and folders that you have opened or created with this app"
             }
           }
         }
@@ -41,7 +42,10 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
             "documentId" => %{"type" => "string", "description" => "The ID of the document"},
             "title" => %{"type" => "string", "description" => "The title of the document"},
             "body" => %{"$ref" => "Body", "description" => "The document body"},
-            "revisionId" => %{"type" => "string", "description" => "The revision ID of the document"}
+            "revisionId" => %{
+              "type" => "string",
+              "description" => "The revision ID of the document"
+            }
           }
         },
         "Body" => %{
@@ -101,7 +105,10 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
           "properties" => %{
             "range" => %{"$ref" => "Range", "description" => "The range to update"},
             "textStyle" => %{"$ref" => "TextStyle", "description" => "The text style to apply"},
-            "fields" => %{"type" => "string", "description" => "The fields that should be updated"}
+            "fields" => %{
+              "type" => "string",
+              "description" => "The fields that should be updated"
+            }
           }
         },
         "ReplaceAllTextRequest" => %{
@@ -109,7 +116,10 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
           "description" => "Replaces all instances of text matching criteria",
           "properties" => %{
             "containsText" => %{"$ref" => "SubstringMatchCriteria"},
-            "replaceText" => %{"type" => "string", "description" => "The text that will replace the matched text"}
+            "replaceText" => %{
+              "type" => "string",
+              "description" => "The text that will replace the matched text"
+            }
           }
         },
         "Location" => %{
@@ -133,7 +143,10 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
           "description" => "Represents the styling that can be applied to text",
           "properties" => %{
             "bold" => %{"type" => "boolean", "description" => "Whether or not the text is bold"},
-            "italic" => %{"type" => "boolean", "description" => "Whether or not the text is italic"},
+            "italic" => %{
+              "type" => "boolean",
+              "description" => "Whether or not the text is italic"
+            },
             "fontSize" => %{"$ref" => "Dimension", "description" => "The size of the text's font"}
           }
         },
@@ -142,14 +155,20 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
           "description" => "A criteria that matches a specific string of text in the document",
           "properties" => %{
             "text" => %{"type" => "string", "description" => "The text to search for"},
-            "matchCase" => %{"type" => "boolean", "description" => "Indicates whether the search should respect case"}
+            "matchCase" => %{
+              "type" => "boolean",
+              "description" => "Indicates whether the search should respect case"
+            }
           }
         },
         "WriteControl" => %{
           "type" => "object",
           "description" => "Provides control over how write requests are executed",
           "properties" => %{
-            "requiredRevisionId" => %{"type" => "string", "description" => "The required revision ID"},
+            "requiredRevisionId" => %{
+              "type" => "string",
+              "description" => "The required revision ID"
+            },
             "targetRevisionId" => %{"type" => "string", "description" => "The target revision ID"}
           }
         },
@@ -163,7 +182,10 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
               "description" => "The reply of the updates",
               "items" => %{"$ref" => "Response"}
             },
-            "writeControl" => %{"$ref" => "WriteControl", "description" => "The updated write control"}
+            "writeControl" => %{
+              "$ref" => "WriteControl",
+              "description" => "The updated write control"
+            }
           }
         },
         "Response" => %{
@@ -177,7 +199,10 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
           "type" => "object",
           "description" => "The result of replacing text",
           "properties" => %{
-            "occurrencesChanged" => %{"type" => "integer", "description" => "The number of occurrences changed"}
+            "occurrencesChanged" => %{
+              "type" => "integer",
+              "description" => "The number of occurrences changed"
+            }
           }
         }
       },
@@ -249,48 +274,53 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
 
   test "batch_update_method_conversion" do
     methods = docs_api_spec()["resources"]["documents"]["methods"]
-    
+
     # In Elixir implementation, we pass the spec to a generic convert_methods
     openapi_spec = %{"paths" => %{}}
-    openapi_spec = GoogleApiToOpenApiConverter.convert_methods(openapi_spec, methods, "/v1/documents")
-    
+
+    openapi_spec =
+      GoogleApiToOpenApiConverter.convert_methods(openapi_spec, methods, "/v1/documents")
+
     paths = openapi_spec["paths"]
-    
+
     assert Map.has_key?(paths, "/v1/documents/{documentId}:batchUpdate")
     batch_update_method = paths["/v1/documents/{documentId}:batchUpdate"]["post"]
-    
+
     assert batch_update_method["operationId"] == "docs.documents.batchUpdate"
     assert batch_update_method["summary"] == "Applies one or more updates to the document."
-    
+
     params = batch_update_method["parameters"]
     param_names = Enum.map(params, & &1["name"])
     assert "documentId" in param_names
-    
+
     assert Map.has_key?(batch_update_method, "requestBody")
     request_body = batch_update_method["requestBody"]
     assert request_body["required"] == true
     request_schema = request_body["content"]["application/json"]["schema"]
     assert request_schema["$ref"] == "#/components/schemas/BatchUpdateDocumentRequest"
-    
+
     assert Map.has_key?(batch_update_method, "responses")
-    response_schema = batch_update_method["responses"]["200"]["content"]["application/json"]["schema"]
+
+    response_schema =
+      batch_update_method["responses"]["200"]["content"]["application/json"]["schema"]
+
     assert response_schema["$ref"] == "#/components/schemas/BatchUpdateDocumentResponse"
-    
+
     assert Map.has_key?(batch_update_method, "security")
   end
 
   test "batch_update_request_schema_conversion" do
     openapi_spec = GoogleApiToOpenApiConverter.convert(docs_api_spec())
     schemas = openapi_spec["components"]["schemas"]
-    
+
     assert Map.has_key?(schemas, "BatchUpdateDocumentRequest")
     batch_request_schema = schemas["BatchUpdateDocumentRequest"]
-    
+
     assert batch_request_schema["type"] == "object"
     assert Map.has_key?(batch_request_schema, "properties")
     assert Map.has_key?(batch_request_schema["properties"], "requests")
     assert Map.has_key?(batch_request_schema["properties"], "writeControl")
-    
+
     requests_prop = batch_request_schema["properties"]["requests"]
     assert requests_prop["type"] == "array"
     assert requests_prop["items"]["$ref"] == "#/components/schemas/Request"
@@ -299,16 +329,16 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
   test "batch_update_response_schema_conversion" do
     openapi_spec = GoogleApiToOpenApiConverter.convert(docs_api_spec())
     schemas = openapi_spec["components"]["schemas"]
-    
+
     assert Map.has_key?(schemas, "BatchUpdateDocumentResponse")
     batch_response_schema = schemas["BatchUpdateDocumentResponse"]
-    
+
     assert batch_response_schema["type"] == "object"
     assert Map.has_key?(batch_response_schema, "properties")
     assert Map.has_key?(batch_response_schema["properties"], "documentId")
     assert Map.has_key?(batch_response_schema["properties"], "replies")
     assert Map.has_key?(batch_response_schema["properties"], "writeControl")
-    
+
     replies_prop = batch_response_schema["properties"]["replies"]
     assert replies_prop["type"] == "array"
     assert replies_prop["items"]["$ref"] == "#/components/schemas/Response"
@@ -317,20 +347,20 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
   test "batch_update_request_types_conversion" do
     openapi_spec = GoogleApiToOpenApiConverter.convert(docs_api_spec())
     schemas = openapi_spec["components"]["schemas"]
-    
+
     assert Map.has_key?(schemas, "Request")
     request_schema = schemas["Request"]
     assert Map.has_key?(request_schema, "properties")
-    
+
     assert Map.has_key?(request_schema["properties"], "insertText")
     assert Map.has_key?(request_schema["properties"], "updateTextStyle")
     assert Map.has_key?(request_schema["properties"], "replaceAllText")
-    
+
     assert Map.has_key?(schemas, "InsertTextRequest")
     insert_text_schema = schemas["InsertTextRequest"]
     assert Map.has_key?(insert_text_schema["properties"], "location")
     assert Map.has_key?(insert_text_schema["properties"], "text")
-    
+
     assert Map.has_key?(schemas, "UpdateTextStyleRequest")
     update_style_schema = schemas["UpdateTextStyleRequest"]
     assert Map.has_key?(update_style_schema["properties"], "range")
@@ -340,29 +370,34 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
 
   test "convert_methods" do
     methods = docs_api_spec()["resources"]["documents"]["methods"]
-    
+
     openapi_spec = %{"paths" => %{}}
-    openapi_spec = GoogleApiToOpenApiConverter.convert_methods(openapi_spec, methods, "/v1/documents")
-    
+
+    openapi_spec =
+      GoogleApiToOpenApiConverter.convert_methods(openapi_spec, methods, "/v1/documents")
+
     paths = openapi_spec["paths"]
-    
+
     assert Map.has_key?(paths, "/v1/documents/{documentId}")
     get_method = paths["/v1/documents/{documentId}"]["get"]
     assert get_method["operationId"] == "docs.documents.get"
-    
+
     params = get_method["parameters"]
     param_names = Enum.map(params, & &1["name"])
     assert "documentId" in param_names
-    
+
     assert Map.has_key?(paths, "/v1/documents")
     post_method = paths["/v1/documents"]["post"]
     assert post_method["operationId"] == "docs.documents.create"
-    
+
     assert Map.has_key?(post_method, "requestBody")
-    assert post_method["requestBody"]["content"]["application/json"]["schema"]["$ref"] == "#/components/schemas/Document"
-    
-    assert post_method["responses"]["200"]["content"]["application/json"]["schema"]["$ref"] == "#/components/schemas/Document"
-    
+
+    assert post_method["requestBody"]["content"]["application/json"]["schema"]["$ref"] ==
+             "#/components/schemas/Document"
+
+    assert post_method["responses"]["200"]["content"]["application/json"]["schema"]["$ref"] ==
+             "#/components/schemas/Document"
+
     assert Map.has_key?(paths, "/v1/documents/{documentId}:batchUpdate")
     batch_update_method = paths["/v1/documents/{documentId}:batchUpdate"]["post"]
     assert batch_update_method["operationId"] == "docs.documents.batchUpdate"
@@ -370,35 +405,35 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
 
   test "complete_docs_api_conversion" do
     result = GoogleApiToOpenApiConverter.convert(docs_api_spec())
-    
+
     assert result["openapi"] == "3.0.0"
     assert Map.has_key?(result, "info")
     assert Map.has_key?(result, "servers")
     assert Map.has_key?(result, "paths")
     assert Map.has_key?(result, "components")
-    
+
     paths = result["paths"]
     assert Map.has_key?(paths, "/v1/documents/{documentId}")
     assert Map.has_key?(paths["/v1/documents/{documentId}"], "get")
-    
+
     assert Map.has_key?(paths, "/v1/documents/{documentId}:batchUpdate")
     assert Map.has_key?(paths["/v1/documents/{documentId}:batchUpdate"], "post")
-    
+
     get_document = paths["/v1/documents/{documentId}"]["get"]
     assert get_document["operationId"] == "docs.documents.get"
     assert Map.has_key?(get_document, "parameters")
-    
+
     batch_update = paths["/v1/documents/{documentId}:batchUpdate"]["post"]
     assert batch_update["operationId"] == "docs.documents.batchUpdate"
-    
+
     assert Map.has_key?(batch_update, "requestBody")
     request_schema = batch_update["requestBody"]["content"]["application/json"]["schema"]
     assert request_schema["$ref"] == "#/components/schemas/BatchUpdateDocumentRequest"
-    
+
     assert Map.has_key?(batch_update, "responses")
     response_schema = batch_update["responses"]["200"]["content"]["application/json"]["schema"]
     assert response_schema["$ref"] == "#/components/schemas/BatchUpdateDocumentResponse"
-    
+
     schemas = result["components"]["schemas"]
     assert Map.has_key?(schemas, "Document")
     assert Map.has_key?(schemas, "BatchUpdateDocumentRequest")
@@ -411,7 +446,7 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
   test "batch_update_example_request_structure" do
     result = GoogleApiToOpenApiConverter.convert(docs_api_spec())
     schemas = result["components"]["schemas"]
-    
+
     assert Map.has_key?(schemas, "BatchUpdateDocumentRequest")
     assert Map.has_key?(schemas, "Request")
     assert Map.has_key?(schemas, "InsertTextRequest")
@@ -420,15 +455,15 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
     assert Map.has_key?(schemas, "Range")
     assert Map.has_key?(schemas, "TextStyle")
     assert Map.has_key?(schemas, "WriteControl")
-    
+
     location_schema = schemas["Location"]
     assert Map.has_key?(location_schema["properties"], "index")
     assert location_schema["properties"]["index"]["type"] == "integer"
-    
+
     range_schema = schemas["Range"]
     assert Map.has_key?(range_schema["properties"], "startIndex")
     assert Map.has_key?(range_schema["properties"], "endIndex")
-    
+
     text_style_schema = schemas["TextStyle"]
     assert Map.has_key?(text_style_schema["properties"], "bold")
     assert text_style_schema["properties"]["bold"]["type"] == "boolean"
@@ -436,14 +471,14 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
 
   test "integration_docs_api" do
     openapi_spec = GoogleApiToOpenApiConverter.convert(docs_api_spec())
-    
+
     assert openapi_spec["info"]["title"] == "Google Docs API"
     assert hd(openapi_spec["servers"])["url"] == "https://docs.googleapis.com"
-    
+
     security_schemes = openapi_spec["components"]["securitySchemes"]
     assert Map.has_key?(security_schemes, "oauth2")
     assert Map.has_key?(security_schemes, "apiKey")
-    
+
     schemas = openapi_spec["components"]["schemas"]
     assert Map.has_key?(schemas, "Document")
     assert Map.has_key?(schemas, "BatchUpdateDocumentRequest")
@@ -451,18 +486,18 @@ defmodule ADK.Tool.GoogleApiTool.DocsBatchUpdateTest do
     assert Map.has_key?(schemas, "InsertTextRequest")
     assert Map.has_key?(schemas, "UpdateTextStyleRequest")
     assert Map.has_key?(schemas, "ReplaceAllTextRequest")
-    
+
     paths = openapi_spec["paths"]
     assert Map.has_key?(paths, "/v1/documents/{documentId}")
     assert Map.has_key?(paths, "/v1/documents")
     assert Map.has_key?(paths, "/v1/documents/{documentId}:batchUpdate")
-    
+
     get_document = paths["/v1/documents/{documentId}"]["get"]
     assert get_document["operationId"] == "docs.documents.get"
-    
+
     batch_update = paths["/v1/documents/{documentId}:batchUpdate"]["post"]
     assert batch_update["operationId"] == "docs.documents.batchUpdate"
-    
+
     param_dict = Map.new(get_document["parameters"], fn p -> {p["name"], p} end)
     assert Map.has_key?(param_dict, "documentId")
     document_id = param_dict["documentId"]

@@ -36,17 +36,18 @@ defmodule ADK.Tool.FunctionsThreadPoolParityTest do
         %{"sum" => x, "text" => y}
       end
 
-      tool = FunctionTool.new("test_tool",
-        description: "Test tool",
-        func: tool_fn,
-        parameters: %{
-          "type" => "object",
-          "properties" => %{
-            "x" => %{"type" => "integer"},
-            "y" => %{"type" => "string"}
+      tool =
+        FunctionTool.new("test_tool",
+          description: "Test tool",
+          func: tool_fn,
+          parameters: %{
+            "type" => "object",
+            "properties" => %{
+              "x" => %{"type" => "integer"},
+              "y" => %{"type" => "string"}
+            }
           }
-        }
-      )
+        )
 
       agent = LlmAgent.new(name: "test_agent", model: "dummy", tools: [tool])
 
@@ -68,7 +69,7 @@ defmodule ADK.Tool.FunctionsThreadPoolParityTest do
 
       assert length(events) == 3
       tool_response_event = Enum.at(events, 1)
-      
+
       parts = tool_response_event.content.parts
       assert length(parts) == 1
       part = hd(parts)
@@ -84,10 +85,11 @@ defmodule ADK.Tool.FunctionsThreadPoolParityTest do
         %{"x" => x, "has_context" => has_context, "app_name" => ctx.context.app_name}
       end
 
-      tool = FunctionTool.new("test_tool_ctx",
-        description: "Test context",
-        func: tool_fn
-      )
+      tool =
+        FunctionTool.new("test_tool_ctx",
+          description: "Test context",
+          func: tool_fn
+        )
 
       agent = LlmAgent.new(name: "test_agent", model: "dummy", tools: [tool])
 
@@ -107,15 +109,15 @@ defmodule ADK.Tool.FunctionsThreadPoolParityTest do
       ])
 
       events = ADK.Agent.run(agent, ctx)
-      
+
       tool_response_event = Enum.at(events, 1)
       part = hd(tool_response_event.content.parts)
 
       assert part.function_response.response == %{
-        "x" => 10,
-        "has_context" => true,
-        "app_name" => "test_app"
-      }
+               "x" => 10,
+               "has_context" => true,
+               "app_name" => "test_app"
+             }
     end
 
     test "tool exception propagates" do
@@ -123,10 +125,11 @@ defmodule ADK.Tool.FunctionsThreadPoolParityTest do
         raise RuntimeError, "Test error from sync tool"
       end
 
-      tool = FunctionTool.new("error_tool",
-        description: "Raises error",
-        func: tool_fn
-      )
+      tool =
+        FunctionTool.new("error_tool",
+          description: "Raises error",
+          func: tool_fn
+        )
 
       agent = LlmAgent.new(name: "test_agent", model: "dummy", tools: [tool])
 

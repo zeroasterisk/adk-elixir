@@ -103,15 +103,15 @@ defmodule ADK.MixProject do
         "CHANGELOG.md"
       ],
       groups_for_modules: [
-        "Core": [ADK, ADK.Agent, ADK.Tool, ADK.Event, ADK.Context, ADK.ToolContext],
-        "Agents": [
+        Core: [ADK, ADK.Agent, ADK.Tool, ADK.Event, ADK.Context, ADK.ToolContext],
+        Agents: [
           ADK.Agent.LlmAgent,
           ADK.Agent.SequentialAgent,
           ADK.Agent.ParallelAgent,
           ADK.Agent.LoopAgent,
           ADK.Agent.Custom
         ],
-        "Tools": [
+        Tools: [
           ADK.Tool.FunctionTool,
           ADK.Tool.Declarative,
           ADK.Tool.ModuleTool,
@@ -140,7 +140,7 @@ defmodule ADK.MixProject do
           ADK.EventActions,
           ADK.RunConfig
         ],
-        "Memory": [
+        Memory: [
           ADK.Memory.Entry,
           ADK.Memory.Store,
           ADK.Memory.InMemory
@@ -151,18 +151,18 @@ defmodule ADK.MixProject do
           ADK.Context.Compressor.Truncate,
           ADK.Context.Compressor.SlidingWindow
         ],
-        "Artifacts": [
+        Artifacts: [
           ADK.Artifact.Store,
           ADK.Artifact.InMemory,
           ADK.Artifact.GCS
         ],
-        "Auth": [
+        Auth: [
           ADK.Auth.Config,
           ADK.Auth.Credential,
           ADK.Auth.CredentialStore,
           ADK.Auth.InMemoryStore
         ],
-        "Runner": [ADK.Runner, ADK.Runner.Async],
+        Runner: [ADK.Runner, ADK.Runner.Async],
         "A2A Protocol": [
           ADK.A2A.Server,
           ADK.A2A.Client,
@@ -177,18 +177,18 @@ defmodule ADK.MixProject do
           ADK.Phoenix.ChatLive,
           ADK.Phoenix.WebRouter
         ],
-        "Plugins": [
+        Plugins: [
           ADK.Plugin,
           ADK.Plugin.Registry,
           ADK.Plugin.ReflectRetry
         ],
-        "MCP": [
+        MCP: [
           ADK.MCP.Client,
           ADK.MCP.ToolAdapter
         ],
-        "Oban": [ADK.Oban.AgentWorker],
-        "Policies": [ADK.Policy, ADK.Policy.DefaultPolicy],
-        "Eval": [
+        Oban: [ADK.Oban.AgentWorker],
+        Policies: [ADK.Policy, ADK.Policy.DefaultPolicy],
+        Eval: [
           ADK.Eval,
           ADK.Eval.Case,
           ADK.Eval.Scorer,
@@ -199,9 +199,9 @@ defmodule ADK.MixProject do
           ADK.Eval.Scorer.ToolUsed,
           ADK.Eval.Scorer.ResponseLength
         ],
-        "Telemetry": [ADK.Telemetry, ADK.Telemetry.SpanStore, ADK.Telemetry.DebugHandler],
+        Telemetry: [ADK.Telemetry, ADK.Telemetry.SpanStore, ADK.Telemetry.DebugHandler],
         "Mix Tasks": [Mix.Tasks.Adk.New, Mix.Tasks.Adk.Gen.Migration, Mix.Tasks.Adk.Server],
-        "Internal": [ADK.Application, ADK.Callback, ADK.InstructionCompiler]
+        Internal: [ADK.Application, ADK.Callback, ADK.InstructionCompiler]
       ],
       groups_for_extras: [
         Guides: ~r/guides\/.*/

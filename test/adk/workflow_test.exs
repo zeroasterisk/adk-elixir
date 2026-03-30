@@ -86,13 +86,23 @@ defmodule ADK.WorkflowTest do
 
     test "returns {:error, reason} for unreachable nodes" do
       assert {:error, msg} =
-               Workflow.build(name: "unreach", edges: [{:START, :a, :END}, {:b, :c}], nodes: %{a: make_agent("a"), b: make_agent("b"), c: make_agent("c")})
+               Workflow.build(
+                 name: "unreach",
+                 edges: [{:START, :a, :END}, {:b, :c}],
+                 nodes: %{a: make_agent("a"), b: make_agent("b"), c: make_agent("c")}
+               )
+
       assert msg =~ "unreachable"
     end
 
     test "returns {:error, reason} for nodes in node_defs not in edges" do
       assert {:error, msg} =
-               Workflow.build(name: "unreach_def", edges: [{:START, :a, :END}], nodes: %{a: make_agent("a"), b: make_agent("b")})
+               Workflow.build(
+                 name: "unreach_def",
+                 edges: [{:START, :a, :END}],
+                 nodes: %{a: make_agent("a"), b: make_agent("b")}
+               )
+
       assert msg =~ "unreachable"
     end
 

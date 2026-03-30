@@ -55,7 +55,12 @@ defmodule ADK.CLI.AgentLoaderParityTest do
       name: name,
       description: Keyword.get(opts, :description, ""),
       run_fn: fn _agent, _ctx ->
-        [ADK.Event.new(%{author: name, content: %{role: :model, parts: [%{text: "hi from #{name}"}]}})]
+        [
+          ADK.Event.new(%{
+            author: name,
+            content: %{role: :model, parts: [%{text: "hi from #{name}"}]}
+          })
+        ]
       end
     )
   end
@@ -362,11 +367,12 @@ defmodule ADK.CLI.AgentLoaderParityTest do
     end
 
     test "valid llm agent creation" do
-      agent = ADK.Agent.LlmAgent.new(
-        name: "valid",
-        model: "gemini-flash-latest",
-        instruction: "You are helpful"
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "valid",
+          model: "gemini-flash-latest",
+          instruction: "You are helpful"
+        )
 
       assert ADK.Agent.name(agent) == "valid"
     end
@@ -497,7 +503,13 @@ defmodule ADK.CLI.AgentLoaderParityTest do
     else
       module_list_agents(loader)
       |> Enum.map(fn name ->
-        %{name: name, root_agent_name: name, description: "", language: "elixir", is_computer_use: false}
+        %{
+          name: name,
+          root_agent_name: name,
+          description: "",
+          language: "elixir",
+          is_computer_use: false
+        }
       end)
     end
   end

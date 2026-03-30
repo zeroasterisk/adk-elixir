@@ -210,9 +210,10 @@ defmodule ADK.Auth.PreprocessorTest do
     test "identifies auth responses and collects resume targets" do
       auth_config = mock_auth_config()
 
-      system = system_event_with_auth_calls([
-        {"auth_response_id", "tool_id_1", auth_config}
-      ])
+      system =
+        system_event_with_auth_calls([
+          {"auth_response_id", "tool_id_1", auth_config}
+        ])
 
       original = original_function_call_event(["tool_id_1"])
       user = user_event_with_auth_response(auth_config)
@@ -233,32 +234,34 @@ defmodule ADK.Auth.PreprocessorTest do
       auth_config = mock_auth_config()
 
       # Two auth responses from user
-      user_event = Event.new(%{
-        author: "user",
-        content: %{
-          "parts" => [
-            %{
-              "function_response" => %{
-                "name" => @request_euc,
-                "id" => "auth_id_1",
-                "response" => auth_config
+      user_event =
+        Event.new(%{
+          author: "user",
+          content: %{
+            "parts" => [
+              %{
+                "function_response" => %{
+                  "name" => @request_euc,
+                  "id" => "auth_id_1",
+                  "response" => auth_config
+                }
+              },
+              %{
+                "function_response" => %{
+                  "name" => @request_euc,
+                  "id" => "auth_id_2",
+                  "response" => auth_config
+                }
               }
-            },
-            %{
-              "function_response" => %{
-                "name" => @request_euc,
-                "id" => "auth_id_2",
-                "response" => auth_config
-              }
-            }
-          ]
-        }
-      })
+            ]
+          }
+        })
 
-      system = system_event_with_auth_calls([
-        {"auth_id_1", "tool_id_1", auth_config},
-        {"auth_id_2", "tool_id_2", auth_config}
-      ])
+      system =
+        system_event_with_auth_calls([
+          {"auth_id_1", "tool_id_1", auth_config},
+          {"auth_id_2", "tool_id_2", auth_config}
+        ])
 
       original = original_function_call_event(["tool_id_1", "tool_id_2"])
 
@@ -280,23 +283,24 @@ defmodule ADK.Auth.PreprocessorTest do
       auth_config = mock_auth_config()
 
       # System event with different ID than the auth response
-      non_matching_system = Event.new(%{
-        author: "system",
-        content: %{
-          "parts" => [
-            %{
-              "function_call" => %{
-                "name" => @request_euc,
-                "id" => "different_id",
-                "args" => %{
-                  "function_call_id" => "tool_id_1",
-                  "auth_config" => auth_config
+      non_matching_system =
+        Event.new(%{
+          author: "system",
+          content: %{
+            "parts" => [
+              %{
+                "function_call" => %{
+                  "name" => @request_euc,
+                  "id" => "different_id",
+                  "args" => %{
+                    "function_call_id" => "tool_id_1",
+                    "auth_config" => auth_config
+                  }
                 }
               }
-            }
-          ]
-        }
-      })
+            ]
+          }
+        })
 
       user = user_event_with_auth_response(auth_config)
       events = [non_matching_system, user]
@@ -313,15 +317,17 @@ defmodule ADK.Auth.PreprocessorTest do
     test "still collects tools to resume even without original event" do
       auth_config = mock_auth_config()
 
-      system = system_event_with_auth_calls([
-        {"auth_response_id", "tool_id_1", auth_config}
-      ])
+      system =
+        system_event_with_auth_calls([
+          {"auth_response_id", "tool_id_1", auth_config}
+        ])
 
       # Empty event (no function calls — the original calls are "missing")
-      empty = Event.new(%{
-        author: "model",
-        content: %{"parts" => [%{"text" => "ok"}]}
-      })
+      empty =
+        Event.new(%{
+          author: "model",
+          content: %{"parts" => [%{"text" => "ok"}]}
+        })
 
       user = user_event_with_auth_response(auth_config)
       events = [empty, system, user]
@@ -340,9 +346,10 @@ defmodule ADK.Auth.PreprocessorTest do
       auth_config = mock_auth_config()
       toolset_prefix = Preprocessor.toolset_auth_prefix()
 
-      system = system_event_with_auth_calls([
-        {"auth_response_id", "#{toolset_prefix}some_tool", auth_config}
-      ])
+      system =
+        system_event_with_auth_calls([
+          {"auth_response_id", "#{toolset_prefix}some_tool", auth_config}
+        ])
 
       user = user_event_with_auth_response(auth_config)
       events = [system, user]
@@ -356,32 +363,34 @@ defmodule ADK.Auth.PreprocessorTest do
       toolset_prefix = Preprocessor.toolset_auth_prefix()
 
       # Mix of toolset and regular auth
-      user_event = Event.new(%{
-        author: "user",
-        content: %{
-          "parts" => [
-            %{
-              "function_response" => %{
-                "name" => @request_euc,
-                "id" => "auth_id_1",
-                "response" => auth_config
+      user_event =
+        Event.new(%{
+          author: "user",
+          content: %{
+            "parts" => [
+              %{
+                "function_response" => %{
+                  "name" => @request_euc,
+                  "id" => "auth_id_1",
+                  "response" => auth_config
+                }
+              },
+              %{
+                "function_response" => %{
+                  "name" => @request_euc,
+                  "id" => "auth_id_2",
+                  "response" => auth_config
+                }
               }
-            },
-            %{
-              "function_response" => %{
-                "name" => @request_euc,
-                "id" => "auth_id_2",
-                "response" => auth_config
-              }
-            }
-          ]
-        }
-      })
+            ]
+          }
+        })
 
-      system = system_event_with_auth_calls([
-        {"auth_id_1", "real_tool_id", auth_config},
-        {"auth_id_2", "#{toolset_prefix}listing_tool", auth_config}
-      ])
+      system =
+        system_event_with_auth_calls([
+          {"auth_id_1", "real_tool_id", auth_config},
+          {"auth_id_2", "#{toolset_prefix}listing_tool", auth_config}
+        ])
 
       events = [system, user_event]
 
@@ -419,10 +428,11 @@ defmodule ADK.Auth.PreprocessorTest do
     end
 
     test "stores exchanged credential from auth response", %{store: store} do
-      cred = ADK.Auth.Credential.oauth2("access-token-123",
-        client_id: "client1",
-        client_secret: "secret1"
-      )
+      cred =
+        ADK.Auth.Credential.oauth2("access-token-123",
+          client_id: "client1",
+          client_secret: "secret1"
+        )
 
       auth_config = %ADK.Auth.Config{
         credential_type: :oauth2,
@@ -430,9 +440,10 @@ defmodule ADK.Auth.PreprocessorTest do
         exchanged_credential: cred
       }
 
-      system = system_event_with_auth_calls([
-        {"auth_response_id", "tool_id_1", auth_config}
-      ])
+      system =
+        system_event_with_auth_calls([
+          {"auth_response_id", "tool_id_1", auth_config}
+        ])
 
       user = user_event_with_auth_response(auth_config)
       events = [system, user]
@@ -440,9 +451,8 @@ defmodule ADK.Auth.PreprocessorTest do
       # Create a wrapper that delegates to InMemoryStore
       wrapper = create_store_wrapper(store)
 
-      assert {:resume, _} = Preprocessor.process(events, mock_llm_agent(),
-        credential_service: wrapper
-      )
+      assert {:resume, _} =
+               Preprocessor.process(events, mock_llm_agent(), credential_service: wrapper)
 
       # Verify credential was stored
       assert {:ok, stored} = ADK.Auth.InMemoryStore.get("my_cred_key", server: store)

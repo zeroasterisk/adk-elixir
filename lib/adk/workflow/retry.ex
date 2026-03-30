@@ -68,7 +68,7 @@ defmodule ADK.Workflow.Retry do
   @spec backoff_delay(:exponential | :linear | pos_integer(), non_neg_integer()) ::
           non_neg_integer()
   def backoff_delay(:exponential, attempt) do
-    @base_delay_ms * :math.pow(2, attempt) |> trunc()
+    (@base_delay_ms * :math.pow(2, attempt)) |> trunc()
   end
 
   def backoff_delay(:linear, attempt) do

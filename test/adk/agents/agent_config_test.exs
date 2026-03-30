@@ -40,7 +40,11 @@ defmodule ADK.AgentConfigTest do
   # ── Explicit LlmAgent discriminator ──
 
   describe "LlmAgent discriminator" do
-    for class <- ["LlmAgent", "google.adk.agents.LlmAgent", "google.adk.agents.llm_agent.LlmAgent"] do
+    for class <- [
+          "LlmAgent",
+          "google.adk.agents.LlmAgent",
+          "google.adk.agents.llm_agent.LlmAgent"
+        ] do
       @class class
       test "agent_class #{@class} → LlmAgent" do
         yaml = """
@@ -61,7 +65,11 @@ defmodule ADK.AgentConfigTest do
   # ── LoopAgent discriminator ──
 
   describe "LoopAgent discriminator" do
-    for class <- ["LoopAgent", "google.adk.agents.LoopAgent", "google.adk.agents.loop_agent.LoopAgent"] do
+    for class <- [
+          "LoopAgent",
+          "google.adk.agents.LoopAgent",
+          "google.adk.agents.loop_agent.LoopAgent"
+        ] do
       @class class
       test "agent_class #{@class} → LoopAgent" do
         yaml = """
@@ -81,7 +89,11 @@ defmodule ADK.AgentConfigTest do
   # ── ParallelAgent discriminator ──
 
   describe "ParallelAgent discriminator" do
-    for class <- ["ParallelAgent", "google.adk.agents.ParallelAgent", "google.adk.agents.parallel_agent.ParallelAgent"] do
+    for class <- [
+          "ParallelAgent",
+          "google.adk.agents.ParallelAgent",
+          "google.adk.agents.parallel_agent.ParallelAgent"
+        ] do
       @class class
       test "agent_class #{@class} → ParallelAgent" do
         yaml = """
@@ -101,7 +113,11 @@ defmodule ADK.AgentConfigTest do
   # ── SequentialAgent discriminator ──
 
   describe "SequentialAgent discriminator" do
-    for class <- ["SequentialAgent", "google.adk.agents.SequentialAgent", "google.adk.agents.sequential_agent.SequentialAgent"] do
+    for class <- [
+          "SequentialAgent",
+          "google.adk.agents.SequentialAgent",
+          "google.adk.agents.sequential_agent.SequentialAgent"
+        ] do
       @class class
       test "agent_class #{@class} → SequentialAgent" do
         yaml = """
@@ -143,6 +159,7 @@ defmodule ADK.AgentConfigTest do
         end
 
         config_path = Path.join(tmp_dir, "test_config.yaml")
+
         File.write!(config_path, """
         agent_class: #{@class}
         name: main_agent
@@ -177,6 +194,7 @@ defmodule ADK.AgentConfigTest do
       end
 
       config_path = Path.join(tmp_dir, "test_config.yaml")
+
       File.write!(config_path, """
       agent_class: LlmAgent
       name: main_agent
@@ -293,6 +311,7 @@ defmodule ADK.AgentConfigTest do
       """)
 
       config_path = Path.join(tmp_dir, "main.yaml")
+
       File.write!(config_path, """
       agent_class: LlmAgent
       name: main_agent
@@ -323,6 +342,7 @@ defmodule ADK.AgentConfigTest do
       """)
 
       config_path = Path.join(nested_dir, "nested_main.yaml")
+
       File.write!(config_path, """
       agent_class: LlmAgent
       name: main_agent

@@ -5,13 +5,14 @@ defmodule ADK.A2A.AgentCardTest do
   alias ADK.A2A.AgentCard
 
   test "generates card from agent spec" do
-    agent = ADK.Agent.LlmAgent.new(
-      name: "helper",
-      description: "A helpful agent",
-      model: "test",
-      instruction: "Help",
-      tools: []
-    )
+    agent =
+      ADK.Agent.LlmAgent.new(
+        name: "helper",
+        description: "A helpful agent",
+        model: "test",
+        instruction: "Help",
+        tools: []
+      )
 
     card = AgentCard.from_agent(agent, url: "http://localhost:4000/a2a")
 
@@ -27,18 +28,20 @@ defmodule ADK.A2A.AgentCardTest do
   end
 
   test "maps tools to skills" do
-    tool = ADK.Tool.FunctionTool.new(:search,
-      description: "Search the web",
-      func: fn _, _ -> {:ok, "result"} end
-    )
+    tool =
+      ADK.Tool.FunctionTool.new(:search,
+        description: "Search the web",
+        func: fn _, _ -> {:ok, "result"} end
+      )
 
-    agent = ADK.Agent.LlmAgent.new(
-      name: "researcher",
-      description: "Researches topics",
-      model: "test",
-      instruction: "Research",
-      tools: [tool]
-    )
+    agent =
+      ADK.Agent.LlmAgent.new(
+        name: "researcher",
+        description: "Researches topics",
+        model: "test",
+        instruction: "Research",
+        tools: [tool]
+      )
 
     card = AgentCard.from_agent(agent, url: "http://localhost:4000/a2a")
 
@@ -49,7 +52,12 @@ defmodule ADK.A2A.AgentCardTest do
 
   test "includes provider when given" do
     agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help", tools: [])
-    card = AgentCard.from_agent(agent, url: "http://x", provider: %{"organization" => "Acme", "url" => "http://acme.com"})
+
+    card =
+      AgentCard.from_agent(agent,
+        url: "http://x",
+        provider: %{"organization" => "Acme", "url" => "http://acme.com"}
+      )
 
     assert card["provider"]["organization"] == "Acme"
     assert card["provider"]["url"] == "http://acme.com"

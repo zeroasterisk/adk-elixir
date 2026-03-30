@@ -23,7 +23,12 @@ defmodule ADK.Skill.StepsTest do
 
     test "includes requires_approval when set" do
       steps = [
-        %Steps{name: :deploy, handler: fn _ -> :ok end, depends_on: [], opts: [requires_approval: true]}
+        %Steps{
+          name: :deploy,
+          handler: fn _ -> :ok end,
+          depends_on: [],
+          opts: [requires_approval: true]
+        }
       ]
 
       plan = Steps.compile_plan(steps)

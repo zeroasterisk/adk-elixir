@@ -6,8 +6,9 @@ defmodule ADK.Tool.BigQuery.DataInsightsToolTest do
   describe "ask_data_insights/6 pipeline from file" do
     test "ask_data_insights_pipeline_from_file (ask_data_insights_penguins_highest_mass.yaml)" do
       # 1. Construct the full, absolute path to the data file
-      file_path = Path.join([__DIR__, "test_data", "ask_data_insights_penguins_highest_mass.yaml"])
-      
+      file_path =
+        Path.join([__DIR__, "test_data", "ask_data_insights_penguins_highest_mass.yaml"])
+
       # 2. Load the test case data from the specified YAML file
       {:ok, case_data} = YamlElixir.read_from_file(file_path)
 
@@ -43,9 +44,13 @@ defmodule ADK.Tool.BigQuery.DataInsightsToolTest do
       get_stream_fn = fn url, _ca_payload, headers, _max_rows, _opts ->
         # Verify headers inside the mock
         assert Enum.any?(headers, fn {k, v} -> k == "X-Goog-API-Client" and v == "GOOGLE_ADK" end)
-        assert Enum.any?(headers, fn {k, v} -> k == "Authorization" and v == "Bearer fake-token" end)
+
+        assert Enum.any?(headers, fn {k, v} ->
+                 k == "Authorization" and v == "Bearer fake-token"
+               end)
+
         assert String.contains?(url, "v1beta/projects/test-project/locations/global:chat")
-        
+
         "Final formatted string from stream"
       end
 
@@ -106,8 +111,13 @@ defmodule ADK.Tool.BigQuery.DataInsightsToolTest do
     test "append_when_last_message_is_not_data" do
       initial = [%{"Thinking" => nil}, %{"Schema Resolved" => %{}}]
       new_msg = %{"SQL Generated" => "SELECT 1"}
-      expected = [%{"Thinking" => nil}, %{"Schema Resolved" => %{}}, %{"SQL Generated" => "SELECT 1"}]
-      
+
+      expected = [
+        %{"Thinking" => nil},
+        %{"Schema Resolved" => %{}},
+        %{"SQL Generated" => "SELECT 1"}
+      ]
+
       assert DataInsightsTool.append_message(initial, new_msg) == expected
     end
 
@@ -115,7 +125,7 @@ defmodule ADK.Tool.BigQuery.DataInsightsToolTest do
       initial = [%{"Thinking" => nil}, %{"Data Retrieved" => %{"rows" => [1]}}]
       new_msg = %{"Data Retrieved" => %{"rows" => [1, 2]}}
       expected = [%{"Thinking" => nil}, %{"Data Retrieved" => %{"rows" => [1, 2]}}]
-      
+
       assert DataInsightsTool.append_message(initial, new_msg) == expected
     end
 
@@ -123,7 +133,7 @@ defmodule ADK.Tool.BigQuery.DataInsightsToolTest do
       initial = []
       new_msg = %{"Answer" => "First Message"}
       expected = [%{"Answer" => "First Message"}]
-      
+
       assert DataInsightsTool.append_message(initial, new_msg) == expected
     end
 
@@ -131,7 +141,7 @@ defmodule ADK.Tool.BigQuery.DataInsightsToolTest do
       initial = [%{"Data Retrieved" => %{}}]
       new_msg = %{}
       expected = [%{"Data Retrieved" => %{}}]
-      
+
       assert DataInsightsTool.append_message(initial, new_msg) == expected
     end
   end
@@ -222,7 +232,7 @@ defmodule ADK.Tool.BigQuery.DataInsightsToolTest do
 
       assert DataInsightsTool.handle_data_response(response_dict, 100) == expected
     end
-    
+
     test "format_data_result_table with truncation" do
       response_dict = %{
         "result" => %{

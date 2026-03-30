@@ -43,19 +43,21 @@ defmodule ADK.TransferE2ETest do
         "Hello from the helper agent!"
       ])
 
-      helper = ADK.Agent.LlmAgent.new(
-        name: "helper",
-        model: "test",
-        instruction: "You are a helpful assistant.",
-        description: "Handles help requests"
-      )
+      helper =
+        ADK.Agent.LlmAgent.new(
+          name: "helper",
+          model: "test",
+          instruction: "You are a helpful assistant.",
+          description: "Handles help requests"
+        )
 
-      parent = ADK.Agent.LlmAgent.new(
-        name: "parent",
-        model: "test",
-        instruction: "Route requests to the right agent.",
-        sub_agents: [helper]
-      )
+      parent =
+        ADK.Agent.LlmAgent.new(
+          name: "parent",
+          model: "test",
+          instruction: "Route requests to the right agent.",
+          sub_agents: [helper]
+        )
 
       {session_pid, ctx} = setup_context(parent, "basic-transfer")
       events = ADK.Agent.run(parent, ctx)
@@ -90,26 +92,29 @@ defmodule ADK.TransferE2ETest do
         "Here's your draft article."
       ])
 
-      researcher = ADK.Agent.LlmAgent.new(
-        name: "researcher",
-        model: "test",
-        instruction: "Research topics.",
-        description: "Finds information"
-      )
+      researcher =
+        ADK.Agent.LlmAgent.new(
+          name: "researcher",
+          model: "test",
+          instruction: "Research topics.",
+          description: "Finds information"
+        )
 
-      writer = ADK.Agent.LlmAgent.new(
-        name: "writer",
-        model: "test",
-        instruction: "Write content.",
-        description: "Creates written content"
-      )
+      writer =
+        ADK.Agent.LlmAgent.new(
+          name: "writer",
+          model: "test",
+          instruction: "Write content.",
+          description: "Creates written content"
+        )
 
-      parent = ADK.Agent.LlmAgent.new(
-        name: "coordinator",
-        model: "test",
-        instruction: "Route to the right specialist.",
-        sub_agents: [researcher, writer]
-      )
+      parent =
+        ADK.Agent.LlmAgent.new(
+          name: "coordinator",
+          model: "test",
+          instruction: "Route to the right specialist.",
+          sub_agents: [researcher, writer]
+        )
 
       {session_pid, ctx} = setup_context(parent, "multi-sub")
       events = ADK.Agent.run(parent, ctx)
@@ -119,7 +124,9 @@ defmodule ADK.TransferE2ETest do
       assert last.author == "writer"
 
       # Verify transfer event points to writer
-      transfer_event = Enum.find(events, &(&1.actions && &1.actions.transfer_to_agent == "writer"))
+      transfer_event =
+        Enum.find(events, &(&1.actions && &1.actions.transfer_to_agent == "writer"))
+
       assert transfer_event != nil
 
       GenServer.stop(session_pid)
@@ -137,19 +144,21 @@ defmodule ADK.TransferE2ETest do
         "Specialist analysis complete."
       ])
 
-      specialist = ADK.Agent.LlmAgent.new(
-        name: "specialist",
-        model: "test",
-        instruction: "Analyze data.",
-        description: "Data analysis expert"
-      )
+      specialist =
+        ADK.Agent.LlmAgent.new(
+          name: "specialist",
+          model: "test",
+          instruction: "Analyze data.",
+          description: "Data analysis expert"
+        )
 
-      parent = ADK.Agent.LlmAgent.new(
-        name: "router",
-        model: "test",
-        instruction: "Route to specialists.",
-        sub_agents: [specialist]
-      )
+      parent =
+        ADK.Agent.LlmAgent.new(
+          name: "router",
+          model: "test",
+          instruction: "Route to specialists.",
+          sub_agents: [specialist]
+        )
 
       runner = ADK.Runner.new(app_name: "transfer_e2e", agent: parent)
       events = ADK.Runner.run(runner, "user1", "runner-transfer", "analyze this data")
@@ -175,27 +184,30 @@ defmodule ADK.TransferE2ETest do
         "Final response from agent C!"
       ])
 
-      agent_c = ADK.Agent.LlmAgent.new(
-        name: "agent_c",
-        model: "test",
-        instruction: "You are agent C.",
-        description: "Final handler"
-      )
+      agent_c =
+        ADK.Agent.LlmAgent.new(
+          name: "agent_c",
+          model: "test",
+          instruction: "You are agent C.",
+          description: "Final handler"
+        )
 
-      agent_b = ADK.Agent.LlmAgent.new(
-        name: "agent_b",
-        model: "test",
-        instruction: "You are agent B.",
-        description: "Intermediate handler",
-        sub_agents: [agent_c]
-      )
+      agent_b =
+        ADK.Agent.LlmAgent.new(
+          name: "agent_b",
+          model: "test",
+          instruction: "You are agent B.",
+          description: "Intermediate handler",
+          sub_agents: [agent_c]
+        )
 
-      agent_a = ADK.Agent.LlmAgent.new(
-        name: "agent_a",
-        model: "test",
-        instruction: "You are agent A.",
-        sub_agents: [agent_b]
-      )
+      agent_a =
+        ADK.Agent.LlmAgent.new(
+          name: "agent_a",
+          model: "test",
+          instruction: "You are agent A.",
+          sub_agents: [agent_b]
+        )
 
       {session_pid, ctx} = setup_context(agent_a, "multi-hop")
       events = ADK.Agent.run(agent_a, ctx)
@@ -226,19 +238,21 @@ defmodule ADK.TransferE2ETest do
         "Fallback response after error."
       ])
 
-      known = ADK.Agent.LlmAgent.new(
-        name: "known",
-        model: "test",
-        instruction: "Help.",
-        description: "A known agent"
-      )
+      known =
+        ADK.Agent.LlmAgent.new(
+          name: "known",
+          model: "test",
+          instruction: "Help.",
+          description: "A known agent"
+        )
 
-      parent = ADK.Agent.LlmAgent.new(
-        name: "parent",
-        model: "test",
-        instruction: "Route requests.",
-        sub_agents: [known]
-      )
+      parent =
+        ADK.Agent.LlmAgent.new(
+          name: "parent",
+          model: "test",
+          instruction: "Route requests.",
+          sub_agents: [known]
+        )
 
       {session_pid, ctx} = setup_context(parent, "unknown-transfer")
       events = ADK.Agent.run(parent, ctx)
@@ -270,30 +284,33 @@ defmodule ADK.TransferE2ETest do
         "Based on my research: Elixir is great!"
       ])
 
-      search_tool = ADK.Tool.FunctionTool.new(:search,
-        description: "Search for information",
-        func: fn _ctx, %{"query" => q} -> {:ok, "Results for: #{q}"} end,
-        parameters: %{
-          type: "object",
-          properties: %{query: %{type: "string"}},
-          required: ["query"]
-        }
-      )
+      search_tool =
+        ADK.Tool.FunctionTool.new(:search,
+          description: "Search for information",
+          func: fn _ctx, %{"query" => q} -> {:ok, "Results for: #{q}"} end,
+          parameters: %{
+            type: "object",
+            properties: %{query: %{type: "string"}},
+            required: ["query"]
+          }
+        )
 
-      researcher = ADK.Agent.LlmAgent.new(
-        name: "researcher",
-        model: "test",
-        instruction: "Research using search.",
-        description: "Research agent",
-        tools: [search_tool]
-      )
+      researcher =
+        ADK.Agent.LlmAgent.new(
+          name: "researcher",
+          model: "test",
+          instruction: "Research using search.",
+          description: "Research agent",
+          tools: [search_tool]
+        )
 
-      parent = ADK.Agent.LlmAgent.new(
-        name: "parent",
-        model: "test",
-        instruction: "Route requests.",
-        sub_agents: [researcher]
-      )
+      parent =
+        ADK.Agent.LlmAgent.new(
+          name: "parent",
+          model: "test",
+          instruction: "Route requests.",
+          sub_agents: [researcher]
+        )
 
       {session_pid, ctx} = setup_context(parent, "sub-with-tools")
       events = ADK.Agent.run(parent, ctx)
@@ -317,18 +334,20 @@ defmodule ADK.TransferE2ETest do
         "Done!"
       ])
 
-      helper = ADK.Agent.LlmAgent.new(
-        name: "helper",
-        model: "test",
-        instruction: "Help."
-      )
+      helper =
+        ADK.Agent.LlmAgent.new(
+          name: "helper",
+          model: "test",
+          instruction: "Help."
+        )
 
-      parent = ADK.Agent.LlmAgent.new(
-        name: "parent",
-        model: "test",
-        instruction: "Route.",
-        sub_agents: [helper]
-      )
+      parent =
+        ADK.Agent.LlmAgent.new(
+          name: "parent",
+          model: "test",
+          instruction: "Route.",
+          sub_agents: [helper]
+        )
 
       {session_pid, ctx} = setup_context(parent, "shared-session")
 
@@ -351,15 +370,29 @@ defmodule ADK.TransferE2ETest do
 
   describe "transfer tool declarations" do
     test "effective_tools includes per-agent transfer tools in LLM request" do
-      sub1 = ADK.Agent.LlmAgent.new(name: "alpha", model: "test", instruction: "A.", description: "Agent alpha")
-      sub2 = ADK.Agent.LlmAgent.new(name: "beta", model: "test", instruction: "B.", description: "Agent beta")
+      sub1 =
+        ADK.Agent.LlmAgent.new(
+          name: "alpha",
+          model: "test",
+          instruction: "A.",
+          description: "Agent alpha"
+        )
 
-      parent = ADK.Agent.LlmAgent.new(
-        name: "parent",
-        model: "test",
-        instruction: "Route.",
-        sub_agents: [sub1, sub2]
-      )
+      sub2 =
+        ADK.Agent.LlmAgent.new(
+          name: "beta",
+          model: "test",
+          instruction: "B.",
+          description: "Agent beta"
+        )
+
+      parent =
+        ADK.Agent.LlmAgent.new(
+          name: "parent",
+          model: "test",
+          instruction: "Route.",
+          sub_agents: [sub1, sub2]
+        )
 
       tools = ADK.Agent.LlmAgent.effective_tools(parent)
       names = Enum.map(tools, & &1.name)
@@ -377,19 +410,21 @@ defmodule ADK.TransferE2ETest do
     end
 
     test "instruction includes transfer info for sub-agents" do
-      sub = ADK.Agent.LlmAgent.new(
-        name: "helper",
-        model: "test",
-        instruction: "Help.",
-        description: "A helpful agent"
-      )
+      sub =
+        ADK.Agent.LlmAgent.new(
+          name: "helper",
+          model: "test",
+          instruction: "Help.",
+          description: "A helpful agent"
+        )
 
-      parent = ADK.Agent.LlmAgent.new(
-        name: "parent",
-        model: "test",
-        instruction: "Coordinate tasks.",
-        sub_agents: [sub]
-      )
+      parent =
+        ADK.Agent.LlmAgent.new(
+          name: "parent",
+          model: "test",
+          instruction: "Coordinate tasks.",
+          sub_agents: [sub]
+        )
 
       ctx = %ADK.Context{invocation_id: "inv-1", session_pid: nil, agent: parent}
       instruction = ADK.Agent.LlmAgent.compile_instruction(ctx, parent)

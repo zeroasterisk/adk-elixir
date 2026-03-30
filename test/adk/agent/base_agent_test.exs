@@ -26,7 +26,8 @@ defmodule ADK.Agent.BaseAgentTest do
     @behaviour ADK.Callback
     @impl true
     def before_agent(_ctx) do
-      {:halt, [Event.new(%{author: "callback", content: %{parts: [%{text: "halted by before_agent"}]}})]}
+      {:halt,
+       [Event.new(%{author: "callback", content: %{parts: [%{text: "halted by before_agent"}]}})]}
     end
   end
 
@@ -40,7 +41,9 @@ defmodule ADK.Agent.BaseAgentTest do
     @behaviour ADK.Callback
     @impl true
     def after_agent(events, _ctx) do
-      extra = Event.new(%{author: "callback", content: %{parts: [%{text: "appended by after_agent"}]}})
+      extra =
+        Event.new(%{author: "callback", content: %{parts: [%{text: "appended by after_agent"}]}})
+
       events ++ [extra]
     end
   end
@@ -91,7 +94,14 @@ defmodule ADK.Agent.BaseAgentTest do
   describe "agent hierarchy" do
     test "parent_agent is wired on sub-agents when using LlmAgent.new" do
       child = LlmAgent.new(name: "child", model: "mock", instruction: "I'm a child")
-      parent = LlmAgent.new(name: "parent", model: "mock", instruction: "I'm a parent", sub_agents: [child])
+
+      parent =
+        LlmAgent.new(
+          name: "parent",
+          model: "mock",
+          instruction: "I'm a parent",
+          sub_agents: [child]
+        )
 
       [wired_child] = parent.sub_agents
       assert wired_child.parent_agent.name == "parent"
@@ -104,7 +114,10 @@ defmodule ADK.Agent.BaseAgentTest do
 
     test "nested hierarchy wires parent at each level" do
       grandchild = LlmAgent.new(name: "grandchild", model: "mock", instruction: "gc")
-      child = LlmAgent.new(name: "child", model: "mock", instruction: "c", sub_agents: [grandchild])
+
+      child =
+        LlmAgent.new(name: "child", model: "mock", instruction: "c", sub_agents: [grandchild])
+
       root = LlmAgent.new(name: "root", model: "mock", instruction: "r", sub_agents: [child])
 
       [wired_child] = root.sub_agents
@@ -140,6 +153,7 @@ defmodule ADK.Agent.BaseAgentTest do
       parent = LlmAgent.new(name: "parent", model: "mock", instruction: "p", sub_agents: [c1, c2])
 
       assert length(parent.sub_agents) == 2
+
       Enum.each(parent.sub_agents, fn sub ->
         assert sub.parent_agent.name == "parent"
       end)
@@ -156,17 +170,20 @@ defmodule ADK.Agent.BaseAgentTest do
       root = LlmAgent.new(name: "root", model: "mock", instruction: "hi", sub_agents: [sub])
 
       # Start a session, add a transfer event
-      {:ok, session_pid} = ADK.Session.start_link(
-        app_name: "test_find",
-        user_id: "u1",
-        session_id: "s_find_#{System.unique_integer([:positive])}"
-      )
+      {:ok, session_pid} =
+        ADK.Session.start_link(
+          app_name: "test_find",
+          user_id: "u1",
+          session_id: "s_find_#{System.unique_integer([:positive])}"
+        )
 
-      transfer_event = Event.new(%{
-        author: "root",
-        content: %{parts: [%{text: "transferring"}]},
-        actions: %ADK.EventActions{transfer_to_agent: "helper"}
-      })
+      transfer_event =
+        Event.new(%{
+          author: "root",
+          content: %{parts: [%{text: "transferring"}]},
+          actions: %ADK.EventActions{transfer_to_agent: "helper"}
+        })
+
       ADK.Session.append_event(session_pid, transfer_event)
 
       active = Runner.find_active_agent(root, session_pid)
@@ -182,12 +199,13 @@ defmodule ADK.Agent.BaseAgentTest do
 
   describe "basic run" do
     test "custom agent produces events with correct author and content" do
-      agent = Custom.new(
-        name: "greeter",
-        run_fn: fn _agent, _ctx ->
-          [Event.new(%{author: "greeter", content: %{parts: [%{text: "hello world"}]}})]
-        end
-      )
+      agent =
+        Custom.new(
+          name: "greeter",
+          run_fn: fn _agent, _ctx ->
+            [Event.new(%{author: "greeter", content: %{parts: [%{text: "hello world"}]}})]
+          end
+        )
 
       runner = Runner.new(app_name: "test_basic", agent: agent)
       events = Runner.run(runner, "user1", "s_basic_#{System.unique_integer([:positive])}", "hi")
@@ -211,15 +229,16 @@ defmodule ADK.Agent.BaseAgentTest do
     end
 
     test "custom agent can produce multiple events" do
-      agent = Custom.new(
-        name: "multi",
-        run_fn: fn _agent, _ctx ->
-          [
-            Event.new(%{author: "multi", content: %{parts: [%{text: "first"}]}}),
-            Event.new(%{author: "multi", content: %{parts: [%{text: "second"}]}})
-          ]
-        end
-      )
+      agent =
+        Custom.new(
+          name: "multi",
+          run_fn: fn _agent, _ctx ->
+            [
+              Event.new(%{author: "multi", content: %{parts: [%{text: "first"}]}}),
+              Event.new(%{author: "multi", content: %{parts: [%{text: "second"}]}})
+            ]
+          end
+        )
 
       runner = Runner.new(app_name: "test_multi", agent: agent)
       events = Runner.run(runner, "user1", "s_multi_#{System.unique_integer([:positive])}", "go")
@@ -239,8 +258,11 @@ defmodule ADK.Agent.BaseAgentTest do
 
       agent = LlmAgent.new(name: "bot", model: "mock", instruction: "hi")
       runner = Runner.new(app_name: "test_noop_before", agent: agent)
-      events = Runner.run(runner, "u1", "s_nb_#{System.unique_integer([:positive])}", "hi",
-        callbacks: [NoopBeforeAgent])
+
+      events =
+        Runner.run(runner, "u1", "s_nb_#{System.unique_integer([:positive])}", "hi",
+          callbacks: [NoopBeforeAgent]
+        )
 
       texts = Enum.map(events, &Event.text/1) |> Enum.filter(& &1)
       assert "from agent" in texts
@@ -249,8 +271,11 @@ defmodule ADK.Agent.BaseAgentTest do
     test "halt callback bypasses agent execution" do
       agent = LlmAgent.new(name: "bot", model: "mock", instruction: "hi")
       runner = Runner.new(app_name: "test_halt_before", agent: agent)
-      events = Runner.run(runner, "u1", "s_hb_#{System.unique_integer([:positive])}", "hi",
-        callbacks: [HaltBeforeAgent])
+
+      events =
+        Runner.run(runner, "u1", "s_hb_#{System.unique_integer([:positive])}", "hi",
+          callbacks: [HaltBeforeAgent]
+        )
 
       assert length(events) == 1
       assert Event.text(hd(events)) == "halted by before_agent"
@@ -267,8 +292,11 @@ defmodule ADK.Agent.BaseAgentTest do
 
       agent = LlmAgent.new(name: "bot", model: "mock", instruction: "hi")
       runner = Runner.new(app_name: "test_noop_after", agent: agent)
-      events = Runner.run(runner, "u1", "s_na_#{System.unique_integer([:positive])}", "hi",
-        callbacks: [NoopAfterAgent])
+
+      events =
+        Runner.run(runner, "u1", "s_na_#{System.unique_integer([:positive])}", "hi",
+          callbacks: [NoopAfterAgent]
+        )
 
       texts = Enum.map(events, &Event.text/1) |> Enum.filter(& &1)
       assert "original" in texts
@@ -279,8 +307,11 @@ defmodule ADK.Agent.BaseAgentTest do
 
       agent = LlmAgent.new(name: "bot", model: "mock", instruction: "hi")
       runner = Runner.new(app_name: "test_append_after", agent: agent)
-      events = Runner.run(runner, "u1", "s_aa_#{System.unique_integer([:positive])}", "hi",
-        callbacks: [AppendAfterAgent])
+
+      events =
+        Runner.run(runner, "u1", "s_aa_#{System.unique_integer([:positive])}", "hi",
+          callbacks: [AppendAfterAgent]
+        )
 
       texts = Enum.map(events, &Event.text/1) |> Enum.filter(& &1)
       assert "original" in texts
@@ -296,8 +327,11 @@ defmodule ADK.Agent.BaseAgentTest do
     test "before_agent chain: first halt wins, subsequent skipped" do
       agent = LlmAgent.new(name: "bot", model: "mock", instruction: "hi")
       runner = Runner.new(app_name: "test_chain", agent: agent)
-      events = Runner.run(runner, "u1", "s_ch_#{System.unique_integer([:positive])}", "hi",
-        callbacks: [HaltBeforeAgentA, HaltBeforeAgentB])
+
+      events =
+        Runner.run(runner, "u1", "s_ch_#{System.unique_integer([:positive])}", "hi",
+          callbacks: [HaltBeforeAgentA, HaltBeforeAgentB]
+        )
 
       assert length(events) == 1
       assert Event.text(hd(events)) == "halted by A"
@@ -308,8 +342,11 @@ defmodule ADK.Agent.BaseAgentTest do
     test "before_agent chain: continue then halt" do
       agent = LlmAgent.new(name: "bot", model: "mock", instruction: "hi")
       runner = Runner.new(app_name: "test_chain2", agent: agent)
-      events = Runner.run(runner, "u1", "s_ch2_#{System.unique_integer([:positive])}", "hi",
-        callbacks: [ContinueBeforeAgent, HaltBeforeAgentA])
+
+      events =
+        Runner.run(runner, "u1", "s_ch2_#{System.unique_integer([:positive])}", "hi",
+          callbacks: [ContinueBeforeAgent, HaltBeforeAgentA]
+        )
 
       assert length(events) == 1
       assert Event.text(hd(events)) == "halted by A"
@@ -320,8 +357,11 @@ defmodule ADK.Agent.BaseAgentTest do
 
       agent = LlmAgent.new(name: "bot", model: "mock", instruction: "hi")
       runner = Runner.new(app_name: "test_chain3", agent: agent)
-      events = Runner.run(runner, "u1", "s_ch3_#{System.unique_integer([:positive])}", "hi",
-        callbacks: [ContinueBeforeAgent, NoopBeforeAgent])
+
+      events =
+        Runner.run(runner, "u1", "s_ch3_#{System.unique_integer([:positive])}", "hi",
+          callbacks: [ContinueBeforeAgent, NoopBeforeAgent]
+        )
 
       texts = Enum.map(events, &Event.text/1) |> Enum.filter(& &1)
       assert "from agent" in texts
@@ -332,8 +372,11 @@ defmodule ADK.Agent.BaseAgentTest do
 
       agent = LlmAgent.new(name: "bot", model: "mock", instruction: "hi")
       runner = Runner.new(app_name: "test_after_chain", agent: agent)
-      events = Runner.run(runner, "u1", "s_ac_#{System.unique_integer([:positive])}", "hi",
-        callbacks: [AppendAfterAgentA, AppendAfterAgentB])
+
+      events =
+        Runner.run(runner, "u1", "s_ac_#{System.unique_integer([:positive])}", "hi",
+          callbacks: [AppendAfterAgentA, AppendAfterAgentB]
+        )
 
       texts = Enum.map(events, &Event.text/1) |> Enum.filter(& &1)
       assert "original" in texts
@@ -349,12 +392,17 @@ defmodule ADK.Agent.BaseAgentTest do
   describe "ADK.Callback.run_before/3" do
     test "returns {:cont, ctx} when all callbacks continue" do
       ctx = %{agent: nil, context: nil}
-      assert {:cont, ^ctx} = ADK.Callback.run_before([ContinueBeforeAgent, NoopBeforeAgent], :before_agent, ctx)
+
+      assert {:cont, ^ctx} =
+               ADK.Callback.run_before([ContinueBeforeAgent, NoopBeforeAgent], :before_agent, ctx)
     end
 
     test "returns {:halt, events} on first halter" do
       ctx = %{agent: nil, context: nil}
-      assert {:halt, [event]} = ADK.Callback.run_before([HaltBeforeAgentA, HaltBeforeAgentB], :before_agent, ctx)
+
+      assert {:halt, [event]} =
+               ADK.Callback.run_before([HaltBeforeAgentA, HaltBeforeAgentB], :before_agent, ctx)
+
       assert Event.text(event) == "halted by A"
     end
 
@@ -368,7 +416,9 @@ defmodule ADK.Agent.BaseAgentTest do
     test "threads events through all after callbacks" do
       ctx = %{agent: nil, context: nil}
       initial = [Event.new(%{author: "agent", content: %{parts: [%{text: "start"}]}})]
-      result = ADK.Callback.run_after([AppendAfterAgentA, AppendAfterAgentB], :after_agent, initial, ctx)
+
+      result =
+        ADK.Callback.run_after([AppendAfterAgentA, AppendAfterAgentB], :after_agent, initial, ctx)
 
       texts = Enum.map(result, &Event.text/1)
       assert "start" in texts

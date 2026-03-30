@@ -61,8 +61,12 @@ defmodule ADK.Flows.LlmFlows.ContentsBranchParityTest do
   # Returns true when `event` should be visible to an agent on `current_branch`.
   defp visible_on_branch?(event, current_branch) do
     case {event.branch, current_branch} do
-      {nil, _} -> true
-      {_, nil} -> true
+      {nil, _} ->
+        true
+
+      {_, nil} ->
+        true
+
       {event_branch, current_branch} ->
         event_branch == current_branch or
           String.starts_with?(current_branch, event_branch <> ".")
@@ -91,8 +95,16 @@ defmodule ADK.Flows.LlmFlows.ContentsBranchParityTest do
 
       events = [
         make_event(author: "user", content: user_content("User message"), branch: nil),
-        make_event(author: "parent_agent", content: model_content("Parent agent response"), branch: "parent_agent"),
-        make_event(author: "child_agent", content: model_content("Child agent response"), branch: "parent_agent.child_agent")
+        make_event(
+          author: "parent_agent",
+          content: model_content("Parent agent response"),
+          branch: "parent_agent"
+        ),
+        make_event(
+          author: "child_agent",
+          content: model_content("Child agent response"),
+          branch: "parent_agent.child_agent"
+        )
       ]
 
       visible = Enum.filter(events, &visible_on_branch?(&1, current_branch))
@@ -108,11 +120,12 @@ defmodule ADK.Flows.LlmFlows.ContentsBranchParityTest do
       current_branch = "parent_agent.child_agent"
 
       # child_agent000 is NOT an ancestor of child_agent
-      event = make_event(
-        author: "child_agent",
-        content: model_content("Excluded response 1"),
-        branch: "parent_agent.child_agent000"
-      )
+      event =
+        make_event(
+          author: "child_agent",
+          content: model_content("Excluded response 1"),
+          branch: "parent_agent.child_agent000"
+        )
 
       refute visible_on_branch?(event, current_branch)
     end
@@ -120,11 +133,12 @@ defmodule ADK.Flows.LlmFlows.ContentsBranchParityTest do
     test "partial name prefix is excluded (child vs child_agent)" do
       current_branch = "parent_agent.child_agent"
 
-      event = make_event(
-        author: "child_agent",
-        content: model_content("Excluded response 2"),
-        branch: "parent_agent.child"
-      )
+      event =
+        make_event(
+          author: "child_agent",
+          content: model_content("Excluded response 2"),
+          branch: "parent_agent.child"
+        )
 
       refute visible_on_branch?(event, current_branch)
     end
@@ -136,9 +150,21 @@ defmodule ADK.Flows.LlmFlows.ContentsBranchParityTest do
 
       events = [
         make_event(author: "user", content: user_content("User message"), branch: nil),
-        make_event(author: "parent_agent", content: model_content("Parent response"), branch: "parent_agent"),
-        make_event(author: "child_agent1", content: model_content("Child1 response"), branch: "parent_agent.child_agent1"),
-        make_event(author: "child_agent2", content: model_content("Sibling response"), branch: "parent_agent.child_agent2")
+        make_event(
+          author: "parent_agent",
+          content: model_content("Parent response"),
+          branch: "parent_agent"
+        ),
+        make_event(
+          author: "child_agent1",
+          content: model_content("Child1 response"),
+          branch: "parent_agent.child_agent1"
+        ),
+        make_event(
+          author: "child_agent2",
+          content: model_content("Sibling response"),
+          branch: "parent_agent.child_agent2"
+        )
       ]
 
       visible = Enum.filter(events, &visible_on_branch?(&1, current_branch))
@@ -158,7 +184,11 @@ defmodule ADK.Flows.LlmFlows.ContentsBranchParityTest do
 
       events = [
         make_event(author: "user", content: user_content("No branch message"), branch: nil),
-        make_event(author: "agent1", content: model_content("Agent with branch"), branch: "agent1"),
+        make_event(
+          author: "agent1",
+          content: model_content("Agent with branch"),
+          branch: "agent1"
+        ),
         make_event(author: "user", content: user_content("Another no branch"), branch: nil)
       ]
 
@@ -179,10 +209,26 @@ defmodule ADK.Flows.LlmFlows.ContentsBranchParityTest do
       current_branch = "grandparent_agent.parent_agent.grandchild_agent"
 
       events = [
-        make_event(author: "grandparent_agent", content: model_content("Grandparent response"), branch: "grandparent_agent"),
-        make_event(author: "parent_agent", content: model_content("Parent response"), branch: "grandparent_agent.parent_agent"),
-        make_event(author: "grandchild_agent", content: model_content("Grandchild response"), branch: "grandparent_agent.parent_agent.grandchild_agent"),
-        make_event(author: "sibling_agent", content: model_content("Sibling response"), branch: "grandparent_agent.parent_agent.sibling_agent")
+        make_event(
+          author: "grandparent_agent",
+          content: model_content("Grandparent response"),
+          branch: "grandparent_agent"
+        ),
+        make_event(
+          author: "parent_agent",
+          content: model_content("Parent response"),
+          branch: "grandparent_agent.parent_agent"
+        ),
+        make_event(
+          author: "grandchild_agent",
+          content: model_content("Grandchild response"),
+          branch: "grandparent_agent.parent_agent.grandchild_agent"
+        ),
+        make_event(
+          author: "sibling_agent",
+          content: model_content("Sibling response"),
+          branch: "grandparent_agent.parent_agent.sibling_agent"
+        )
       ]
 
       visible = Enum.filter(events, &visible_on_branch?(&1, current_branch))
@@ -202,9 +248,21 @@ defmodule ADK.Flows.LlmFlows.ContentsBranchParityTest do
 
       events = [
         make_event(author: "user", content: user_content("User message"), branch: nil),
-        make_event(author: "parent_agent", content: model_content("Parent response"), branch: "parent_agent"),
-        make_event(author: "child_agent", content: model_content("Child response"), branch: "parent_agent.child_agent"),
-        make_event(author: "grandchild_agent", content: model_content("Grandchild response"), branch: "parent_agent.child_agent.grandchild_agent")
+        make_event(
+          author: "parent_agent",
+          content: model_content("Parent response"),
+          branch: "parent_agent"
+        ),
+        make_event(
+          author: "child_agent",
+          content: model_content("Child response"),
+          branch: "parent_agent.child_agent"
+        ),
+        make_event(
+          author: "grandchild_agent",
+          content: model_content("Grandchild response"),
+          branch: "parent_agent.child_agent.grandchild_agent"
+        )
       ]
 
       visible = Enum.filter(events, &visible_on_branch?(&1, current_branch))
@@ -269,8 +327,11 @@ defmodule ADK.Flows.LlmFlows.ContentsBranchParityTest do
       branch_b = Context.fork_branch(ctx, "agent_b")
 
       # Events on branch_a should not be visible to branch_b
-      event_a = make_event(author: "agent_a", content: model_content("A result"), branch: branch_a.branch)
-      event_b = make_event(author: "agent_b", content: model_content("B result"), branch: branch_b.branch)
+      event_a =
+        make_event(author: "agent_a", content: model_content("A result"), branch: branch_a.branch)
+
+      event_b =
+        make_event(author: "agent_b", content: model_content("B result"), branch: branch_b.branch)
 
       refute visible_on_branch?(event_a, branch_b.branch)
       refute visible_on_branch?(event_b, branch_a.branch)
@@ -280,7 +341,9 @@ defmodule ADK.Flows.LlmFlows.ContentsBranchParityTest do
       ctx = %Context{invocation_id: "inv-1", branch: "root"}
       branch_a = Context.fork_branch(ctx, "agent_a")
 
-      parent_event = make_event(author: "root", content: model_content("Root msg"), branch: "root")
+      parent_event =
+        make_event(author: "root", content: model_content("Root msg"), branch: "root")
+
       assert visible_on_branch?(parent_event, branch_a.branch)
     end
 
@@ -297,10 +360,26 @@ defmodule ADK.Flows.LlmFlows.ContentsBranchParityTest do
     test "router delegates to weather and news — agents isolated" do
       # Simulate: router → weather_agent, router → news_agent
       events = [
-        make_event(author: "user", branch: nil, content: user_content("What's the weather and news?")),
-        make_event(author: "router", branch: "router", content: model_content("Let me check both")),
-        make_event(author: "weather_agent", branch: "router.weather_agent", content: model_content("It's sunny")),
-        make_event(author: "news_agent", branch: "router.news_agent", content: model_content("Markets up 2%"))
+        make_event(
+          author: "user",
+          branch: nil,
+          content: user_content("What's the weather and news?")
+        ),
+        make_event(
+          author: "router",
+          branch: "router",
+          content: model_content("Let me check both")
+        ),
+        make_event(
+          author: "weather_agent",
+          branch: "router.weather_agent",
+          content: model_content("It's sunny")
+        ),
+        make_event(
+          author: "news_agent",
+          branch: "router.news_agent",
+          content: model_content("Markets up 2%")
+        )
       ]
 
       # Weather agent sees: user (nil), router (ancestor), own events — NOT news
@@ -350,14 +429,27 @@ defmodule ADK.Flows.LlmFlows.ContentsBranchParityTest do
       # Ensure "agent_1" doesn't see events from "agent_10"
       events = [
         make_event(author: "user", branch: nil, content: user_content("Hi")),
-        make_event(author: "agent_1", branch: "router.agent_1", content: model_content("Agent 1")),
-        make_event(author: "agent_10", branch: "router.agent_10", content: model_content("Agent 10")),
-        make_event(author: "agent_100", branch: "router.agent_100", content: model_content("Agent 100"))
+        make_event(
+          author: "agent_1",
+          branch: "router.agent_1",
+          content: model_content("Agent 1")
+        ),
+        make_event(
+          author: "agent_10",
+          branch: "router.agent_10",
+          content: model_content("Agent 10")
+        ),
+        make_event(
+          author: "agent_100",
+          branch: "router.agent_100",
+          content: model_content("Agent 100")
+        )
       ]
 
       # agent_1 should NOT see agent_10 or agent_100 (they're siblings, not descendants)
       agent_1_visible = Enum.filter(events, &visible_on_branch?(&1, "router.agent_1"))
-      assert length(agent_1_visible) == 2  # user + own
+      # user + own
+      assert length(agent_1_visible) == 2
       refute Enum.any?(agent_1_visible, &(&1.author == "agent_10"))
       refute Enum.any?(agent_1_visible, &(&1.author == "agent_100"))
     end
@@ -382,7 +474,9 @@ defmodule ADK.Flows.LlmFlows.ContentsBranchParityTest do
     end
 
     test "exact same branch — event visible" do
-      event = make_event(author: "agent", branch: "root.mid.leaf", content: model_content("Reply"))
+      event =
+        make_event(author: "agent", branch: "root.mid.leaf", content: model_content("Reply"))
+
       assert visible_on_branch?(event, "root.mid.leaf")
     end
 

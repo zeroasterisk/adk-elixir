@@ -146,7 +146,12 @@ defmodule ADK.CLI.CliParityTest do
       # Python: run_cli creates session with app_name from agent
       # Elixir: GET /api/agent returns agent card
       conn = build_conn(:get, "/api/agent", agent: :demo, model: "test-model")
-      conn = ADK.DevServer.Router.call(conn, ADK.DevServer.Router.init(agent: :demo, model: "test-model"))
+
+      conn =
+        ADK.DevServer.Router.call(
+          conn,
+          ADK.DevServer.Router.init(agent: :demo, model: "test-model")
+        )
 
       assert conn.status == 200
       body = Jason.decode!(conn.resp_body)
@@ -157,7 +162,12 @@ defmodule ADK.CLI.CliParityTest do
 
     test "returns module name for custom agent atom" do
       conn = build_conn(:get, "/api/agent", agent: SomeModule, model: "gemini-pro")
-      conn = ADK.DevServer.Router.call(conn, ADK.DevServer.Router.init(agent: SomeModule, model: "gemini-pro"))
+
+      conn =
+        ADK.DevServer.Router.call(
+          conn,
+          ADK.DevServer.Router.init(agent: SomeModule, model: "gemini-pro")
+        )
 
       assert conn.status == 200
       body = Jason.decode!(conn.resp_body)
@@ -171,7 +181,12 @@ defmodule ADK.CLI.CliParityTest do
       # Python: run_input_file reads queries from JSON input
       # Elixir: POST /api/chat validates message field
       conn = build_conn(:post, "/api/chat", %{}, agent: :demo, model: "test-model")
-      conn = ADK.DevServer.Router.call(conn, ADK.DevServer.Router.init(agent: :demo, model: "test-model"))
+
+      conn =
+        ADK.DevServer.Router.call(
+          conn,
+          ADK.DevServer.Router.init(agent: :demo, model: "test-model")
+        )
 
       assert conn.status == 400
       body = Jason.decode!(conn.resp_body)
@@ -180,7 +195,12 @@ defmodule ADK.CLI.CliParityTest do
 
     test "rejects empty message string" do
       conn = build_conn(:post, "/api/chat", %{"message" => ""}, agent: :demo, model: "test-model")
-      conn = ADK.DevServer.Router.call(conn, ADK.DevServer.Router.init(agent: :demo, model: "test-model"))
+
+      conn =
+        ADK.DevServer.Router.call(
+          conn,
+          ADK.DevServer.Router.init(agent: :demo, model: "test-model")
+        )
 
       assert conn.status == 400
       body = Jason.decode!(conn.resp_body)
@@ -191,7 +211,12 @@ defmodule ADK.CLI.CliParityTest do
   describe "DevServer.Router GET / — chat UI" do
     test "returns HTML with agent name" do
       conn = build_conn(:get, "/", agent: :demo, model: "test-model")
-      conn = ADK.DevServer.Router.call(conn, ADK.DevServer.Router.init(agent: :demo, model: "test-model"))
+
+      conn =
+        ADK.DevServer.Router.call(
+          conn,
+          ADK.DevServer.Router.init(agent: :demo, model: "test-model")
+        )
 
       assert conn.status == 200
       assert get_resp_header(conn, "content-type") |> hd() =~ "text/html"
@@ -203,7 +228,12 @@ defmodule ADK.CLI.CliParityTest do
   describe "DevServer.Router catch-all" do
     test "returns 404 for unknown paths" do
       conn = build_conn(:get, "/unknown/path", agent: :demo, model: "test-model")
-      conn = ADK.DevServer.Router.call(conn, ADK.DevServer.Router.init(agent: :demo, model: "test-model"))
+
+      conn =
+        ADK.DevServer.Router.call(
+          conn,
+          ADK.DevServer.Router.init(agent: :demo, model: "test-model")
+        )
 
       assert conn.status == 404
       body = Jason.decode!(conn.resp_body)
@@ -322,42 +352,69 @@ defmodule ADK.CLI.CliParityTest do
 
   describe "mix adk.new option parsing" do
     test "parses --path option" do
-      {opts, argv, _} = OptionParser.parse(["my_agent", "--path", "/tmp"], strict: [path: :string, model: :string, phoenix: :boolean])
+      {opts, argv, _} =
+        OptionParser.parse(["my_agent", "--path", "/tmp"],
+          strict: [path: :string, model: :string, phoenix: :boolean]
+        )
+
       assert opts[:path] == "/tmp"
       assert argv == ["my_agent"]
     end
 
     test "parses --model option" do
-      {opts, argv, _} = OptionParser.parse(["my_agent", "--model", "gemini-pro"], strict: [path: :string, model: :string, phoenix: :boolean])
+      {opts, argv, _} =
+        OptionParser.parse(["my_agent", "--model", "gemini-pro"],
+          strict: [path: :string, model: :string, phoenix: :boolean]
+        )
+
       assert opts[:model] == "gemini-pro"
       assert argv == ["my_agent"]
     end
 
     test "parses --no-phoenix flag" do
-      {opts, _argv, _} = OptionParser.parse(["my_agent", "--no-phoenix"], strict: [path: :string, model: :string, phoenix: :boolean])
+      {opts, _argv, _} =
+        OptionParser.parse(["my_agent", "--no-phoenix"],
+          strict: [path: :string, model: :string, phoenix: :boolean]
+        )
+
       assert opts[:phoenix] == false
     end
 
     test "rejects unknown options" do
-      {_opts, _argv, invalid} = OptionParser.parse(["my_agent", "--unknown", "val"], strict: [path: :string, model: :string, phoenix: :boolean])
+      {_opts, _argv, invalid} =
+        OptionParser.parse(["my_agent", "--unknown", "val"],
+          strict: [path: :string, model: :string, phoenix: :boolean]
+        )
+
       assert length(invalid) > 0
     end
   end
 
   describe "mix adk.server option parsing" do
     test "parses --port option as integer" do
-      {opts, _argv, _} = OptionParser.parse(["--port", "8080"], strict: [port: :integer, agent: :string, model: :string])
+      {opts, _argv, _} =
+        OptionParser.parse(["--port", "8080"],
+          strict: [port: :integer, agent: :string, model: :string]
+        )
+
       assert opts[:port] == 8080
     end
 
     test "parses --agent option as string" do
-      {opts, _argv, _} = OptionParser.parse(["--agent", "MyApp.Agent"], strict: [port: :integer, agent: :string, model: :string])
+      {opts, _argv, _} =
+        OptionParser.parse(["--agent", "MyApp.Agent"],
+          strict: [port: :integer, agent: :string, model: :string]
+        )
+
       assert opts[:agent] == "MyApp.Agent"
     end
 
     test "all options together" do
       args = ["--port", "3000", "--agent", "Foo.Bar", "--model", "gemini-flash"]
-      {opts, _argv, _} = OptionParser.parse(args, strict: [port: :integer, agent: :string, model: :string])
+
+      {opts, _argv, _} =
+        OptionParser.parse(args, strict: [port: :integer, agent: :string, model: :string])
+
       assert opts[:port] == 3000
       assert opts[:agent] == "Foo.Bar"
       assert opts[:model] == "gemini-flash"

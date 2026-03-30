@@ -119,7 +119,8 @@ defmodule ADK.Skill.Toolset do
         name = Map.get(args, "name", "")
         path = Map.get(args, "path", "")
 
-        with {:ok, skill} <- Map.fetch(skills, name) |> ok_or_error("Unknown skill: #{inspect(name)}"),
+        with {:ok, skill} <-
+               Map.fetch(skills, name) |> ok_or_error("Unknown skill: #{inspect(name)}"),
              :ok <- validate_path(path),
              full_path <- Path.join([skill.dir, "references", path]),
              {:ok, content} <- File.read(full_path) |> wrap_file_error(full_path) do

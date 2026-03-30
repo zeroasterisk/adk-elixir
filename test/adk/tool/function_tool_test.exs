@@ -70,7 +70,10 @@ defmodule ADK.Tool.FunctionToolTest do
   end
 
   test "run with MFA tuple with extra args" do
-    tool = ADK.Tool.FunctionTool.new(:greet, func: {ADK.Tool.FunctionToolTest.Helpers, :greet_with_prefix, ["Dr."]})
+    tool =
+      ADK.Tool.FunctionTool.new(:greet,
+        func: {ADK.Tool.FunctionToolTest.Helpers, :greet_with_prefix, ["Dr."]}
+      )
 
     ctx = %ADK.ToolContext{
       context: %ADK.Context{invocation_id: "inv-1"},
@@ -84,11 +87,12 @@ defmodule ADK.Tool.FunctionToolTest do
 
   test "MFA tuple is serializable (compile-time safe)" do
     # MFA tuples can be stored in module attributes, unlike anonymous fns
-    tool = ADK.Tool.FunctionTool.new(:greet,
-      description: "Greet someone",
-      func: {ADK.Tool.FunctionToolTest.Helpers, :greet},
-      parameters: %{type: "object"}
-    )
+    tool =
+      ADK.Tool.FunctionTool.new(:greet,
+        description: "Greet someone",
+        func: {ADK.Tool.FunctionToolTest.Helpers, :greet},
+        parameters: %{type: "object"}
+      )
 
     # Verify the func field is a tuple (serializable), not a function (not serializable)
     assert is_tuple(tool.func)

@@ -19,18 +19,27 @@ defmodule ADK.Session.MigrationTest do
 
   describe "to_sync_url/1" do
     test "strips async drivers from postgres urls" do
-      assert Migration.to_sync_url("postgresql+asyncpg://localhost/mydb") == "postgresql://localhost/mydb"
-      assert Migration.to_sync_url("postgresql+asyncpg://user:pass@localhost:5432/mydb") == "postgresql://user:pass@localhost:5432/mydb"
-      assert Migration.to_sync_url("postgresql+psycopg2://localhost/mydb") == "postgresql://localhost/mydb"
+      assert Migration.to_sync_url("postgresql+asyncpg://localhost/mydb") ==
+               "postgresql://localhost/mydb"
+
+      assert Migration.to_sync_url("postgresql+asyncpg://user:pass@localhost:5432/mydb") ==
+               "postgresql://user:pass@localhost:5432/mydb"
+
+      assert Migration.to_sync_url("postgresql+psycopg2://localhost/mydb") ==
+               "postgresql://localhost/mydb"
     end
 
     test "strips async drivers from mysql urls" do
       assert Migration.to_sync_url("mysql+aiomysql://localhost/mydb") == "mysql://localhost/mydb"
-      assert Migration.to_sync_url("mysql+asyncmy://user:pass@localhost:3306/mydb") == "mysql://user:pass@localhost:3306/mydb"
+
+      assert Migration.to_sync_url("mysql+asyncmy://user:pass@localhost:3306/mydb") ==
+               "mysql://user:pass@localhost:3306/mydb"
     end
 
     test "strips async drivers from sqlite urls" do
-      assert Migration.to_sync_url("sqlite+aiosqlite:///path/to/db.sqlite") == "sqlite:///path/to/db.sqlite"
+      assert Migration.to_sync_url("sqlite+aiosqlite:///path/to/db.sqlite") ==
+               "sqlite:///path/to/db.sqlite"
+
       assert Migration.to_sync_url("sqlite+aiosqlite:///:memory:") == "sqlite:///:memory:"
     end
 
@@ -42,7 +51,8 @@ defmodule ADK.Session.MigrationTest do
     end
 
     test "handles complex urls with query parameters" do
-      assert Migration.to_sync_url("postgresql+asyncpg://user:pass@host/db?ssl=require") == "postgresql://user:pass@host/db?ssl=require"
+      assert Migration.to_sync_url("postgresql+asyncpg://user:pass@host/db?ssl=require") ==
+               "postgresql://user:pass@host/db?ssl=require"
     end
 
     test "handles invalid urls gracefully" do
@@ -65,6 +75,7 @@ defmodule ADK.Session.MigrationTest do
         database: ":memory:",
         pool_size: 1
       )
+
       start_supervised!(TestRepo)
       :ok
     end
@@ -74,9 +85,16 @@ defmodule ADK.Session.MigrationTest do
     end
 
     test "db with metadata returns correct version" do
-      Ecto.Adapters.SQL.query!(TestRepo, "CREATE TABLE adk_internal_metadata (key TEXT PRIMARY KEY, value TEXT)")
-      Ecto.Adapters.SQL.query!(TestRepo, "INSERT INTO adk_internal_metadata (key, value) VALUES ('schema_version', '1')")
-      
+      Ecto.Adapters.SQL.query!(
+        TestRepo,
+        "CREATE TABLE adk_internal_metadata (key TEXT PRIMARY KEY, value TEXT)"
+      )
+
+      Ecto.Adapters.SQL.query!(
+        TestRepo,
+        "INSERT INTO adk_internal_metadata (key, value) VALUES ('schema_version', '1')"
+      )
+
       assert Migration.get_db_schema_version(TestRepo) == "1"
     end
 
@@ -90,7 +108,7 @@ defmodule ADK.Session.MigrationTest do
         actions TEXT
       )
       """)
-      
+
       assert Migration.get_db_schema_version(TestRepo) == "0"
     end
   end
@@ -99,7 +117,7 @@ defmodule ADK.Session.MigrationTest do
     test "ADK.Event.from_map/1 migrates legacy function calls" do
       # This test verifies that Elixir's runtime handles legacy event data formats
       # equivalent to what a migration script would transform.
-      
+
       legacy_data = %{
         "id" => "event1",
         "author" => "user",
@@ -108,15 +126,16 @@ defmodule ADK.Session.MigrationTest do
           %{"name" => "tool1", "args" => %{"a" => 1}}
         ]
       }
-      
+
       event = ADK.Event.from_map(legacy_data)
-      
+
       assert event.id == "event1"
       assert event.author == "user"
       assert event.timestamp == ~U[2026-03-22 08:28:00Z]
-      
+
       # Verify parts in content
-      assert %{parts: [%{function_call: %{"name" => "tool1", "args" => %{"a" => 1}}}]} = event.content
+      assert %{parts: [%{function_call: %{"name" => "tool1", "args" => %{"a" => 1}}}]} =
+               event.content
     end
 
     test "ADK.Event.from_map/1 migrates legacy function responses" do
@@ -128,10 +147,14 @@ defmodule ADK.Session.MigrationTest do
           %{"name" => "tool1", "response" => %{"result" => "ok"}}
         ]
       }
-      
+
       event = ADK.Event.from_map(legacy_data)
-      
-      assert %{parts: [%{function_response: %{"name" => "tool1", "response" => %{"result" => "ok"}}}]} = event.content
+
+      assert %{
+               parts: [
+                 %{function_response: %{"name" => "tool1", "response" => %{"result" => "ok"}}}
+               ]
+             } = event.content
     end
   end
 
@@ -139,14 +162,14 @@ defmodule ADK.Session.MigrationTest do
     test "update_timestamp_tz equivalent" do
       # In Python, update_timestamp_tz returns a float timestamp.
       # SQLite might return naive datetimes, and they are converted to UTC.
-      
+
       dt = ~U[2026-01-01 00:00:00.000000Z]
-      
+
       # Mock the behavior of StorageSession.get_update_timestamp(is_sqlite=true)
       # In Elixir, DateTime.to_unix/1 with :f_float (if supported) or just division.
-      
-      timestamp_float = DateTime.to_unix(dt) + (elem(dt.microsecond, 0) / 1_000_000)
-      assert timestamp_float == 1767225600.0
+
+      timestamp_float = DateTime.to_unix(dt) + elem(dt.microsecond, 0) / 1_000_000
+      assert timestamp_float == 1_767_225_600.0
     end
   end
 end

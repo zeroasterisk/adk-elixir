@@ -47,10 +47,12 @@ defmodule ADK.LLM.CircuitBreaker do
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts \\ []) do
     name = Keyword.get(opts, :name, __MODULE__)
+
     config = %__MODULE__{
       failure_threshold: Keyword.get(opts, :failure_threshold, @default_failure_threshold),
       reset_timeout_ms: Keyword.get(opts, :reset_timeout_ms, @default_reset_timeout_ms)
     }
+
     GenServer.start_link(__MODULE__, config, name: name)
   end
 
@@ -59,16 +61,18 @@ defmodule ADK.LLM.CircuitBreaker do
 
   Returns `{:error, :circuit_open}` if the circuit is open.
   """
-  @spec call(GenServer.server(), (() -> {:ok, term()} | {:error, term()})) ::
+  @spec call(GenServer.server(), (-> {:ok, term()} | {:error, term()})) ::
           {:ok, term()} | {:error, term()}
   def call(server \\ __MODULE__, fun) do
     case GenServer.call(server, :acquire) do
       :ok ->
         result = fun.()
+
         case result do
           {:ok, _} -> GenServer.cast(server, :record_success)
           {:error, _} -> GenServer.cast(server, :record_failure)
         end
+
         result
 
       {:error, :circuit_open} = err ->
@@ -138,8 +142,15 @@ defmodule ADK.LLM.CircuitBreaker do
 
   def handle_cast(:record_failure, s) do
     new_count = s.failure_count + 1
+
     if new_count >= s.failure_threshold do
-      {:noreply, %{s | state: :open, failure_count: new_count, opened_at: System.monotonic_time(:millisecond)}}
+      {:noreply,
+       %{
+         s
+         | state: :open,
+           failure_count: new_count,
+           opened_at: System.monotonic_time(:millisecond)
+       }}
     else
       {:noreply, %{s | failure_count: new_count}}
     end

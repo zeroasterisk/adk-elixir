@@ -28,7 +28,11 @@ defmodule ADK.Auth.HandlerTest do
   end
 
   defp oauth2_credential_with_token do
-    %{oauth2_credential() | access_token: "mock_access_token", refresh_token: "mock_refresh_token"}
+    %{
+      oauth2_credential()
+      | access_token: "mock_access_token",
+        refresh_token: "mock_refresh_token"
+    }
   end
 
   defp oauth2_credential_with_auth_uri do
@@ -123,7 +127,12 @@ defmodule ADK.Auth.HandlerTest do
       result = Handler.generate_auth_uri(handler)
 
       assert is_binary(result.metadata["auth_uri"])
-      assert String.starts_with?(result.metadata["auth_uri"], "https://example.com/oauth2/authorize")
+
+      assert String.starts_with?(
+               result.metadata["auth_uri"],
+               "https://example.com/oauth2/authorize"
+             )
+
       assert result.metadata["auth_uri"] =~ "client_id=mock_client_id"
       refute result.metadata["auth_uri"] =~ "audience="
       assert is_binary(result.metadata["state"])
@@ -133,7 +142,11 @@ defmodule ADK.Auth.HandlerTest do
       handler = Handler.new(openid_config())
       result = Handler.generate_auth_uri(handler)
 
-      assert String.starts_with?(result.metadata["auth_uri"], "https://example.com/oauth2/authorize")
+      assert String.starts_with?(
+               result.metadata["auth_uri"],
+               "https://example.com/oauth2/authorize"
+             )
+
       assert result.metadata["auth_uri"] =~ "client_id=mock_client_id"
       assert is_binary(result.metadata["state"])
     end
@@ -433,12 +446,15 @@ defmodule ADK.Auth.HandlerTest do
       Req.Test.stub(:auth_handler_test, fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{
-          "access_token" => "mock_access_token",
-          "refresh_token" => "mock_refresh_token",
-          "expires_in" => 3600,
-          "token_type" => "bearer"
-        }))
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "access_token" => "mock_access_token",
+            "refresh_token" => "mock_refresh_token",
+            "expires_in" => 3600,
+            "token_type" => "bearer"
+          })
+        )
       end)
 
       # Override the token_endpoint to use Req.Test

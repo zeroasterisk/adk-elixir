@@ -37,9 +37,9 @@ defmodule ADK.MultiTurnTest do
         parameters: %{
           type: "object",
           properties: %{
-            location:  %{type: "string"},
+            location: %{type: "string"},
             device_id: %{type: "string"},
-            status:    %{type: "string", enum: ["ON", "OFF"]}
+            status: %{type: "string", enum: ["ON", "OFF"]}
           },
           required: ["location", "device_id", "status"]
         },
@@ -47,6 +47,7 @@ defmodule ADK.MultiTurnTest do
           Agent.update(device_state_pid, fn db ->
             Map.put(db, {loc, dev}, st)
           end)
+
           {:ok, %{result: "ok", device: dev, location: loc, status: st}}
         end
       )
@@ -57,7 +58,7 @@ defmodule ADK.MultiTurnTest do
         parameters: %{
           type: "object",
           properties: %{
-            location:  %{type: "string"},
+            location: %{type: "string"},
             device_id: %{type: "string"}
           },
           required: ["location", "device_id"]
@@ -81,9 +82,9 @@ defmodule ADK.MultiTurnTest do
     {:ok, pid} =
       Agent.start_link(fn ->
         %{
-          {"Bedroom",     "device_2"} => "OFF",
+          {"Bedroom", "device_2"} => "OFF",
           {"Living Room", "device_1"} => "ON",
-          {"Kitchen",     "device_3"} => "OFF"
+          {"Kitchen", "device_3"} => "OFF"
         }
       end)
 
@@ -108,13 +109,18 @@ defmodule ADK.MultiTurnTest do
 
       # Turn 1: set device off
       ADK.LLM.Mock.set_responses([
-        %{function_call: %{name: "set_device_info",
-                           args: %{"location" => "Bedroom", "device_id" => "device_2", "status" => "OFF"},
-                           id: "fc-1"}},
+        %{
+          function_call: %{
+            name: "set_device_info",
+            args: %{"location" => "Bedroom", "device_id" => "device_2", "status" => "OFF"},
+            id: "fc-1"
+          }
+        },
         "I have set the device 2 status to off."
       ])
 
-      events1 = Runner.run(runner, "user1", sid, "Turn off device_2 in the Bedroom.", stop_session: false)
+      events1 =
+        Runner.run(runner, "user1", sid, "Turn off device_2 in the Bedroom.", stop_session: false)
 
       # Final text event should confirm the action
       text1 = events1 |> Enum.map(&ADK.Event.text/1) |> Enum.reject(&is_nil/1) |> List.last()
@@ -153,9 +159,13 @@ defmodule ADK.MultiTurnTest do
 
       # Turn 1: mutate device state via tool
       ADK.LLM.Mock.set_responses([
-        %{function_call: %{name: "set_device_info",
-                           args: %{"location" => "Bedroom", "device_id" => "device_2", "status" => "OFF"},
-                           id: "fc-t1"}},
+        %{
+          function_call: %{
+            name: "set_device_info",
+            args: %{"location" => "Bedroom", "device_id" => "device_2", "status" => "OFF"},
+            id: "fc-t1"
+          }
+        },
         "I have set the device 2 status to off."
       ])
 
@@ -167,13 +177,20 @@ defmodule ADK.MultiTurnTest do
 
       # Turn 2: query the now-mutated state via tool
       ADK.LLM.Mock.set_responses([
-        %{function_call: %{name: "get_device_info",
-                           args: %{"location" => "Bedroom", "device_id" => "device_2"},
-                           id: "fc-t2"}},
+        %{
+          function_call: %{
+            name: "get_device_info",
+            args: %{"location" => "Bedroom", "device_id" => "device_2"},
+            id: "fc-t2"
+          }
+        },
         "The status of device 2 in the Bedroom is OFF."
       ])
 
-      events2 = Runner.run(runner, "user1", sid, "What's the status of device_2 in the Bedroom?", stop_session: false)
+      events2 =
+        Runner.run(runner, "user1", sid, "What's the status of device_2 in the Bedroom?",
+          stop_session: false
+        )
 
       # Confirm the get_device_info was called and returned "OFF"
       fn_response_events =
@@ -200,13 +217,19 @@ defmodule ADK.MultiTurnTest do
 
       # Turn 1
       ADK.LLM.Mock.set_responses([
-        %{function_call: %{name: "set_device_info",
-                           args: %{"location" => "Living Room", "device_id" => "device_1", "status" => "OFF"},
-                           id: "fc-a"}},
+        %{
+          function_call: %{
+            name: "set_device_info",
+            args: %{"location" => "Living Room", "device_id" => "device_1", "status" => "OFF"},
+            id: "fc-a"
+          }
+        },
         "Device 1 turned off."
       ])
 
-      Runner.run(runner, "user1", sid, "Turn off device_1 in the Living Room.", stop_session: false)
+      Runner.run(runner, "user1", sid, "Turn off device_1 in the Living Room.",
+        stop_session: false
+      )
 
       # Turn 2
       ADK.LLM.Mock.set_responses(["Got it, noted."])
@@ -229,8 +252,13 @@ defmodule ADK.MultiTurnTest do
 
   describe "memorizing past events (parity: test_memorizing_past_events)" do
     test "agent can recall a fact from an earlier turn" do
-      agent = LlmAgent.new(name: "memory_bot", model: "test",
-                           instruction: "Remember everything the user tells you.")
+      agent =
+        LlmAgent.new(
+          name: "memory_bot",
+          model: "test",
+          instruction: "Remember everything the user tells you."
+        )
+
       runner = %Runner{app_name: "mt-mem", agent: agent}
       sid = sess_id("mem")
 
@@ -244,7 +272,9 @@ defmodule ADK.MultiTurnTest do
 
       # Turn 3: recall the fact from turn 1
       ADK.LLM.Mock.set_responses(["Your favorite color is blue."])
-      events3 = Runner.run(runner, "user1", sid, "What is my favorite color?", stop_session: false)
+
+      events3 =
+        Runner.run(runner, "user1", sid, "What is my favorite color?", stop_session: false)
 
       text3 = events3 |> Enum.map(&ADK.Event.text/1) |> Enum.reject(&is_nil/1) |> List.last()
       assert text3 =~ ~r/blue/i
@@ -260,8 +290,7 @@ defmodule ADK.MultiTurnTest do
       # Verifies that the LLM is sent the full conversation history,
       # not just the latest message. This is the mechanism that enables
       # multi-turn memory in a stateless LLM.
-      agent = LlmAgent.new(name: "history_bot", model: "test",
-                           instruction: "Be helpful.")
+      agent = LlmAgent.new(name: "history_bot", model: "test", instruction: "Be helpful.")
       runner = %Runner{app_name: "mt-hist", agent: agent}
       sid = sess_id("hist")
 
@@ -283,11 +312,14 @@ defmodule ADK.MultiTurnTest do
         |> Enum.filter(&(&1.author == "user"))
         |> Enum.flat_map(fn e ->
           case e.content do
-            %{parts: parts} -> Enum.flat_map(parts, fn
-              %{text: t} when is_binary(t) -> [t]
-              _ -> []
-            end)
-            _ -> []
+            %{parts: parts} ->
+              Enum.flat_map(parts, fn
+                %{text: t} when is_binary(t) -> [t]
+                _ -> []
+              end)
+
+            _ ->
+              []
           end
         end)
 
@@ -295,7 +327,7 @@ defmodule ADK.MultiTurnTest do
       assert "Second message." in user_texts
 
       # chronological: First message appears before Second message
-      first_idx  = Enum.find_index(user_texts, &(&1 == "First message."))
+      first_idx = Enum.find_index(user_texts, &(&1 == "First message."))
       second_idx = Enum.find_index(user_texts, &(&1 == "Second message."))
       assert first_idx < second_idx
     end
@@ -322,25 +354,35 @@ defmodule ADK.MultiTurnTest do
       events_a = ADK.Session.get_events(pidA)
       events_b = ADK.Session.get_events(pidB)
 
-      texts_a = events_a |> Enum.flat_map(fn e ->
-        case e.content do
-          %{parts: parts} -> Enum.flat_map(parts, fn
-            %{text: t} when is_binary(t) and t != "" -> [t]
-            _ -> []
-          end)
-          _ -> []
-        end
-      end)
+      texts_a =
+        events_a
+        |> Enum.flat_map(fn e ->
+          case e.content do
+            %{parts: parts} ->
+              Enum.flat_map(parts, fn
+                %{text: t} when is_binary(t) and t != "" -> [t]
+                _ -> []
+              end)
 
-      texts_b = events_b |> Enum.flat_map(fn e ->
-        case e.content do
-          %{parts: parts} -> Enum.flat_map(parts, fn
-            %{text: t} when is_binary(t) and t != "" -> [t]
-            _ -> []
-          end)
-          _ -> []
-        end
-      end)
+            _ ->
+              []
+          end
+        end)
+
+      texts_b =
+        events_b
+        |> Enum.flat_map(fn e ->
+          case e.content do
+            %{parts: parts} ->
+              Enum.flat_map(parts, fn
+                %{text: t} when is_binary(t) and t != "" -> [t]
+                _ -> []
+              end)
+
+            _ ->
+              []
+          end
+        end)
 
       # A's session should not contain B's message and vice versa
       refute "Hello from B." in texts_a

@@ -94,16 +94,17 @@ defmodule ADK.Plugin.ReflectRetryTest do
   end
 
   test "after_run retries on error and succeeds" do
-    agent = ADK.Agent.Custom.new(
-      name: "flaky",
-      run_fn: fn _agent, ctx ->
-        if ADK.Context.get_temp(ctx, :reflection_feedback) do
-          [ADK.Event.new(%{author: "flaky", content: %{parts: [%{text: "recovered"}]}})]
-        else
-          [ADK.Event.new(%{author: "flaky", error: "oops"})]
+    agent =
+      ADK.Agent.Custom.new(
+        name: "flaky",
+        run_fn: fn _agent, ctx ->
+          if ADK.Context.get_temp(ctx, :reflection_feedback) do
+            [ADK.Event.new(%{author: "flaky", content: %{parts: [%{text: "recovered"}]}})]
+          else
+            [ADK.Event.new(%{author: "flaky", error: "oops"})]
+          end
         end
-      end
-    )
+      )
 
     {:ok, state} = ReflectRetry.init(max_retries: 3)
     ctx = %ADK.Context{invocation_id: "retry-test", agent: agent}
@@ -120,18 +121,20 @@ defmodule ADK.Plugin.ReflectRetryTest do
   test "after_run retries on validation failure" do
     call_count = :counters.new(1, [:atomics])
 
-    agent = ADK.Agent.Custom.new(
-      name: "improving",
-      run_fn: fn _agent, _ctx ->
-        n = :counters.get(call_count, 1) + 1
-        :counters.put(call_count, 1, n)
-        text = if n >= 2, do: "detailed answer with facts", else: "I don't know"
-        [ADK.Event.new(%{author: "improving", content: %{parts: [%{text: text}]}})]
-      end
-    )
+    agent =
+      ADK.Agent.Custom.new(
+        name: "improving",
+        run_fn: fn _agent, _ctx ->
+          n = :counters.get(call_count, 1) + 1
+          :counters.put(call_count, 1, n)
+          text = if n >= 2, do: "detailed answer with facts", else: "I don't know"
+          [ADK.Event.new(%{author: "improving", content: %{parts: [%{text: text}]}})]
+        end
+      )
 
     validator = fn events ->
       text = events |> Enum.map_join(" ", &ADK.Event.text/1)
+
       if String.contains?(text, "I don't know"),
         do: {:error, "Response was evasive"},
         else: :ok
@@ -139,7 +142,10 @@ defmodule ADK.Plugin.ReflectRetryTest do
 
     {:ok, state} = ReflectRetry.init(max_retries: 3, validator: validator)
     ctx = %ADK.Context{invocation_id: "val-test", agent: agent}
-    initial = [ADK.Event.new(%{author: "improving", content: %{parts: [%{text: "I don't know"}]}})]
+
+    initial = [
+      ADK.Event.new(%{author: "improving", content: %{parts: [%{text: "I don't know"}]}})
+    ]
 
     {result, new_state} = ReflectRetry.after_run(initial, ctx, state)
 
@@ -150,12 +156,13 @@ defmodule ADK.Plugin.ReflectRetryTest do
   end
 
   test "after_run exhausts retries on persistent failure" do
-    agent = ADK.Agent.Custom.new(
-      name: "stubborn",
-      run_fn: fn _agent, _ctx ->
-        [ADK.Event.new(%{author: "stubborn", error: "always broken"})]
-      end
-    )
+    agent =
+      ADK.Agent.Custom.new(
+        name: "stubborn",
+        run_fn: fn _agent, _ctx ->
+          [ADK.Event.new(%{author: "stubborn", error: "always broken"})]
+        end
+      )
 
     {:ok, state} = ReflectRetry.init(max_retries: 2)
     ctx = %ADK.Context{invocation_id: "exhaust-test", agent: agent}
@@ -179,21 +186,24 @@ defmodule ADK.Plugin.ReflectRetryTest do
   end
 
   test "after_run uses custom reflection template" do
-    agent = ADK.Agent.Custom.new(
-      name: "templated",
-      run_fn: fn _agent, ctx ->
-        if ADK.Context.get_temp(ctx, :reflection_feedback) do
-          [ADK.Event.new(%{author: "templated", content: %{parts: [%{text: "fixed"}]}})]
-        else
-          [ADK.Event.new(%{author: "templated", error: "bad"})]
+    agent =
+      ADK.Agent.Custom.new(
+        name: "templated",
+        run_fn: fn _agent, ctx ->
+          if ADK.Context.get_temp(ctx, :reflection_feedback) do
+            [ADK.Event.new(%{author: "templated", content: %{parts: [%{text: "fixed"}]}})]
+          else
+            [ADK.Event.new(%{author: "templated", error: "bad"})]
+          end
         end
-      end
-    )
+      )
 
-    {:ok, state} = ReflectRetry.init(
-      max_retries: 2,
-      reflection_template: "RETRY {attempt} of {max}: {reason}"
-    )
+    {:ok, state} =
+      ReflectRetry.init(
+        max_retries: 2,
+        reflection_template: "RETRY {attempt} of {max}: {reason}"
+      )
+
     ctx = %ADK.Context{invocation_id: "tmpl-test", agent: agent}
     events = [ADK.Event.new(%{author: "templated", error: "bad"})]
 
@@ -206,18 +216,20 @@ defmodule ADK.Plugin.ReflectRetryTest do
   test "after_run with validator that checks for JSON" do
     call_count = :counters.new(1, [:atomics])
 
-    agent = ADK.Agent.Custom.new(
-      name: "json_agent",
-      run_fn: fn _agent, _ctx ->
-        n = :counters.get(call_count, 1) + 1
-        :counters.put(call_count, 1, n)
-        text = if n >= 2, do: ~s({"result": "success"}), else: "Here's my answer in plain text"
-        [ADK.Event.new(%{author: "json_agent", content: %{parts: [%{text: text}]}})]
-      end
-    )
+    agent =
+      ADK.Agent.Custom.new(
+        name: "json_agent",
+        run_fn: fn _agent, _ctx ->
+          n = :counters.get(call_count, 1) + 1
+          :counters.put(call_count, 1, n)
+          text = if n >= 2, do: ~s({"result": "success"}), else: "Here's my answer in plain text"
+          [ADK.Event.new(%{author: "json_agent", content: %{parts: [%{text: text}]}})]
+        end
+      )
 
     validator = fn events ->
       text = events |> Enum.map_join("", &(ADK.Event.text(&1) || ""))
+
       case Jason.decode(text) do
         {:ok, _} -> :ok
         {:error, _} -> {:error, "Response must be valid JSON"}

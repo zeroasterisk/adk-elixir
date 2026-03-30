@@ -1,4 +1,3 @@
-
 defmodule ADK.CallbackTest do
   use ExUnit.Case, async: true
 
@@ -15,6 +14,7 @@ defmodule ADK.CallbackTest do
           author: "agent",
           content: %{parts: [%{text: "End invocation event before agent call."}]}
         })
+
       {:halt, [event]}
     end
   end
@@ -23,7 +23,7 @@ defmodule ADK.CallbackTest do
     @behaviour ADK.Callback
     @impl true
     def before_model(_context) do
-       response =
+      response =
         %{
           content: %{
             role: "model",
@@ -33,6 +33,7 @@ defmodule ADK.CallbackTest do
           },
           usage_metadata: nil
         }
+
       {:halt, {:ok, response}}
     end
   end
@@ -56,6 +57,7 @@ defmodule ADK.CallbackTest do
 
       {:ok, updated_response}
     end
+
     def after_model({:error, _reason} = error, _context), do: error
   end
 

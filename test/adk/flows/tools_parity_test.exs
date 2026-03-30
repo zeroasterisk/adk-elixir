@@ -89,6 +89,7 @@ defmodule ADK.Flows.ToolsParityTest do
   defp function_call_events(events) when is_list(events) do
     Enum.filter(events, fn e ->
       parts = get_parts(e)
+
       Enum.any?(parts, fn p ->
         Map.has_key?(p, :function_call) or Map.has_key?(p, "function_call")
       end)
@@ -100,6 +101,7 @@ defmodule ADK.Flows.ToolsParityTest do
   defp function_response_events(events) when is_list(events) do
     Enum.filter(events, fn e ->
       parts = get_parts(e)
+
       Enum.any?(parts, fn p ->
         Map.has_key?(p, :function_response) or Map.has_key?(p, "function_response")
       end)
@@ -135,29 +137,31 @@ defmodule ADK.Flows.ToolsParityTest do
     test "tool is called, result fed back to LLM, final text returned" do
       test_pid = self()
 
-      tool = FunctionTool.new(:increase_by_one,
-        description: "Increase x by one",
-        func: fn _ctx, %{"x" => x} ->
-          send(test_pid, {:tool_called, x})
-          {:ok, %{"result" => x + 1}}
-        end,
-        parameters: %{
-          type: "object",
-          properties: %{x: %{type: "integer"}}
-        }
-      )
+      tool =
+        FunctionTool.new(:increase_by_one,
+          description: "Increase x by one",
+          func: fn _ctx, %{"x" => x} ->
+            send(test_pid, {:tool_called, x})
+            {:ok, %{"result" => x + 1}}
+          end,
+          parameters: %{
+            type: "object",
+            properties: %{x: %{type: "integer"}}
+          }
+        )
 
       ADK.LLM.Mock.set_responses([
         %{function_call: %{name: "increase_by_one", args: %{"x" => 1}, id: "fc-1"}},
         "The result is 2"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool]
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool]
+        )
 
       events = run_agent(agent, "increase 1")
 
@@ -173,23 +177,25 @@ defmodule ADK.Flows.ToolsParityTest do
     end
 
     test "tool returning a string value is wrapped in response" do
-      tool = FunctionTool.new(:say_hello,
-        description: "Say hello",
-        func: fn _ctx, _args -> {:ok, "hello!"} end,
-        parameters: %{}
-      )
+      tool =
+        FunctionTool.new(:say_hello,
+          description: "Say hello",
+          func: fn _ctx, _args -> {:ok, "hello!"} end,
+          parameters: %{}
+        )
 
       ADK.LLM.Mock.set_responses([
         %{function_call: %{name: "say_hello", args: %{}, id: "fc-1"}},
         "Done"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool]
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool]
+        )
 
       events = run_agent(agent, "greet")
 
@@ -205,23 +211,25 @@ defmodule ADK.Flows.ToolsParityTest do
     end
 
     test "tool returning a map value is preserved" do
-      tool = FunctionTool.new(:get_data,
-        description: "Get data",
-        func: fn _ctx, _args -> {:ok, %{"key" => "value", "count" => 42}} end,
-        parameters: %{}
-      )
+      tool =
+        FunctionTool.new(:get_data,
+          description: "Get data",
+          func: fn _ctx, _args -> {:ok, %{"key" => "value", "count" => 42}} end,
+          parameters: %{}
+        )
 
       ADK.LLM.Mock.set_responses([
         %{function_call: %{name: "get_data", args: %{}, id: "fc-1"}},
         "Got it"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool]
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool]
+        )
 
       events = run_agent(agent, "fetch data")
       [resp_event] = function_response_events(events)
@@ -241,18 +249,19 @@ defmodule ADK.Flows.ToolsParityTest do
       test_pid = self()
       call_count = :counters.new(1, [:atomics])
 
-      tool = FunctionTool.new(:increase_by_one,
-        description: "Increase x by one",
-        func: fn _ctx, %{"x" => x} ->
-          :counters.add(call_count, 1, 1)
-          send(test_pid, {:tool_called, x})
-          {:ok, %{"result" => x + 1}}
-        end,
-        parameters: %{
-          type: "object",
-          properties: %{x: %{type: "integer"}}
-        }
-      )
+      tool =
+        FunctionTool.new(:increase_by_one,
+          description: "Increase x by one",
+          func: fn _ctx, %{"x" => x} ->
+            :counters.add(call_count, 1, 1)
+            send(test_pid, {:tool_called, x})
+            {:ok, %{"result" => x + 1}}
+          end,
+          parameters: %{
+            type: "object",
+            properties: %{x: %{type: "integer"}}
+          }
+        )
 
       ADK.LLM.Mock.set_responses([
         %{function_call: %{name: "increase_by_one", args: %{"x" => 1}, id: "fc-1"}},
@@ -261,12 +270,13 @@ defmodule ADK.Flows.ToolsParityTest do
         "Final: 4"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool]
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool]
+        )
 
       events = run_agent(agent, "count up")
 
@@ -291,39 +301,48 @@ defmodule ADK.Flows.ToolsParityTest do
     test "multiple tool calls in a single LLM response are all executed" do
       test_pid = self()
 
-      tool_a = FunctionTool.new(:get_weather,
-        description: "Get weather",
-        func: fn _ctx, %{"city" => city} ->
-          send(test_pid, {:weather_called, city})
-          {:ok, %{"temp" => "72F", "city" => city}}
-        end,
-        parameters: %{type: "object", properties: %{city: %{type: "string"}}}
-      )
+      tool_a =
+        FunctionTool.new(:get_weather,
+          description: "Get weather",
+          func: fn _ctx, %{"city" => city} ->
+            send(test_pid, {:weather_called, city})
+            {:ok, %{"temp" => "72F", "city" => city}}
+          end,
+          parameters: %{type: "object", properties: %{city: %{type: "string"}}}
+        )
 
-      tool_b = FunctionTool.new(:get_time,
-        description: "Get time",
-        func: fn _ctx, %{"tz" => tz} ->
-          send(test_pid, {:time_called, tz})
-          {:ok, %{"time" => "3:00 PM", "tz" => tz}}
-        end,
-        parameters: %{type: "object", properties: %{tz: %{type: "string"}}}
-      )
+      tool_b =
+        FunctionTool.new(:get_time,
+          description: "Get time",
+          func: fn _ctx, %{"tz" => tz} ->
+            send(test_pid, {:time_called, tz})
+            {:ok, %{"time" => "3:00 PM", "tz" => tz}}
+          end,
+          parameters: %{type: "object", properties: %{tz: %{type: "string"}}}
+        )
 
       # Two function calls in a single response (parallel)
       ADK.LLM.Mock.set_responses([
-        %{content: %{role: :model, parts: [
-          %{function_call: %{name: "get_weather", args: %{"city" => "NYC"}, id: "fc-1"}},
-          %{function_call: %{name: "get_time", args: %{"tz" => "EST"}, id: "fc-2"}}
-        ]}, usage_metadata: nil},
+        %{
+          content: %{
+            role: :model,
+            parts: [
+              %{function_call: %{name: "get_weather", args: %{"city" => "NYC"}, id: "fc-1"}},
+              %{function_call: %{name: "get_time", args: %{"tz" => "EST"}, id: "fc-2"}}
+            ]
+          },
+          usage_metadata: nil
+        },
         "Weather in NYC is 72F, time is 3:00 PM EST"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool_a, tool_b]
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool_a, tool_b]
+        )
 
       events = run_agent(agent, "weather and time?")
 
@@ -338,9 +357,12 @@ defmodule ADK.Flows.ToolsParityTest do
       # The response event should contain both function responses
       [resp_event] = function_response_events(events)
       parts = get_parts(resp_event)
-      fr_parts = Enum.filter(parts, fn p ->
-        Map.has_key?(p, :function_response) or Map.has_key?(p, "function_response")
-      end)
+
+      fr_parts =
+        Enum.filter(parts, fn p ->
+          Map.has_key?(p, :function_response) or Map.has_key?(p, "function_response")
+        end)
+
       assert length(fr_parts) == 2
 
       assert "Weather in NYC is 72F, time is 3:00 PM EST" in text_events(events)
@@ -349,30 +371,53 @@ defmodule ADK.Flows.ToolsParityTest do
     test "parallel calls with state updates via tool_context" do
       test_pid = self()
 
-      tool = FunctionTool.new(:set_key,
-        description: "Set a key in state",
-        func: fn ctx, %{"key" => key, "value" => value} ->
-          {:ok, _ctx} = ADK.ToolContext.put_state(ctx, key, value)
-          send(test_pid, {:key_set, key, value})
-          {:ok, %{"set" => key}}
-        end,
-        parameters: %{type: "object", properties: %{key: %{type: "string"}, value: %{type: "string"}}}
-      )
+      tool =
+        FunctionTool.new(:set_key,
+          description: "Set a key in state",
+          func: fn ctx, %{"key" => key, "value" => value} ->
+            {:ok, _ctx} = ADK.ToolContext.put_state(ctx, key, value)
+            send(test_pid, {:key_set, key, value})
+            {:ok, %{"set" => key}}
+          end,
+          parameters: %{
+            type: "object",
+            properties: %{key: %{type: "string"}, value: %{type: "string"}}
+          }
+        )
 
       ADK.LLM.Mock.set_responses([
-        %{content: %{role: :model, parts: [
-          %{function_call: %{name: "set_key", args: %{"key" => "color", "value" => "blue"}, id: "fc-1"}},
-          %{function_call: %{name: "set_key", args: %{"key" => "size", "value" => "large"}, id: "fc-2"}}
-        ]}, usage_metadata: nil},
+        %{
+          content: %{
+            role: :model,
+            parts: [
+              %{
+                function_call: %{
+                  name: "set_key",
+                  args: %{"key" => "color", "value" => "blue"},
+                  id: "fc-1"
+                }
+              },
+              %{
+                function_call: %{
+                  name: "set_key",
+                  args: %{"key" => "size", "value" => "large"},
+                  id: "fc-2"
+                }
+              }
+            ]
+          },
+          usage_metadata: nil
+        },
         "Done setting keys"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool]
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool]
+        )
 
       events = run_agent(agent, "set keys")
 
@@ -394,18 +439,20 @@ defmodule ADK.Flows.ToolsParityTest do
         "I see the tool wasn't found"
       ])
 
-      tool = FunctionTool.new(:real_tool,
-        description: "A real tool",
-        func: fn _ctx, _args -> {:ok, "ok"} end,
-        parameters: %{}
-      )
+      tool =
+        FunctionTool.new(:real_tool,
+          description: "A real tool",
+          func: fn _ctx, _args -> {:ok, "ok"} end,
+          parameters: %{}
+        )
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool]
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool]
+        )
 
       events = run_agent(agent, "use nonexistent")
 
@@ -429,12 +476,13 @@ defmodule ADK.Flows.ToolsParityTest do
         "Noted"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: []
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: []
+        )
 
       events = run_agent(agent, "call it")
       resp_events = function_response_events(events)
@@ -456,23 +504,25 @@ defmodule ADK.Flows.ToolsParityTest do
 
   describe "tool execution errors" do
     test "tool returning {:error, reason} produces error in response" do
-      tool = FunctionTool.new(:failing_tool,
-        description: "Always fails",
-        func: fn _ctx, _args -> {:error, "something broke"} end,
-        parameters: %{}
-      )
+      tool =
+        FunctionTool.new(:failing_tool,
+          description: "Always fails",
+          func: fn _ctx, _args -> {:error, "something broke"} end,
+          parameters: %{}
+        )
 
       ADK.LLM.Mock.set_responses([
         %{function_call: %{name: "failing_tool", args: %{}, id: "fc-1"}},
         "I see an error occurred"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool]
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool]
+        )
 
       events = run_agent(agent, "do it")
 
@@ -496,26 +546,28 @@ defmodule ADK.Flows.ToolsParityTest do
 
   describe "state updates via tools" do
     test "tool can update session state via tool_context" do
-      tool = FunctionTool.new(:set_name,
-        description: "Set user name in state",
-        func: fn ctx, %{"name" => name} ->
-          {:ok, _ctx} = ADK.ToolContext.put_state(ctx, "user_name", name)
-          {:ok, %{"status" => "set"}}
-        end,
-        parameters: %{type: "object", properties: %{name: %{type: "string"}}}
-      )
+      tool =
+        FunctionTool.new(:set_name,
+          description: "Set user name in state",
+          func: fn ctx, %{"name" => name} ->
+            {:ok, _ctx} = ADK.ToolContext.put_state(ctx, "user_name", name)
+            {:ok, %{"status" => "set"}}
+          end,
+          parameters: %{type: "object", properties: %{name: %{type: "string"}}}
+        )
 
       ADK.LLM.Mock.set_responses([
         %{function_call: %{name: "set_name", args: %{"name" => "Alice"}, id: "fc-1"}},
         "Name has been set"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool]
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool]
+        )
 
       events = run_agent(agent, "set my name to Alice")
       assert "Name has been set" in text_events(events)
@@ -530,26 +582,28 @@ defmodule ADK.Flows.ToolsParityTest do
     test "function call id from LLM response is preserved in tool execution" do
       test_pid = self()
 
-      tool = FunctionTool.new(:echo,
-        description: "Echo back",
-        func: fn ctx, args ->
-          send(test_pid, {:call_id, ctx.function_call_id})
-          {:ok, args}
-        end,
-        parameters: %{type: "object", properties: %{msg: %{type: "string"}}}
-      )
+      tool =
+        FunctionTool.new(:echo,
+          description: "Echo back",
+          func: fn ctx, args ->
+            send(test_pid, {:call_id, ctx.function_call_id})
+            {:ok, args}
+          end,
+          parameters: %{type: "object", properties: %{msg: %{type: "string"}}}
+        )
 
       ADK.LLM.Mock.set_responses([
         %{function_call: %{name: "echo", args: %{"msg" => "hi"}, id: "custom-id-42"}},
         "echoed"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool]
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool]
+        )
 
       run_agent(agent, "echo hi")
       assert_received {:call_id, "custom-id-42"}
@@ -564,14 +618,15 @@ defmodule ADK.Flows.ToolsParityTest do
     test "agent stops looping when max_iterations reached" do
       call_count = :counters.new(1, [:atomics])
 
-      tool = FunctionTool.new(:loop_tool,
-        description: "Always returns more work",
-        func: fn _ctx, _args ->
-          :counters.add(call_count, 1, 1)
-          {:ok, "more work needed"}
-        end,
-        parameters: %{}
-      )
+      tool =
+        FunctionTool.new(:loop_tool,
+          description: "Always returns more work",
+          func: fn _ctx, _args ->
+            :counters.add(call_count, 1, 1)
+            {:ok, "more work needed"}
+          end,
+          parameters: %{}
+        )
 
       # 10 tool calls but max_iterations is 3
       ADK.LLM.Mock.set_responses([
@@ -583,13 +638,14 @@ defmodule ADK.Flows.ToolsParityTest do
         "finally done"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool],
-        max_iterations: 3
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool],
+          max_iterations: 3
+        )
 
       _events = run_agent(agent, "loop forever")
 
@@ -606,23 +662,31 @@ defmodule ADK.Flows.ToolsParityTest do
     test "LLM can choose the right tool from multiple available" do
       test_pid = self()
 
-      tool_add = FunctionTool.new(:add,
-        description: "Add two numbers",
-        func: fn _ctx, %{"a" => a, "b" => b} ->
-          send(test_pid, {:add_called, a, b})
-          {:ok, %{"result" => a + b}}
-        end,
-        parameters: %{type: "object", properties: %{a: %{type: "integer"}, b: %{type: "integer"}}}
-      )
+      tool_add =
+        FunctionTool.new(:add,
+          description: "Add two numbers",
+          func: fn _ctx, %{"a" => a, "b" => b} ->
+            send(test_pid, {:add_called, a, b})
+            {:ok, %{"result" => a + b}}
+          end,
+          parameters: %{
+            type: "object",
+            properties: %{a: %{type: "integer"}, b: %{type: "integer"}}
+          }
+        )
 
-      tool_multiply = FunctionTool.new(:multiply,
-        description: "Multiply two numbers",
-        func: fn _ctx, %{"a" => a, "b" => b} ->
-          send(test_pid, {:multiply_called, a, b})
-          {:ok, %{"result" => a * b}}
-        end,
-        parameters: %{type: "object", properties: %{a: %{type: "integer"}, b: %{type: "integer"}}}
-      )
+      tool_multiply =
+        FunctionTool.new(:multiply,
+          description: "Multiply two numbers",
+          func: fn _ctx, %{"a" => a, "b" => b} ->
+            send(test_pid, {:multiply_called, a, b})
+            {:ok, %{"result" => a * b}}
+          end,
+          parameters: %{
+            type: "object",
+            properties: %{a: %{type: "integer"}, b: %{type: "integer"}}
+          }
+        )
 
       # LLM chooses multiply
       ADK.LLM.Mock.set_responses([
@@ -630,12 +694,13 @@ defmodule ADK.Flows.ToolsParityTest do
         "The result is 21"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool_add, tool_multiply]
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool_add, tool_multiply]
+        )
 
       events = run_agent(agent, "multiply 3 by 7")
 
@@ -653,26 +718,28 @@ defmodule ADK.Flows.ToolsParityTest do
     test "tool called with nil args receives empty map" do
       test_pid = self()
 
-      tool = FunctionTool.new(:no_args_tool,
-        description: "Takes no args",
-        func: fn _ctx, args ->
-          send(test_pid, {:args_received, args})
-          {:ok, "no args needed"}
-        end,
-        parameters: %{}
-      )
+      tool =
+        FunctionTool.new(:no_args_tool,
+          description: "Takes no args",
+          func: fn _ctx, args ->
+            send(test_pid, {:args_received, args})
+            {:ok, "no args needed"}
+          end,
+          parameters: %{}
+        )
 
       ADK.LLM.Mock.set_responses([
         %{function_call: %{name: "no_args_tool", args: nil, id: "fc-1"}},
         "Done"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool]
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool]
+        )
 
       run_agent(agent, "do it")
       assert_received {:args_received, args}
@@ -686,23 +753,25 @@ defmodule ADK.Flows.ToolsParityTest do
 
   describe "tool with numeric return" do
     test "numeric return value is wrapped in response map" do
-      tool = FunctionTool.new(:count,
-        description: "Count items",
-        func: fn _ctx, _args -> {:ok, 42} end,
-        parameters: %{}
-      )
+      tool =
+        FunctionTool.new(:count,
+          description: "Count items",
+          func: fn _ctx, _args -> {:ok, 42} end,
+          parameters: %{}
+        )
 
       ADK.LLM.Mock.set_responses([
         %{function_call: %{name: "count", args: %{}, id: "fc-1"}},
         "Count is 42"
       ])
 
-      agent = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Use tools.",
-        tools: [tool]
-      )
+      agent =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Use tools.",
+          tools: [tool]
+        )
 
       events = run_agent(agent, "count")
       [resp_event] = function_response_events(events)
@@ -721,14 +790,15 @@ defmodule ADK.Flows.ToolsParityTest do
     test "tool execution followed by transfer to sub-agent" do
       test_pid = self()
 
-      tool = FunctionTool.new(:prepare_data,
-        description: "Prepare data",
-        func: fn _ctx, _args ->
-          send(test_pid, :data_prepared)
-          {:ok, %{"ready" => true}}
-        end,
-        parameters: %{}
-      )
+      tool =
+        FunctionTool.new(:prepare_data,
+          description: "Prepare data",
+          func: fn _ctx, _args ->
+            send(test_pid, :data_prepared)
+            {:ok, %{"ready" => true}}
+          end,
+          parameters: %{}
+        )
 
       ADK.LLM.Mock.set_responses([
         # Root calls prepare_data tool
@@ -739,20 +809,22 @@ defmodule ADK.Flows.ToolsParityTest do
         "Worker completed the task"
       ])
 
-      worker = LlmAgent.new(
-        name: "worker",
-        model: "test",
-        instruction: "Process data.",
-        description: "Data processor"
-      )
+      worker =
+        LlmAgent.new(
+          name: "worker",
+          model: "test",
+          instruction: "Process data.",
+          description: "Data processor"
+        )
 
-      root = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Coordinate work.",
-        tools: [tool],
-        sub_agents: [worker]
-      )
+      root =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Coordinate work.",
+          tools: [tool],
+          sub_agents: [worker]
+        )
 
       events = run_agent(root, "process data")
 

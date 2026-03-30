@@ -20,7 +20,9 @@ defmodule Adk.WebServer.CorsRegexTest do
   describe "_parse_cors_origins" do
     test "parses literal origins only" do
       origins = ["https://example.com", "https://test.com"]
-      assert Cors.parse_origins(origins) == {:ok, ["https://example.com", "https://test.com"], nil}
+
+      assert Cors.parse_origins(origins) ==
+               {:ok, ["https://example.com", "https://test.com"], nil}
     end
 
     test "parses regex patterns only" do
@@ -36,8 +38,11 @@ defmodule Adk.WebServer.CorsRegexTest do
         "https://test.com",
         "regex:https://tenant-.*\\.myapp\\.com"
       ]
+
       expected_regex = "https://.*\\.subdomain\\.com|https://tenant-.*\\.myapp\\.com"
-      assert Cors.parse_origins(origins) == {:ok, ["https://example.com", "https://test.com"], expected_regex}
+
+      assert Cors.parse_origins(origins) ==
+               {:ok, ["https://example.com", "https://test.com"], expected_regex}
     end
 
     test "parses wildcard origin" do

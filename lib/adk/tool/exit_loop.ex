@@ -56,7 +56,8 @@ defmodule ADK.Tool.ExitLoop do
         properties: %{
           reason: %{
             type: "string",
-            description: "Brief explanation of why the loop should exit (e.g. 'Task completed successfully')."
+            description:
+              "Brief explanation of why the loop should exit (e.g. 'Task completed successfully')."
           }
         },
         required: []

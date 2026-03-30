@@ -56,10 +56,11 @@ defmodule ADK.Workflow.Graph.Validator do
   # ── Private ──
 
   defp check_start(%Graph{edges: edges}) do
-    has_start = Enum.any?(edges, fn
-      {:START, _} -> true
-      _ -> false
-    end)
+    has_start =
+      Enum.any?(edges, fn
+        {:START, _} -> true
+        _ -> false
+      end)
 
     if has_start, do: :ok, else: {:error, "graph must have :START with outgoing edges"}
   end
@@ -137,8 +138,12 @@ defmodule ADK.Workflow.Graph.Validator do
 
   defp dfs_cycle(graph, node, visited, stack) do
     cond do
-      MapSet.member?(stack, node) -> {:cycle, node}
-      MapSet.member?(visited, node) -> {:ok, visited}
+      MapSet.member?(stack, node) ->
+        {:cycle, node}
+
+      MapSet.member?(visited, node) ->
+        {:ok, visited}
+
       true ->
         stack = MapSet.put(stack, node)
         visited = MapSet.put(visited, node)

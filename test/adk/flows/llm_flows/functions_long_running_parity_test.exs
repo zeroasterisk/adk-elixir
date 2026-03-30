@@ -95,7 +95,10 @@ defmodule ADK.Flows.LlmFlows.FunctionsLongRunningParityTest do
     Enum.filter(events, fn e ->
       parts = get_parts(e)
 
-      Enum.any?(parts, &(Map.has_key?(&1, :function_response) or Map.has_key?(&1, "function_response")))
+      Enum.any?(
+        parts,
+        &(Map.has_key?(&1, :function_response) or Map.has_key?(&1, "function_response"))
+      )
     end)
   end
 

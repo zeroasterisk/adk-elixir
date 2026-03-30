@@ -275,7 +275,8 @@ defmodule ADK.Models.GeminiContextCacheManager do
   @doc """
   Create a new cache via the API client.
   """
-  @spec create_gemini_cache(t(), map(), non_neg_integer()) :: {:ok, CacheMetadata.t()} | {:error, term()}
+  @spec create_gemini_cache(t(), map(), non_neg_integer()) ::
+          {:ok, CacheMetadata.t()} | {:error, term()}
   def create_gemini_cache(%__MODULE__{client: client}, llm_request, cache_contents_count) do
     contents = Map.get(llm_request, :contents, [])
     cache_contents = Enum.take(contents, cache_contents_count)
@@ -342,7 +343,10 @@ defmodule ADK.Models.GeminiContextCacheManager do
         {:error, :no_token_count}
 
       cache_config != nil and token_count < cache_config.min_tokens ->
-        Logger.info("Previous request too small for caching (#{token_count} < #{cache_config.min_tokens} tokens)")
+        Logger.info(
+          "Previous request too small for caching (#{token_count} < #{cache_config.min_tokens} tokens)"
+        )
+
         {:error, :too_small}
 
       true ->

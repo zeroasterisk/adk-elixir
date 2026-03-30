@@ -233,7 +233,9 @@ defmodule Mix.Tasks.Adk.Doctor do
       {:ok, modules} ->
         Enum.filter(modules, fn mod ->
           try do
-            behaviours = mod.module_info(:attributes) |> Keyword.get_values(:behaviour) |> List.flatten()
+            behaviours =
+              mod.module_info(:attributes) |> Keyword.get_values(:behaviour) |> List.flatten()
+
             ADK.Agent in behaviours
           rescue
             _ -> false

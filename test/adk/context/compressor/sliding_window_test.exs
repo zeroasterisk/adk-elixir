@@ -23,7 +23,7 @@ defmodule ADK.Context.Compressor.SlidingWindowTest do
     end
 
     test "preserves system messages" do
-      msgs = [msg(:system, "sys")] ++ (for i <- 1..10, do: msg(:user, "msg #{i}"))
+      msgs = [msg(:system, "sys")] ++ for i <- 1..10, do: msg(:user, "msg #{i}")
       assert {:ok, result} = SlidingWindow.compress(msgs, max_messages: 3)
       assert length(result) == 4
       assert hd(result).role == :system

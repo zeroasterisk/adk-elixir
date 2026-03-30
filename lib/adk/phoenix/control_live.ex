@@ -110,7 +110,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     # ── Function Components ─────────────────────────────────────────────
 
-    attr :beam, :map, required: true
+    attr(:beam, :map, required: true)
 
     defp beam_health(assigns) do
       ~H"""
@@ -144,8 +144,8 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       """
     end
 
-    attr :label, :string, required: true
-    attr :value, :any, required: true
+    attr(:label, :string, required: true)
+    attr(:value, :any, required: true)
 
     defp metric_card(assigns) do
       ~H"""
@@ -156,7 +156,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       """
     end
 
-    attr :sessions, :list, required: true
+    attr(:sessions, :list, required: true)
 
     defp sessions_panel(assigns) do
       ~H"""
@@ -190,7 +190,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       """
     end
 
-    attr :runs, :list, required: true
+    attr(:runs, :list, required: true)
 
     defp runs_panel(assigns) do
       ~H"""
@@ -224,7 +224,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       """
     end
 
-    attr :tools, :list, required: true
+    attr(:tools, :list, required: true)
 
     defp tools_panel(assigns) do
       ~H"""
@@ -258,7 +258,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       """
     end
 
-    attr :llm, :list, required: true
+    attr(:llm, :list, required: true)
 
     defp llm_panel(assigns) do
       ~H"""
@@ -296,7 +296,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       """
     end
 
-    attr :errors, :list, required: true
+    attr(:errors, :list, required: true)
 
     defp errors_panel(assigns) do
       ~H"""
@@ -330,7 +330,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     # ── Shared Sub-Components ───────────────────────────────────────────
 
-    attr :phase, :atom, required: true
+    attr(:phase, :atom, required: true)
 
     defp phase_badge(assigns) do
       color =
@@ -348,7 +348,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       """
     end
 
-    attr :status, :atom, required: true
+    attr(:status, :atom, required: true)
 
     defp status_badge(assigns) do
       {color, label} =
@@ -395,14 +395,24 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     @doc false
     def format_bytes(bytes) when is_integer(bytes) and bytes < 1024, do: "#{bytes} B"
-    def format_bytes(bytes) when is_integer(bytes) and bytes < 1_048_576, do: "#{Float.round(bytes / 1024, 1)} KB"
-    def format_bytes(bytes) when is_integer(bytes) and bytes < 1_073_741_824, do: "#{Float.round(bytes / 1_048_576, 1)} MB"
-    def format_bytes(bytes) when is_integer(bytes), do: "#{Float.round(bytes / 1_073_741_824, 2)} GB"
+
+    def format_bytes(bytes) when is_integer(bytes) and bytes < 1_048_576,
+      do: "#{Float.round(bytes / 1024, 1)} KB"
+
+    def format_bytes(bytes) when is_integer(bytes) and bytes < 1_073_741_824,
+      do: "#{Float.round(bytes / 1_048_576, 1)} MB"
+
+    def format_bytes(bytes) when is_integer(bytes),
+      do: "#{Float.round(bytes / 1_073_741_824, 2)} GB"
+
     def format_bytes(_), do: "—"
 
     defp format_us(nil), do: "—"
     defp format_us(us) when is_integer(us) and us < 1_000, do: "#{us}µs"
-    defp format_us(us) when is_integer(us) and us < 1_000_000, do: "#{Float.round(us / 1_000, 1)}ms"
+
+    defp format_us(us) when is_integer(us) and us < 1_000_000,
+      do: "#{Float.round(us / 1_000, 1)}ms"
+
     defp format_us(us) when is_integer(us), do: "#{Float.round(us / 1_000_000, 2)}s"
     defp format_us(_), do: "—"
 
@@ -459,6 +469,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     defp badge_style(type \\ :default) do
       bg = if type == :error, do: "#ef444420", else: "#2d3148"
       color = if type == :error, do: "#ef4444", else: "#94a3b8"
+
       "background:#{bg};color:#{color};border-radius:10px;padding:1px 8px;font-size:0.7rem;font-weight:500;"
     end
 

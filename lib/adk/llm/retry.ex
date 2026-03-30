@@ -37,7 +37,7 @@ defmodule ADK.LLM.Retry do
     * `:max_retries`, `:base_delay_ms`, `:max_delay_ms` - see module docs.
     * `:sleep_fn` - override for testing (default: `&Process.sleep/1`).
   """
-  @spec with_retry((() -> {:ok, term()} | {:error, term()}), keyword()) ::
+  @spec with_retry((-> {:ok, term()} | {:error, term()}), keyword()) ::
           {:ok, term()} | {:error, term()}
   def with_retry(fun, opts \\ []) do
     max_retries = Keyword.get(opts, :max_retries, @default_max_retries)
@@ -59,7 +59,11 @@ defmodule ADK.LLM.Retry do
         error = {:error, reason}
 
         if attempt < max_retries and transient?(reason) do
-          delay = if is_integer(ms) and ms > 0, do: min(ms, max_delay_ms), else: compute_delay(attempt, base_delay_ms, max_delay_ms)
+          delay =
+            if is_integer(ms) and ms > 0,
+              do: min(ms, max_delay_ms),
+              else: compute_delay(attempt, base_delay_ms, max_delay_ms)
+
           sleep_fn.(delay)
           do_retry(fun, attempt + 1, max_retries, base_delay_ms, max_delay_ms, nil, sleep_fn)
         else

@@ -422,24 +422,74 @@ defmodule ADK.Agent.LlmAgent do
       agent_name: agent.name
     }
 
-    request = 
-      if ctx.run_config do 
-        live_connect = %{} 
-        live_connect = if ctx.run_config.output_audio_transcription, do: Map.put(live_connect, :output_audio_transcription, ctx.run_config.output_audio_transcription), else: live_connect 
-        live_connect = if ctx.run_config.input_audio_transcription, do: Map.put(live_connect, :input_audio_transcription, ctx.run_config.input_audio_transcription), else: live_connect 
-        live_connect = if not is_nil(ctx.run_config.enable_affective_dialog), do: Map.put(live_connect, :enable_affective_dialog, ctx.run_config.enable_affective_dialog), else: live_connect 
-        live_connect = if ctx.run_config.proactivity, do: Map.put(live_connect, :proactivity, ctx.run_config.proactivity), else: live_connect 
-        live_connect = if ctx.run_config.session_resumption, do: Map.put(live_connect, :session_resumption, ctx.run_config.session_resumption), else: live_connect 
-        live_connect = if ctx.run_config.realtime_input_config, do: Map.put(live_connect, :realtime_input_config, ctx.run_config.realtime_input_config), else: live_connect 
-        live_connect = if ctx.run_config.context_window_compression, do: Map.put(live_connect, :context_window_compression, ctx.run_config.context_window_compression), else: live_connect 
-        if live_connect != %{} do 
-          Map.put(request, :live_connect_config, live_connect) 
-        else 
-          request 
-        end 
-      else 
-        request 
-      end 
+    request =
+      if ctx.run_config do
+        live_connect = %{}
+
+        live_connect =
+          if ctx.run_config.output_audio_transcription,
+            do:
+              Map.put(
+                live_connect,
+                :output_audio_transcription,
+                ctx.run_config.output_audio_transcription
+              ),
+            else: live_connect
+
+        live_connect =
+          if ctx.run_config.input_audio_transcription,
+            do:
+              Map.put(
+                live_connect,
+                :input_audio_transcription,
+                ctx.run_config.input_audio_transcription
+              ),
+            else: live_connect
+
+        live_connect =
+          if not is_nil(ctx.run_config.enable_affective_dialog),
+            do:
+              Map.put(
+                live_connect,
+                :enable_affective_dialog,
+                ctx.run_config.enable_affective_dialog
+              ),
+            else: live_connect
+
+        live_connect =
+          if ctx.run_config.proactivity,
+            do: Map.put(live_connect, :proactivity, ctx.run_config.proactivity),
+            else: live_connect
+
+        live_connect =
+          if ctx.run_config.session_resumption,
+            do: Map.put(live_connect, :session_resumption, ctx.run_config.session_resumption),
+            else: live_connect
+
+        live_connect =
+          if ctx.run_config.realtime_input_config,
+            do:
+              Map.put(live_connect, :realtime_input_config, ctx.run_config.realtime_input_config),
+            else: live_connect
+
+        live_connect =
+          if ctx.run_config.context_window_compression,
+            do:
+              Map.put(
+                live_connect,
+                :context_window_compression,
+                ctx.run_config.context_window_compression
+              ),
+            else: live_connect
+
+        if live_connect != %{} do
+          Map.put(request, :live_connect_config, live_connect)
+        else
+          request
+        end
+      else
+        request
+      end
 
     request =
       case agent.generate_config do
@@ -710,6 +760,7 @@ defmodule ADK.Agent.LlmAgent do
   end
 
   defp truncate_history(history, nil), do: history
+
   defp truncate_history(history, n) when is_integer(n) and n > 0 do
     max_messages = n * 2
     len = length(history)
@@ -842,17 +893,21 @@ defmodule ADK.Agent.LlmAgent do
           case func_res do
             {:fallback, {:ok, fallback_res}} ->
               %{name: call.name, result: fallback_res}
+
             {:fallback, fallback_res} ->
               %{name: call.name, result: fallback_res}
+
             {:ok, fallback_res} ->
               %{name: call.name, result: fallback_res}
 
             _ ->
               # Plugins
               plugins = ctx.plugins || []
+
               case ADK.Plugin.run_on_tool_error(plugins, ctx, call.name, {:error, err_msg}) do
                 {:ok, recovered} ->
                   %{name: call.name, result: recovered}
+
                 {:error, reason} ->
                   # Module callbacks
                   case ADK.Callback.run_on_tool_error(callbacks, {:error, reason}, tool_cb_ctx) do
@@ -988,10 +1043,12 @@ defmodule ADK.Agent.LlmAgent do
           result =
             if agent.after_tool_callback do
               # We unwrap result for the callback, then rewrap
-              unwrapped_res = case result do
-                {:ok, val} -> val
-                other -> other
-              end
+              unwrapped_res =
+                case result do
+                  {:ok, val} -> val
+                  other -> other
+                end
+
               case agent.after_tool_callback.(tool, call_args, tool_ctx, unwrapped_res) do
                 nil -> result
                 {:ok, _} = new_res -> new_res

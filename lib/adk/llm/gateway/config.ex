@@ -71,11 +71,15 @@ defmodule ADK.LLM.Gateway.Config do
     end
 
     case Code.ensure_loaded(backend.backend) do
-      {:module, _} -> :ok
-      {:error, _} -> raise ArgumentError, "backend module #{inspect(backend.backend)} is not available"
+      {:module, _} ->
+        :ok
+
+      {:error, _} ->
+        raise ArgumentError, "backend module #{inspect(backend.backend)} is not available"
     end
 
     priority = Map.get(backend, :priority, 1)
+
     unless is_integer(priority) do
       raise ArgumentError, "backend :priority must be an integer, got: #{inspect(priority)}"
     end

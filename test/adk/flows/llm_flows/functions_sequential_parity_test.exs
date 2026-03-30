@@ -413,7 +413,13 @@ defmodule ADK.Flows.LlmFlows.FunctionsSequentialParityTest do
 
       # Sequential: set "color" = "blue", then get "color"
       ADK.LLM.Mock.set_responses([
-        %{function_call: %{name: "set_value", args: %{"key" => "color", "value" => "blue"}, id: "fc-1"}},
+        %{
+          function_call: %{
+            name: "set_value",
+            args: %{"key" => "color", "value" => "blue"},
+            id: "fc-1"
+          }
+        },
         %{function_call: %{name: "get_value", args: %{"key" => "color"}, id: "fc-2"}},
         "The color is blue"
       ])

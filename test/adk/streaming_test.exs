@@ -20,10 +20,12 @@ defmodule ADK.StreamingTest do
             _ -> "echo"
           end
 
-        [ADK.Event.new(%{
-          author: name,
-          content: %{role: :model, parts: [%{text: "Echo: #{text}"}]}
-        })]
+        [
+          ADK.Event.new(%{
+            author: name,
+            content: %{role: :model, parts: [%{text: "Echo: #{text}"}]}
+          })
+        ]
       end
     )
   end
@@ -33,10 +35,11 @@ defmodule ADK.StreamingTest do
       name: "multi",
       description: "Agent that emits multiple events",
       run_fn: fn _agent, ctx ->
-        text = case ctx.user_content do
-          %{text: t} -> t
-          _ -> "hi"
-        end
+        text =
+          case ctx.user_content do
+            %{text: t} -> t
+            _ -> "hi"
+          end
 
         [
           ADK.Event.new(%{
@@ -91,9 +94,10 @@ defmodule ADK.StreamingTest do
       runner = build_runner(echo_agent())
       pid = self()
 
-      events = ADK.Runner.run(runner, "user1", "sess-stream-1", "hello",
-        on_event: fn event -> send(pid, {:streamed, event}) end
-      )
+      events =
+        ADK.Runner.run(runner, "user1", "sess-stream-1", "hello",
+          on_event: fn event -> send(pid, {:streamed, event}) end
+        )
 
       assert length(events) == 1
       assert_receive {:streamed, event}, 500
@@ -104,9 +108,10 @@ defmodule ADK.StreamingTest do
       runner = build_runner(multi_event_agent())
       pid = self()
 
-      events = ADK.Runner.run(runner, "user1", "sess-stream-2", "test",
-        on_event: fn event -> send(pid, {:streamed, event}) end
-      )
+      events =
+        ADK.Runner.run(runner, "user1", "sess-stream-2", "test",
+          on_event: fn event -> send(pid, {:streamed, event}) end
+        )
 
       assert length(events) == 3
 
@@ -119,12 +124,13 @@ defmodule ADK.StreamingTest do
           end
         end)
 
-      texts = Enum.map(received, fn e ->
-        case e.content do
-          %{parts: [%{text: t} | _]} -> t
-          _ -> nil
-        end
-      end)
+      texts =
+        Enum.map(received, fn e ->
+          case e.content do
+            %{parts: [%{text: t} | _]} -> t
+            _ -> nil
+          end
+        end)
 
       assert Enum.at(texts, 0) =~ "First"
       assert Enum.at(texts, 1) =~ "Second"
@@ -152,9 +158,10 @@ defmodule ADK.StreamingTest do
       runner = build_runner(echo_agent())
       pid = self()
 
-      events = ADK.Runner.run_streaming(runner, "user1", "sess-stream-4", "hi",
-        on_event: fn event -> send(pid, {:streamed, event}) end
-      )
+      events =
+        ADK.Runner.run_streaming(runner, "user1", "sess-stream-4", "hi",
+          on_event: fn event -> send(pid, {:streamed, event}) end
+        )
 
       assert is_list(events)
       assert length(events) >= 1
@@ -168,9 +175,8 @@ defmodule ADK.StreamingTest do
     test "sends {:adk_event, event} messages to caller" do
       runner = build_runner(echo_agent())
 
-      {:ok, _pid} = ADK.Runner.run_async(runner, "user1", "sess-async-1", "hello",
-        reply_to: self()
-      )
+      {:ok, _pid} =
+        ADK.Runner.run_async(runner, "user1", "sess-async-1", "hello", reply_to: self())
 
       assert_receive {:adk_event, event}, 1000
       assert event.author == "echo"
@@ -179,9 +185,8 @@ defmodule ADK.StreamingTest do
     test "sends {:adk_done, events} when complete" do
       runner = build_runner(echo_agent())
 
-      {:ok, _pid} = ADK.Runner.run_async(runner, "user1", "sess-async-2", "hello",
-        reply_to: self()
-      )
+      {:ok, _pid} =
+        ADK.Runner.run_async(runner, "user1", "sess-async-2", "hello", reply_to: self())
 
       assert_receive {:adk_done, events}, 1000
       assert is_list(events)
@@ -191,9 +196,8 @@ defmodule ADK.StreamingTest do
     test "multiple events arrive in order" do
       runner = build_runner(multi_event_agent())
 
-      {:ok, _pid} = ADK.Runner.run_async(runner, "user1", "sess-async-3", "test",
-        reply_to: self()
-      )
+      {:ok, _pid} =
+        ADK.Runner.run_async(runner, "user1", "sess-async-3", "test", reply_to: self())
 
       events =
         Enum.map(1..3, fn _ ->
@@ -206,12 +210,13 @@ defmodule ADK.StreamingTest do
 
       assert_receive {:adk_done, _}, 1000
 
-      texts = Enum.map(events, fn e ->
-        case e.content do
-          %{parts: [%{text: t} | _]} -> t
-          _ -> ""
-        end
-      end)
+      texts =
+        Enum.map(events, fn e ->
+          case e.content do
+            %{parts: [%{text: t} | _]} -> t
+            _ -> ""
+          end
+        end)
 
       assert Enum.at(texts, 0) =~ "First"
       assert Enum.at(texts, 1) =~ "Second"
@@ -222,10 +227,11 @@ defmodule ADK.StreamingTest do
       runner = build_runner(echo_agent())
       pid = self()
 
-      {:ok, _pid} = ADK.Runner.run_async(runner, "user1", "sess-async-4", "hi",
-        reply_to: self(),
-        on_event: fn _event -> send(pid, :callback_fired) end
-      )
+      {:ok, _pid} =
+        ADK.Runner.run_async(runner, "user1", "sess-async-4", "hi",
+          reply_to: self(),
+          on_event: fn _event -> send(pid, :callback_fired) end
+        )
 
       assert_receive :callback_fired, 1000
       assert_receive {:adk_event, _}, 1000
@@ -238,6 +244,7 @@ defmodule ADK.StreamingTest do
   describe "POST /run_sse SSE format" do
     defp build_conn(method, path, body \\ nil) do
       conn = Plug.Test.conn(method, path, body && Jason.encode!(body))
+
       if body do
         conn |> Plug.Conn.put_req_header("content-type", "application/json")
       else
@@ -247,10 +254,12 @@ defmodule ADK.StreamingTest do
 
     defp call_router(conn) do
       agents = %{"stream_app" => echo_agent("stream_echo")}
+
       opts = [
         agent_loader: agents,
         session_store: {ADK.Session.Store.InMemory, []}
       ]
+
       ADK.Phoenix.WebRouter.call(conn, ADK.Phoenix.WebRouter.init(opts))
     end
 
@@ -373,6 +382,7 @@ defmodule ADK.StreamingTest do
   describe "POST /api/chat/stream (dev server)" do
     defp build_dev_conn(method, path, body \\ nil) do
       conn = Plug.Test.conn(method, path, body && Jason.encode!(body))
+
       if body do
         conn |> Plug.Conn.put_req_header("content-type", "application/json")
       else

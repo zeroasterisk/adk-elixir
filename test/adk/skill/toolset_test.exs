@@ -7,7 +7,13 @@ defmodule ADK.Skill.ToolsetTest do
   alias ADK.Tool.FunctionTool
 
   defp make_skill(name, opts \\ []) do
-    dir = Keyword.get(opts, :dir, Path.join(System.tmp_dir!(), "skill_#{name}_#{:rand.uniform(100_000)}"))
+    dir =
+      Keyword.get(
+        opts,
+        :dir,
+        Path.join(System.tmp_dir!(), "skill_#{name}_#{:rand.uniform(100_000)}")
+      )
+
     File.mkdir_p!(dir)
 
     desc = Keyword.get(opts, :description, "Description for #{name}")
@@ -88,7 +94,10 @@ defmodule ADK.Skill.ToolsetTest do
       [_, _, resource_tool] = Toolset.tools(toolset)
 
       assert resource_tool.name == "load_skill_resource"
-      {:ok, result} = FunctionTool.run(resource_tool, %{}, %{"name" => "docs", "path" => "example.txt"})
+
+      {:ok, result} =
+        FunctionTool.run(resource_tool, %{}, %{"name" => "docs", "path" => "example.txt"})
+
       assert result == "Hello resource!"
     end
 
@@ -97,7 +106,9 @@ defmodule ADK.Skill.ToolsetTest do
       toolset = Toolset.new([skill])
       [_, _, resource_tool] = Toolset.tools(toolset)
 
-      {:error, msg} = FunctionTool.run(resource_tool, %{}, %{"name" => "safe", "path" => "../../../etc/passwd"})
+      {:error, msg} =
+        FunctionTool.run(resource_tool, %{}, %{"name" => "safe", "path" => "../../../etc/passwd"})
+
       assert msg =~ "Path traversal"
     end
 
@@ -106,7 +117,9 @@ defmodule ADK.Skill.ToolsetTest do
       toolset = Toolset.new([skill])
       [_, _, resource_tool] = Toolset.tools(toolset)
 
-      {:error, msg} = FunctionTool.run(resource_tool, %{}, %{"name" => "empty", "path" => "nope.txt"})
+      {:error, msg} =
+        FunctionTool.run(resource_tool, %{}, %{"name" => "empty", "path" => "nope.txt"})
+
       assert msg =~ "Cannot read"
     end
   end
@@ -217,10 +230,13 @@ defmodule ADK.Skill.ToolsetTest do
       scripts_dir = Path.join(dir, "scripts")
       File.mkdir_p!(scripts_dir)
 
-      File.write!(Path.join(scripts_dir, "mcp.json"), Jason.encode!(%{
-        "command" => "npx",
-        "args" => ["-y", "@modelcontextprotocol/server-filesystem"]
-      }))
+      File.write!(
+        Path.join(scripts_dir, "mcp.json"),
+        Jason.encode!(%{
+          "command" => "npx",
+          "args" => ["-y", "@modelcontextprotocol/server-filesystem"]
+        })
+      )
 
       result = Script.discover(dir)
       assert length(result.mcp_configs) == 1
@@ -285,7 +301,11 @@ defmodule ADK.Skill.ToolsetTest do
       scripts_dir = Path.join(dir, "scripts")
       File.mkdir_p!(scripts_dir)
 
-      File.write!(Path.join(dir, "SKILL.md"), "# Scripted\n\n> Has scripts.\n\nDo scripted things.")
+      File.write!(
+        Path.join(dir, "SKILL.md"),
+        "# Scripted\n\n> Has scripts.\n\nDo scripted things."
+      )
+
       File.write!(Path.join(scripts_dir, "helper.sh"), "# Help out\necho help")
 
       {:ok, skill} = Skill.from_dir(dir)

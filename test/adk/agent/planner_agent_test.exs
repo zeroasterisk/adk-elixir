@@ -7,13 +7,14 @@ defmodule ADK.Agent.PlannerAgentTest do
 
   test "LlmAgent correctly applies BuiltInPlanner" do
     planner = %BuiltIn{thinking_config: %{thinking_budget: 1024}}
-    
-    agent = LlmAgent.new(
-      name: "planner_agent",
-      model: "test_model",
-      instruction: "Do it",
-      planner: planner
-    )
+
+    agent =
+      LlmAgent.new(
+        name: "planner_agent",
+        model: "test_model",
+        instruction: "Do it",
+        planner: planner
+      )
 
     ctx = %ADK.Context{agent: agent}
     request = ADK.Agent.LlmAgent.build_request(ctx, agent)
@@ -24,12 +25,13 @@ defmodule ADK.Agent.PlannerAgentTest do
   test "LlmAgent correctly applies PlanReActPlanner" do
     planner = %PlanReAct{}
 
-    agent = LlmAgent.new(
-      name: "planner_agent",
-      model: "test_model",
-      instruction: "Be helpful",
-      planner: planner
-    )
+    agent =
+      LlmAgent.new(
+        name: "planner_agent",
+        model: "test_model",
+        instruction: "Be helpful",
+        planner: planner
+      )
 
     ctx = %ADK.Context{agent: agent}
     request = ADK.Agent.LlmAgent.build_request(ctx, agent)
@@ -42,21 +44,25 @@ defmodule ADK.Agent.PlannerAgentTest do
 
   test "LlmAgent with PlanReAct strips 'thought' from history" do
     planner = %PlanReAct{}
-    
-    agent = LlmAgent.new(
-      name: "planner_agent",
-      model: "test_model",
-      instruction: "Be helpful",
-      planner: planner
-    )
+
+    agent =
+      LlmAgent.new(
+        name: "planner_agent",
+        model: "test_model",
+        instruction: "Be helpful",
+        planner: planner
+      )
 
     {:ok, session_pid} = ADK.Session.start_link(agent: agent)
     ctx = %ADK.Context{agent: agent, session_pid: session_pid}
 
-    ADK.Session.append_event(session_pid, ADK.Event.new(%{
-      author: "user",
-      content: %{parts: [%{text: "hi", thought: true}]}
-    }))
+    ADK.Session.append_event(
+      session_pid,
+      ADK.Event.new(%{
+        author: "user",
+        content: %{parts: [%{text: "hi", thought: true}]}
+      })
+    )
 
     request = ADK.Agent.LlmAgent.build_request(ctx, agent)
 

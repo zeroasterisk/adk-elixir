@@ -201,14 +201,20 @@ defmodule ADK.AgentConfig do
         full_path = Path.join(base_dir, rel_path)
 
         case from_config(full_path) do
-          {:ok, agent} -> agent
-          {:error, reason} -> raise ArgumentError, "Failed to load sub-agent at #{full_path}: #{inspect(reason)}"
+          {:ok, agent} ->
+            agent
+
+          {:error, reason} ->
+            raise ArgumentError, "Failed to load sub-agent at #{full_path}: #{inspect(reason)}"
         end
 
       agent_map when is_map(agent_map) ->
         case build_agent(agent_map, base_dir) do
-          {:ok, agent} -> agent
-          {:error, reason} -> raise ArgumentError, "Failed to build inline sub-agent: #{inspect(reason)}"
+          {:ok, agent} ->
+            agent
+
+          {:error, reason} ->
+            raise ArgumentError, "Failed to build inline sub-agent: #{inspect(reason)}"
         end
     end)
   end

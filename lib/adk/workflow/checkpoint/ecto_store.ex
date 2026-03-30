@@ -66,7 +66,8 @@ defmodule ADK.Workflow.Checkpoint.EctoStore do
   @doc """
   Save a checkpoint using the given Ecto repo.
   """
-  @spec save_with_repo(module(), String.t(), atom() | String.t(), atom(), any()) :: :ok | {:error, term()}
+  @spec save_with_repo(module(), String.t(), atom() | String.t(), atom(), any()) ::
+          :ok | {:error, term()}
   def save_with_repo(repo, workflow_id, node_id, status, output) do
     node_str = to_string(node_id)
     status_str = to_string(status)
@@ -98,7 +99,10 @@ defmodule ADK.Workflow.Checkpoint.EctoStore do
     node_str = to_string(node_id)
 
     # Use Ecto.Adapters.SQL.query! to avoid compile-time dependency on Ecto.Query macros
-    case repo.query("SELECT workflow_id, node_id, status, output FROM workflow_checkpoints WHERE workflow_id = ?1 AND node_id = ?2", [workflow_id, node_str]) do
+    case repo.query(
+           "SELECT workflow_id, node_id, status, output FROM workflow_checkpoints WHERE workflow_id = ?1 AND node_id = ?2",
+           [workflow_id, node_str]
+         ) do
       {:ok, %{rows: [[wid, nid, status, output] | _]}} ->
         {:ok, %{workflow_id: wid, node_id: nid, status: status, output: output}}
 

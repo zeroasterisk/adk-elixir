@@ -23,6 +23,7 @@ defmodule ADK.Auth.CredentialManagerTest do
   describe "get_credential/3 — stored credentials" do
     test "returns stored credential when not near-expiry", %{store: store} do
       future = System.system_time(:second) + 7200
+
       stored = %Credential{
         type: :oauth2,
         access_token: "stored-tok",
@@ -32,8 +33,12 @@ defmodule ADK.Auth.CredentialManagerTest do
       :ok = InMemoryStore.put("svc", stored, server: store)
 
       # raw_cred is irrelevant here — it finds the stored one
-      raw = Credential.oauth2(nil, client_id: "c1", client_secret: "s1",
-        token_endpoint: "https://auth.example.com/token")
+      raw =
+        Credential.oauth2(nil,
+          client_id: "c1",
+          client_secret: "s1",
+          token_endpoint: "https://auth.example.com/token"
+        )
 
       assert {:ok, ^stored} = CredentialManager.get_credential("svc", raw, server: store)
     end
@@ -76,9 +81,11 @@ defmodule ADK.Auth.CredentialManagerTest do
 
   describe "Credential.oauth2_with_code/4" do
     test "creates credential with auth_code set and no access_token" do
-      cred = Credential.oauth2_with_code("c1", "s1", "auth-code-xyz",
-        token_endpoint: "https://auth.example.com/token",
-        scopes: ["read"])
+      cred =
+        Credential.oauth2_with_code("c1", "s1", "auth-code-xyz",
+          token_endpoint: "https://auth.example.com/token",
+          scopes: ["read"]
+        )
 
       assert cred.type == :oauth2
       assert cred.client_id == "c1"
@@ -92,8 +99,13 @@ defmodule ADK.Auth.CredentialManagerTest do
 
   describe "Credential.oauth2/2 with auth_code opt" do
     test "accepts auth_code option" do
-      cred = Credential.oauth2(nil, auth_code: "my-code", client_id: "c1", client_secret: "s1",
-        token_endpoint: "https://auth.example.com/token")
+      cred =
+        Credential.oauth2(nil,
+          auth_code: "my-code",
+          client_id: "c1",
+          client_secret: "s1",
+          token_endpoint: "https://auth.example.com/token"
+        )
 
       assert cred.auth_code == "my-code"
       assert cred.access_token == nil

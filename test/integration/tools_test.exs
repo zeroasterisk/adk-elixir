@@ -276,10 +276,16 @@ defmodule ADK.Integration.ToolsTest do
     test "sequential calls to different tools" do
       events =
         run_agent(
-          [simple_function_tool(), no_param_function_tool(), multiple_param_types_function_tool()],
+          [
+            simple_function_tool(),
+            no_param_function_tool(),
+            multiple_param_types_function_tool()
+          ],
           [
             # First LLM turn: call simple_function
-            %{function_call: %{name: "simple_function", args: %{"param" => "first"}, id: "fc-m1"}},
+            %{
+              function_call: %{name: "simple_function", args: %{"param" => "first"}, id: "fc-m1"}
+            },
             # Second LLM turn: call no_param_function
             %{function_call: %{name: "no_param_function", args: %{}, id: "fc-m2"}},
             # Third LLM turn: call multiple_param_types_function

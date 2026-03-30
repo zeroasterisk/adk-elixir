@@ -66,22 +66,29 @@ defmodule ADK.ContextCompilationTest do
     test "multi-agent scenario: agents don't see each other's history" do
       # Simulate: router delegates to weather_agent, then news_agent
       weather_events = [
-        %Event{branch: "router.weather_agent", author: "weather_agent",
-               content: %{parts: [%{text: "It's sunny"}]}},
-        %Event{branch: "router.weather_agent", author: "weather_agent",
-               content: %{parts: [%{text: "Temperature is 72°F"}]}}
+        %Event{
+          branch: "router.weather_agent",
+          author: "weather_agent",
+          content: %{parts: [%{text: "It's sunny"}]}
+        },
+        %Event{
+          branch: "router.weather_agent",
+          author: "weather_agent",
+          content: %{parts: [%{text: "Temperature is 72°F"}]}
+        }
       ]
 
       news_events = [
-        %Event{branch: "router.news_agent", author: "news_agent",
-               content: %{parts: [%{text: "Breaking news!"}]}}
+        %Event{
+          branch: "router.news_agent",
+          author: "news_agent",
+          content: %{parts: [%{text: "Breaking news!"}]}
+        }
       ]
 
       shared_events = [
-        %Event{branch: nil, author: "user",
-               content: %{parts: [%{text: "What's the weather?"}]}},
-        %Event{branch: "router", author: "router",
-               content: %{parts: [%{text: "Let me check"}]}}
+        %Event{branch: nil, author: "user", content: %{parts: [%{text: "What's the weather?"}]}},
+        %Event{branch: "router", author: "router", content: %{parts: [%{text: "Let me check"}]}}
       ]
 
       all_events = shared_events ++ weather_events ++ news_events
@@ -90,21 +97,24 @@ defmodule ADK.ContextCompilationTest do
       weather_visible =
         Enum.filter(all_events, &Event.on_branch?(&1, "router.weather_agent"))
 
-      assert length(weather_visible) == 4  # 2 shared + 2 weather
+      # 2 shared + 2 weather
+      assert length(weather_visible) == 4
       refute Enum.any?(weather_visible, &(&1.author == "news_agent"))
 
       # News agent sees: shared + its own events, NOT weather
       news_visible =
         Enum.filter(all_events, &Event.on_branch?(&1, "router.news_agent"))
 
-      assert length(news_visible) == 3  # 2 shared + 1 news
+      # 2 shared + 1 news
+      assert length(news_visible) == 3
       refute Enum.any?(news_visible, &(&1.author == "weather_agent"))
 
       # Router sees: shared + router events only (not weather or news details)
       router_visible =
         Enum.filter(all_events, &Event.on_branch?(&1, "router"))
 
-      assert length(router_visible) == 2  # only shared (nil branch) + router branch
+      # only shared (nil branch) + router branch
+      assert length(router_visible) == 2
     end
   end
 
@@ -145,7 +155,9 @@ defmodule ADK.ContextCompilationTest do
   describe "LlmAgent.transfer_targets/1 — bidirectional transfer" do
     test "includes sub-agents" do
       sub = LlmAgent.new(name: "child", model: "test", instruction: "Child")
-      parent = LlmAgent.new(name: "parent", model: "test", instruction: "Parent", sub_agents: [sub])
+
+      parent =
+        LlmAgent.new(name: "parent", model: "test", instruction: "Parent", sub_agents: [sub])
 
       targets = LlmAgent.transfer_targets(parent)
       names = Enum.map(targets, &ADK.Agent.name/1)
@@ -157,12 +169,13 @@ defmodule ADK.ContextCompilationTest do
       child = LlmAgent.new(name: "worker", model: "test", instruction: "Work")
 
       # Simulate: parent creates child with parent_agent set (done by new/1)
-      router = LlmAgent.new(
-        name: "router",
-        model: "test",
-        instruction: "Route",
-        sub_agents: [child]
-      )
+      router =
+        LlmAgent.new(
+          name: "router",
+          model: "test",
+          instruction: "Route",
+          sub_agents: [child]
+        )
 
       # After new/1, child's parent_agent is set
       [wired_child] = router.sub_agents
@@ -175,12 +188,13 @@ defmodule ADK.ContextCompilationTest do
       weather = LlmAgent.new(name: "weather", model: "test", instruction: "Weather")
       news = LlmAgent.new(name: "news", model: "test", instruction: "News")
 
-      router = LlmAgent.new(
-        name: "router",
-        model: "test",
-        instruction: "Route",
-        sub_agents: [weather, news]
-      )
+      router =
+        LlmAgent.new(
+          name: "router",
+          model: "test",
+          instruction: "Route",
+          sub_agents: [weather, news]
+        )
 
       # Weather agent should be able to transfer to news (peer)
       [wired_weather, _wired_news] = router.sub_agents
@@ -196,19 +210,21 @@ defmodule ADK.ContextCompilationTest do
     end
 
     test "disallow_transfer_to_parent excludes parent" do
-      child = LlmAgent.new(
-        name: "worker",
-        model: "test",
-        instruction: "Work",
-        disallow_transfer_to_parent: true
-      )
+      child =
+        LlmAgent.new(
+          name: "worker",
+          model: "test",
+          instruction: "Work",
+          disallow_transfer_to_parent: true
+        )
 
-      router = LlmAgent.new(
-        name: "router",
-        model: "test",
-        instruction: "Route",
-        sub_agents: [child]
-      )
+      router =
+        LlmAgent.new(
+          name: "router",
+          model: "test",
+          instruction: "Route",
+          sub_agents: [child]
+        )
 
       [wired_child] = router.sub_agents
       # Override the flag (new/1 copies parent but doesn't override child flags)
@@ -220,20 +236,23 @@ defmodule ADK.ContextCompilationTest do
     end
 
     test "disallow_transfer_to_peers excludes siblings" do
-      weather = LlmAgent.new(
-        name: "weather",
-        model: "test",
-        instruction: "Weather",
-        disallow_transfer_to_peers: true
-      )
+      weather =
+        LlmAgent.new(
+          name: "weather",
+          model: "test",
+          instruction: "Weather",
+          disallow_transfer_to_peers: true
+        )
+
       news = LlmAgent.new(name: "news", model: "test", instruction: "News")
 
-      router = LlmAgent.new(
-        name: "router",
-        model: "test",
-        instruction: "Route",
-        sub_agents: [weather, news]
-      )
+      router =
+        LlmAgent.new(
+          name: "router",
+          model: "test",
+          instruction: "Route",
+          sub_agents: [weather, news]
+        )
 
       [wired_weather, _] = router.sub_agents
       # Override flag
@@ -242,8 +261,10 @@ defmodule ADK.ContextCompilationTest do
       targets = LlmAgent.transfer_targets(wired_weather)
       names = Enum.map(targets, &ADK.Agent.name/1)
 
-      assert "router" in names  # parent still allowed
-      refute "news" in names     # peer blocked
+      # parent still allowed
+      assert "router" in names
+      # peer blocked
+      refute "news" in names
     end
 
     test "agent with no parent and no sub-agents has no targets" do
@@ -255,12 +276,13 @@ defmodule ADK.ContextCompilationTest do
       weather = LlmAgent.new(name: "weather", model: "test", instruction: "Weather")
       news = LlmAgent.new(name: "news", model: "test", instruction: "News")
 
-      router = LlmAgent.new(
-        name: "router",
-        model: "test",
-        instruction: "Route",
-        sub_agents: [weather, news]
-      )
+      router =
+        LlmAgent.new(
+          name: "router",
+          model: "test",
+          instruction: "Route",
+          sub_agents: [weather, news]
+        )
 
       [wired_weather, _] = router.sub_agents
       tools = LlmAgent.effective_tools(wired_weather)
@@ -344,15 +366,17 @@ defmodule ADK.ContextCompilationTest do
   describe "Compressor.maybe_compress/2 — compaction event storage" do
     test "stores compaction event in session when session_pid provided" do
       # Create a real session
-      {:ok, session_pid} = ADK.Session.start_link(
-        app_name: "test",
-        user_id: "user1",
-        session_id: "compact-test"
-      )
+      {:ok, session_pid} =
+        ADK.Session.start_link(
+          app_name: "test",
+          user_id: "user1",
+          session_id: "compact-test"
+        )
 
-      messages = for i <- 1..60 do
-        %{role: :user, parts: [%{text: "Message #{i} with some content to make it longer"}]}
-      end
+      messages =
+        for i <- 1..60 do
+          %{role: :user, parts: [%{text: "Message #{i} with some content to make it longer"}]}
+        end
 
       opts = [
         strategy: {ADK.Context.Compressor.Truncate, max_messages: 10},
@@ -377,11 +401,12 @@ defmodule ADK.ContextCompilationTest do
     end
 
     test "no compaction event when below threshold" do
-      {:ok, session_pid} = ADK.Session.start_link(
-        app_name: "test",
-        user_id: "user1",
-        session_id: "no-compact-test"
-      )
+      {:ok, session_pid} =
+        ADK.Session.start_link(
+          app_name: "test",
+          user_id: "user1",
+          session_id: "no-compact-test"
+        )
 
       messages = [%{role: :user, parts: [%{text: "hi"}]}]
 
@@ -412,12 +437,13 @@ defmodule ADK.ContextCompilationTest do
     test "Event.on_branch? combined with author check for reformatting scenario" do
       # Simulate what build_messages does: filter by branch, then reformat
       events = [
-        %Event{author: "user", branch: nil,
-               content: %{parts: [%{text: "Hi"}]}},
-        %Event{author: "router", branch: "router",
-               content: %{parts: [%{text: "Routing..."}]}},
-        %Event{author: "weather", branch: "router.weather",
-               content: %{parts: [%{text: "It's sunny"}]}}
+        %Event{author: "user", branch: nil, content: %{parts: [%{text: "Hi"}]}},
+        %Event{author: "router", branch: "router", content: %{parts: [%{text: "Routing..."}]}},
+        %Event{
+          author: "weather",
+          branch: "router.weather",
+          content: %{parts: [%{text: "It's sunny"}]}
+        }
       ]
 
       current_branch = "router.weather"
@@ -425,18 +451,21 @@ defmodule ADK.ContextCompilationTest do
 
       # Filter by branch
       visible = Enum.filter(events, &Event.on_branch?(&1, current_branch))
-      assert length(visible) == 3  # all are on branch (nil, ancestor, exact)
+      # all are on branch (nil, ancestor, exact)
+      assert length(visible) == 3
 
       # Classify: user = user, same agent = model, other agent = reformatted user
-      messages = Enum.map(visible, fn e ->
-        cond do
-          e.author == "user" -> {:user, Event.text(e)}
-          e.author == current_agent -> {:model, Event.text(e)}
-          true -> {:reformatted, "[#{e.author}] said: #{Event.text(e)}"}
-        end
-      end)
+      messages =
+        Enum.map(visible, fn e ->
+          cond do
+            e.author == "user" -> {:user, Event.text(e)}
+            e.author == current_agent -> {:model, Event.text(e)}
+            true -> {:reformatted, "[#{e.author}] said: #{Event.text(e)}"}
+          end
+        end)
 
-      assert [{:user, "Hi"}, {:reformatted, "[router] said: Routing..."}, {:model, "It's sunny"}] = messages
+      assert [{:user, "Hi"}, {:reformatted, "[router] said: Routing..."}, {:model, "It's sunny"}] =
+               messages
     end
 
     test "function calls from other agents are reformatted" do
@@ -530,8 +559,13 @@ defmodule ADK.ContextCompilationTest do
     end
 
     test "static includes transfer instructions" do
-      sub = LlmAgent.new(name: "helper", model: "test", instruction: "Help",
-                         description: "A helper agent")
+      sub =
+        LlmAgent.new(
+          name: "helper",
+          model: "test",
+          instruction: "Help",
+          description: "A helper agent"
+        )
 
       agent = %{
         name: "router",
@@ -617,12 +651,14 @@ defmodule ADK.ContextCompilationTest do
   describe "LlmAgent build_request includes static/dynamic split" do
     test "parent_agent is set on sub-agents by new/1" do
       child = LlmAgent.new(name: "child", model: "test", instruction: "Child")
-      parent = LlmAgent.new(
-        name: "parent",
-        model: "test",
-        instruction: "Parent",
-        sub_agents: [child]
-      )
+
+      parent =
+        LlmAgent.new(
+          name: "parent",
+          model: "test",
+          instruction: "Parent",
+          sub_agents: [child]
+        )
 
       [wired_child] = parent.sub_agents
       assert wired_child.parent_agent != nil
@@ -631,8 +667,12 @@ defmodule ADK.ContextCompilationTest do
 
     test "deeply nested agents get correct parent_agent" do
       grandchild = LlmAgent.new(name: "grandchild", model: "test", instruction: "GC")
-      child = LlmAgent.new(name: "child", model: "test", instruction: "Child", sub_agents: [grandchild])
-      parent = LlmAgent.new(name: "parent", model: "test", instruction: "Parent", sub_agents: [child])
+
+      child =
+        LlmAgent.new(name: "child", model: "test", instruction: "Child", sub_agents: [grandchild])
+
+      parent =
+        LlmAgent.new(name: "parent", model: "test", instruction: "Parent", sub_agents: [child])
 
       [wired_child] = parent.sub_agents
       assert wired_child.parent_agent.name == "parent"
@@ -649,39 +689,44 @@ defmodule ADK.ContextCompilationTest do
   describe "full multi-agent branch isolation scenario" do
     test "weather and news agents have isolated histories" do
       # Simulate a full session with events from multiple agents
-      {:ok, session_pid} = ADK.Session.start_link(
-        app_name: "test",
-        user_id: "user1",
-        session_id: "branch-isolation-test"
-      )
+      {:ok, session_pid} =
+        ADK.Session.start_link(
+          app_name: "test",
+          user_id: "user1",
+          session_id: "branch-isolation-test"
+        )
 
       # User asks a question (no branch — visible to all)
-      user_event = Event.new(%{
-        author: "user",
-        branch: nil,
-        content: %{parts: [%{text: "What's the weather and news?"}]}
-      })
+      user_event =
+        Event.new(%{
+          author: "user",
+          branch: nil,
+          content: %{parts: [%{text: "What's the weather and news?"}]}
+        })
 
       # Router responds (router branch)
-      router_event = Event.new(%{
-        author: "router",
-        branch: "router",
-        content: %{parts: [%{text: "I'll check both for you."}]}
-      })
+      router_event =
+        Event.new(%{
+          author: "router",
+          branch: "router",
+          content: %{parts: [%{text: "I'll check both for you."}]}
+        })
 
       # Weather agent responds
-      weather_event = Event.new(%{
-        author: "weather_agent",
-        branch: "router.weather_agent",
-        content: %{parts: [%{text: "It's 75°F and sunny."}]}
-      })
+      weather_event =
+        Event.new(%{
+          author: "weather_agent",
+          branch: "router.weather_agent",
+          content: %{parts: [%{text: "It's 75°F and sunny."}]}
+        })
 
       # News agent responds
-      news_event = Event.new(%{
-        author: "news_agent",
-        branch: "router.news_agent",
-        content: %{parts: [%{text: "Breaking: Markets up 2%"}]}
-      })
+      news_event =
+        Event.new(%{
+          author: "news_agent",
+          branch: "router.news_agent",
+          content: %{parts: [%{text: "Breaking: Markets up 2%"}]}
+        })
 
       # Store all events
       for e <- [user_event, router_event, weather_event, news_event] do
@@ -720,16 +765,19 @@ defmodule ADK.ContextCompilationTest do
 
     test "three-level deep branch isolation" do
       events = [
-        %Event{author: "user", branch: nil,
-               content: %{parts: [%{text: "Go"}]}},
-        %Event{author: "root", branch: "root",
-               content: %{parts: [%{text: "Root"}]}},
-        %Event{author: "mid", branch: "root.mid",
-               content: %{parts: [%{text: "Mid"}]}},
-        %Event{author: "leaf_a", branch: "root.mid.leaf_a",
-               content: %{parts: [%{text: "Leaf A"}]}},
-        %Event{author: "leaf_b", branch: "root.mid.leaf_b",
-               content: %{parts: [%{text: "Leaf B"}]}}
+        %Event{author: "user", branch: nil, content: %{parts: [%{text: "Go"}]}},
+        %Event{author: "root", branch: "root", content: %{parts: [%{text: "Root"}]}},
+        %Event{author: "mid", branch: "root.mid", content: %{parts: [%{text: "Mid"}]}},
+        %Event{
+          author: "leaf_a",
+          branch: "root.mid.leaf_a",
+          content: %{parts: [%{text: "Leaf A"}]}
+        },
+        %Event{
+          author: "leaf_b",
+          branch: "root.mid.leaf_b",
+          content: %{parts: [%{text: "Leaf B"}]}
+        }
       ]
 
       # leaf_a sees: user (nil), root, mid, leaf_a — NOT leaf_b
@@ -751,15 +799,19 @@ defmodule ADK.ContextCompilationTest do
 
   describe "peer transfer tool resolution" do
     test "A→B→back to A peer transfer produces correct tools" do
-      agent_a = LlmAgent.new(name: "agent_a", model: "test", instruction: "A", description: "Agent A")
-      agent_b = LlmAgent.new(name: "agent_b", model: "test", instruction: "B", description: "Agent B")
+      agent_a =
+        LlmAgent.new(name: "agent_a", model: "test", instruction: "A", description: "Agent A")
 
-      router = LlmAgent.new(
-        name: "router",
-        model: "test",
-        instruction: "Route",
-        sub_agents: [agent_a, agent_b]
-      )
+      agent_b =
+        LlmAgent.new(name: "agent_b", model: "test", instruction: "B", description: "Agent B")
+
+      router =
+        LlmAgent.new(
+          name: "router",
+          model: "test",
+          instruction: "Route",
+          sub_agents: [agent_a, agent_b]
+        )
 
       [wired_a, wired_b] = router.sub_agents
 

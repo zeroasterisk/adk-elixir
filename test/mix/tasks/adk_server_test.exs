@@ -138,7 +138,11 @@ defmodule Mix.Tasks.Adk.ServerTest do
         )
 
       conn =
-        conn(:post, "/api/chat", Jason.encode!(%{"message" => "hello", "session_id" => "test-sess"}))
+        conn(
+          :post,
+          "/api/chat",
+          Jason.encode!(%{"message" => "hello", "session_id" => "test-sess"})
+        )
         |> put_req_header("content-type", "application/json")
         |> Router.call(opts)
 

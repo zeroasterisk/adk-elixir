@@ -52,7 +52,9 @@ defmodule ADK.Callback.OnToolErrorTest do
 
     test "retry wins over error" do
       ctx = %{tool_args: %{x: 1}}
-      assert {:retry, ^ctx} = Callback.run_on_tool_error([RetryOnceCallback], {:error, :boom}, ctx)
+
+      assert {:retry, ^ctx} =
+               Callback.run_on_tool_error([RetryOnceCallback], {:error, :boom}, ctx)
     end
 
     test "fallback wins over error" do
@@ -92,7 +94,8 @@ defmodule ADK.Callback.OnToolErrorTest do
       :ok
     end
 
-    @tag :skip  # Tests use plain maps as tools instead of FunctionTool structs
+    # Tests use plain maps as tools instead of FunctionTool structs
+    @tag :skip
     test "fallback callback provides tool result on error" do
       # Set up a tool that fails, then succeeds via fallback
       failing_tool = %{
@@ -110,12 +113,13 @@ defmodule ADK.Callback.OnToolErrorTest do
         "Done with fallback"
       ])
 
-      agent = ADK.Agent.LlmAgent.new(
-        name: "bot",
-        model: "test",
-        instruction: "Use tools",
-        tools: [failing_tool]
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "bot",
+          model: "test",
+          instruction: "Use tools",
+          tools: [failing_tool]
+        )
 
       runner = %Runner{app_name: "tool-err-test", agent: agent}
       events = Runner.run(runner, "u1", "te1", "do it", callbacks: [FallbackCallback])
@@ -125,7 +129,8 @@ defmodule ADK.Callback.OnToolErrorTest do
       assert "Done with fallback" in texts
     end
 
-    @tag :skip  # Tests use plain maps as tools instead of FunctionTool structs
+    # Tests use plain maps as tools instead of FunctionTool structs
+    @tag :skip
     test "logging callback receives tool errors" do
       failing_tool = %{
         name: "fail_tool",
@@ -139,12 +144,13 @@ defmodule ADK.Callback.OnToolErrorTest do
         "ok"
       ])
 
-      agent = ADK.Agent.LlmAgent.new(
-        name: "bot",
-        model: "test",
-        instruction: "Use tools",
-        tools: [failing_tool]
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "bot",
+          model: "test",
+          instruction: "Use tools",
+          tools: [failing_tool]
+        )
 
       runner = %Runner{app_name: "tool-err-log", agent: agent}
       Runner.run(runner, "u1", "te2", "do it", callbacks: [LogAndPropagateCallback])

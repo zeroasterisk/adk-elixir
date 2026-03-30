@@ -37,10 +37,10 @@ if Code.ensure_loaded?(Ecto) do
 
       @primary_key false
       schema "adk_sessions" do
-        field :app_name, :string, primary_key: true
-        field :user_id, :string, primary_key: true
-        field :session_id, :string, primary_key: true
-        field :state, :map, default: %{}
+        field(:app_name, :string, primary_key: true)
+        field(:user_id, :string, primary_key: true)
+        field(:session_id, :string, primary_key: true)
+        field(:state, :map, default: %{})
 
         timestamps(type: :utc_datetime_usec)
       end
@@ -75,6 +75,7 @@ if Code.ensure_loaded?(Ecto) do
     @impl ADK.Session.Store
     def save(session) do
       repo = repo!()
+
       attrs = %{
         app_name: session.app_name,
         user_id: session.user_id,
@@ -82,7 +83,11 @@ if Code.ensure_loaded?(Ecto) do
         state: session.state
       }
 
-      case repo.get_by(Schema, app_name: session.app_name, user_id: session.user_id, session_id: session.id) do
+      case repo.get_by(Schema,
+             app_name: session.app_name,
+             user_id: session.user_id,
+             session_id: session.id
+           ) do
         nil ->
           %Schema{}
           |> Schema.changeset(attrs)

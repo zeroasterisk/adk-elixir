@@ -20,7 +20,11 @@ defmodule Adk.Agents.McpInstructionProviderTest do
 
       expect(MockMcpSessionManager, :new, fn _ -> MockMcpSessionManager end)
       expect(MockMcpSessionManager, :create_session, fn _ -> {:ok, mock_session} end)
-      expect(MockMcpSessionManager, :list_prompts, fn _, _ -> {:ok, %{prompts: [%{name: "test_prompt", arguments: nil}]}} end)
+
+      expect(MockMcpSessionManager, :list_prompts, fn _, _ ->
+        {:ok, %{prompts: [%{name: "test_prompt", arguments: nil}]}}
+      end)
+
       expect(MockMcpSessionManager, :get_prompt, fn _, _, _, _ ->
         {:ok,
          %{
@@ -44,7 +48,8 @@ defmodule Adk.Agents.McpInstructionProviderTest do
       # Assert
       assert instruction == "instruction part 1. instruction part 2"
     end
-  test "invoke/1 with a prompt that has arguments" do
+
+    test "invoke/1 with a prompt that has arguments" do
       # Setup mocks
       Application.put_env(:adk, :mcp_session_manager_mod, MockMcpSessionManager)
       mock_session = %{}
@@ -78,7 +83,8 @@ defmodule Adk.Agents.McpInstructionProviderTest do
       # Assert
       assert instruction == "instruction with arg1"
     end
-  test "invoke/1 when list_prompts doesn't return the prompt" do
+
+    test "invoke/1 when list_prompts doesn't return the prompt" do
       # Setup mocks
       Application.put_env(:adk, :mcp_session_manager_mod, MockMcpSessionManager)
       mock_session = %{}
@@ -104,7 +110,8 @@ defmodule Adk.Agents.McpInstructionProviderTest do
       # Assert
       assert instruction == "instruction"
     end
-  test "invoke/1 when get_prompt returns no messages" do
+
+    test "invoke/1 when get_prompt returns no messages" do
       # Setup mocks
       Application.put_env(:adk, :mcp_session_manager_mod, MockMcpSessionManager)
       mock_session = %{}
@@ -125,7 +132,8 @@ defmodule Adk.Agents.McpInstructionProviderTest do
       assert {:error, "Failed to load MCP prompt 'test_prompt'."} ==
                McpInstructionProvider.invoke(provider, context)
     end
-  test "invoke/1 ignores non-text messages" do
+
+    test "invoke/1 ignores non-text messages" do
       # Setup mocks
       Application.put_env(:adk, :mcp_session_manager_mod, MockMcpSessionManager)
       mock_session = %{}

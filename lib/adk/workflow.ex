@@ -153,6 +153,7 @@ defmodule ADK.Workflow do
 
   def run(%__MODULE__{} = workflow, %ADK.Context{} = ctx, opts) do
     opts = opts || []
+
     Executor.run(
       workflow.graph,
       ctx,

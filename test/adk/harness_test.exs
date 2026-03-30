@@ -38,9 +38,7 @@ defmodule ADK.HarnessTest do
       agent = make_agent()
 
       {:ok, result} =
-        Harness.run(agent, "do something",
-          budget: %{max_steps: 1}
-        )
+        Harness.run(agent, "do something", budget: %{max_steps: 1})
 
       assert result.steps >= 1
     end
@@ -52,9 +50,7 @@ defmodule ADK.HarnessTest do
       guardrail = ADK.Guardrail.ContentFilter.new(blocked_words: ["forbidden"])
 
       {:ok, result} =
-        Harness.run(agent, "this is forbidden content",
-          guardrails: [guardrail]
-        )
+        Harness.run(agent, "this is forbidden content", guardrails: [guardrail])
 
       assert result.status == :guardrail_blocked
     end
@@ -64,9 +60,7 @@ defmodule ADK.HarnessTest do
       guardrail = ADK.Guardrail.ContentFilter.new(blocked_words: ["forbidden"])
 
       {:ok, result} =
-        Harness.run(agent, "this is fine",
-          guardrails: [guardrail]
-        )
+        Harness.run(agent, "this is fine", guardrails: [guardrail])
 
       assert result.status == :ok
     end

@@ -11,7 +11,9 @@ defmodule ADK.LLM.RouterTest do
     %{router: name}
   end
 
-  defp ok_fn, do: fn -> {:ok, %{content: %{role: :model, parts: [%{text: "hi"}]}, usage_metadata: nil}} end
+  defp ok_fn,
+    do: fn -> {:ok, %{content: %{role: :model, parts: [%{text: "hi"}]}, usage_metadata: nil}} end
+
   defp rate_limited_fn, do: fn -> {:error, :rate_limited} end
   defp server_error_fn, do: fn -> {:error, {:api_error, 500, "boom"}} end
   defp auth_error_fn, do: fn -> {:error, :unauthorized} end
@@ -126,7 +128,7 @@ defmodule ADK.LLM.RouterTest do
 
     test "returns result from first available backend", %{router: router} do
       set_response(:fake_a, ok_fn())
-      assert {:ok, _} = generate_with([server: router])
+      assert {:ok, _} = generate_with(server: router)
     end
   end
 
@@ -137,7 +139,7 @@ defmodule ADK.LLM.RouterTest do
       set_response(:fake_a, rate_limited_fn())
       set_response(:fake_b, ok_fn())
 
-      assert {:ok, _} = generate_with([server: router])
+      assert {:ok, _} = generate_with(server: router)
 
       # fake_a should now be backed off
       refute Router.backend_available?(router, :fake_a)
@@ -147,14 +149,14 @@ defmodule ADK.LLM.RouterTest do
       set_response(:fake_a, server_error_fn())
       set_response(:fake_b, ok_fn())
 
-      assert {:ok, _} = generate_with([server: router])
+      assert {:ok, _} = generate_with(server: router)
     end
 
     test "returns error when all backends exhausted", %{router: router} do
       set_response(:fake_a, rate_limited_fn())
       set_response(:fake_b, rate_limited_fn())
 
-      assert {:error, :all_backends_failed} = generate_with([server: router])
+      assert {:error, :all_backends_failed} = generate_with(server: router)
     end
 
     test "does not fail over on non-transient auth error", %{router: router} do
@@ -162,7 +164,7 @@ defmodule ADK.LLM.RouterTest do
       set_response(:fake_a, auth_error_fn())
       set_response(:fake_b, ok_fn())
 
-      assert {:error, :unauthorized} = generate_with([server: router])
+      assert {:error, :unauthorized} = generate_with(server: router)
     end
   end
 
@@ -176,7 +178,7 @@ defmodule ADK.LLM.RouterTest do
 
       set_response(:fake_b, ok_fn())
 
-      assert {:ok, _} = generate_with([server: router])
+      assert {:ok, _} = generate_with(server: router)
     end
   end
 
@@ -188,7 +190,7 @@ defmodule ADK.LLM.RouterTest do
       set_response(:fake_b, rate_limited_fn())
 
       assert {:error, :my_custom_error} =
-               generate_with([server: router, fallback_error: :my_custom_error])
+               generate_with(server: router, fallback_error: :my_custom_error)
     end
   end
 

@@ -121,17 +121,19 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
         "Search results found"
       ])
 
-      tool = make_tool("search_tool", fn _ctx, %{"query" => q} ->
-        {:ok, %{results: ["item1 for #{q}", "item2"]}}
-      end)
+      tool =
+        make_tool("search_tool", fn _ctx, %{"query" => q} ->
+          {:ok, %{results: ["item1 for #{q}", "item2"]}}
+        end)
 
       agent = build_agent(tools: [tool])
       events = run_agent(agent, "Search for test")
 
       # Find the function call event
-      fc_event = Enum.find(events, fn e ->
-        extract_function_call_parts(e) != []
-      end)
+      fc_event =
+        Enum.find(events, fn e ->
+          extract_function_call_parts(e) != []
+        end)
 
       assert fc_event != nil, "Expected a function_call event"
       assert fc_event.content[:role] == :model
@@ -149,17 +151,19 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
         "Here are the results"
       ])
 
-      tool = make_tool("search_tool", fn _ctx, %{"query" => _q} ->
-        {:ok, %{results: ["item1", "item2"]}}
-      end)
+      tool =
+        make_tool("search_tool", fn _ctx, %{"query" => _q} ->
+          {:ok, %{results: ["item1", "item2"]}}
+        end)
 
       agent = build_agent(tools: [tool])
       events = run_agent(agent, "Search for test")
 
       # Find the function response event
-      fr_event = Enum.find(events, fn e ->
-        extract_function_response_parts(e) != []
-      end)
+      fr_event =
+        Enum.find(events, fn e ->
+          extract_function_response_parts(e) != []
+        end)
 
       assert fr_event != nil, "Expected a function_response event"
       assert fr_event.content[:role] == :user
@@ -173,16 +177,18 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
         "The weather is sunny"
       ])
 
-      tool = make_tool("get_weather", fn _ctx, %{"city" => city} ->
-        {:ok, %{weather: "sunny", city: city}}
-      end)
+      tool =
+        make_tool("get_weather", fn _ctx, %{"city" => city} ->
+          {:ok, %{weather: "sunny", city: city}}
+        end)
 
       agent = build_agent(tools: [tool])
       events = run_agent(agent, "What's the weather in London?")
 
-      fr_event = Enum.find(events, fn e ->
-        extract_function_response_parts(e) != []
-      end)
+      fr_event =
+        Enum.find(events, fn e ->
+          extract_function_response_parts(e) != []
+        end)
 
       assert fr_event != nil
       [fr_part] = extract_function_response_parts(fr_event)
@@ -199,16 +205,18 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
         "Done"
       ])
 
-      tool = make_tool("compute", fn _ctx, %{"x" => x} ->
-        {:ok, %{value: x * 2}}
-      end)
+      tool =
+        make_tool("compute", fn _ctx, %{"x" => x} ->
+          {:ok, %{value: x * 2}}
+        end)
 
       agent = build_agent(tools: [tool])
       events = run_agent(agent, "Compute 5")
 
-      fr_event = Enum.find(events, fn e ->
-        extract_function_response_parts(e) != []
-      end)
+      fr_event =
+        Enum.find(events, fn e ->
+          extract_function_response_parts(e) != []
+        end)
 
       assert fr_event != nil
       [fr_part] = extract_function_response_parts(fr_event)
@@ -240,21 +248,24 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
         "Both tools completed"
       ])
 
-      tool_a = make_tool("tool_a", fn _ctx, %{"input" => i} ->
-        {:ok, %{output: "#{i}_done"}}
-      end)
+      tool_a =
+        make_tool("tool_a", fn _ctx, %{"input" => i} ->
+          {:ok, %{output: "#{i}_done"}}
+        end)
 
-      tool_b = make_tool("tool_b", fn _ctx, %{"input" => i} ->
-        {:ok, %{output: "#{i}_done"}}
-      end)
+      tool_b =
+        make_tool("tool_b", fn _ctx, %{"input" => i} ->
+          {:ok, %{output: "#{i}_done"}}
+        end)
 
       agent = build_agent(tools: [tool_a, tool_b])
       events = run_agent(agent, "Run both tools")
 
       # Find event with function call parts
-      fc_event = Enum.find(events, fn e ->
-        length(extract_function_call_parts(e)) >= 2
-      end)
+      fc_event =
+        Enum.find(events, fn e ->
+          length(extract_function_call_parts(e)) >= 2
+        end)
 
       assert fc_event != nil, "Expected event with multiple function_call parts"
       fc_parts = extract_function_call_parts(fc_event)
@@ -279,21 +290,24 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
         "Both done"
       ])
 
-      tool_a = make_tool("tool_a", fn _ctx, %{"x" => x} ->
-        {:ok, %{result: x + 10}}
-      end)
+      tool_a =
+        make_tool("tool_a", fn _ctx, %{"x" => x} ->
+          {:ok, %{result: x + 10}}
+        end)
 
-      tool_b = make_tool("tool_b", fn _ctx, %{"x" => x} ->
-        {:ok, %{result: x + 20}}
-      end)
+      tool_b =
+        make_tool("tool_b", fn _ctx, %{"x" => x} ->
+          {:ok, %{result: x + 20}}
+        end)
 
       agent = build_agent(tools: [tool_a, tool_b])
       events = run_agent(agent, "Run both")
 
       # Find event with function response parts
-      fr_event = Enum.find(events, fn e ->
-        length(extract_function_response_parts(e)) >= 2
-      end)
+      fr_event =
+        Enum.find(events, fn e ->
+          length(extract_function_response_parts(e)) >= 2
+        end)
 
       assert fr_event != nil, "Expected event with multiple function_response parts"
       fr_parts = extract_function_response_parts(fr_event)
@@ -319,13 +333,15 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
         "Final after two sequential calls"
       ])
 
-      step_one = make_tool("step_one", fn _ctx, %{"input" => i} ->
-        {:ok, %{output: "#{i}_processed"}}
-      end)
+      step_one =
+        make_tool("step_one", fn _ctx, %{"input" => i} ->
+          {:ok, %{output: "#{i}_processed"}}
+        end)
 
-      step_two = make_tool("step_two", fn _ctx, %{"input" => i} ->
-        {:ok, %{output: "#{i}_done"}}
-      end)
+      step_two =
+        make_tool("step_two", fn _ctx, %{"input" => i} ->
+          {:ok, %{output: "#{i}_done"}}
+        end)
 
       agent = build_agent(tools: [step_one, step_two])
       events = run_agent(agent, "Do both steps")
@@ -390,29 +406,45 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
         )
 
       # Simulate: user message → function call → function response
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv1",
-        author: "user",
-        content: %{parts: [%{text: "Search for test"}]}
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv1",
+          author: "user",
+          content: %{parts: [%{text: "Search for test"}]}
+        })
+      )
 
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv2",
-        author: "test_agent",
-        content: %{
-          role: :model,
-          parts: [%{function_call: %{name: "search_tool", args: %{"query" => "test"}}}]
-        }
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv2",
+          author: "test_agent",
+          content: %{
+            role: :model,
+            parts: [%{function_call: %{name: "search_tool", args: %{"query" => "test"}}}]
+          }
+        })
+      )
 
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv3",
-        author: "test_agent",
-        content: %{
-          role: :user,
-          parts: [%{function_response: %{name: "search_tool", response: %{results: ["item1", "item2"]}}}]
-        }
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv3",
+          author: "test_agent",
+          content: %{
+            role: :user,
+            parts: [
+              %{
+                function_response: %{
+                  name: "search_tool",
+                  response: %{results: ["item1", "item2"]}
+                }
+              }
+            ]
+          }
+        })
+      )
 
       ctx = %ADK.Context{
         invocation_id: "inv4",
@@ -462,37 +494,46 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
           session_id: sid
         )
 
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv1",
-        author: "user",
-        content: %{parts: [%{text: "Run both tools"}]}
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv1",
+          author: "user",
+          content: %{parts: [%{text: "Run both tools"}]}
+        })
+      )
 
       # Model event with two function calls
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv2",
-        author: "test_agent",
-        content: %{
-          role: :model,
-          parts: [
-            %{function_call: %{name: "tool_a", args: %{"input" => "a"}}},
-            %{function_call: %{name: "tool_b", args: %{"input" => "b"}}}
-          ]
-        }
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv2",
+          author: "test_agent",
+          content: %{
+            role: :model,
+            parts: [
+              %{function_call: %{name: "tool_a", args: %{"input" => "a"}}},
+              %{function_call: %{name: "tool_b", args: %{"input" => "b"}}}
+            ]
+          }
+        })
+      )
 
       # Response event with two function responses
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv3",
-        author: "test_agent",
-        content: %{
-          role: :user,
-          parts: [
-            %{function_response: %{name: "tool_a", response: %{result: "a_done"}}},
-            %{function_response: %{name: "tool_b", response: %{result: "b_done"}}}
-          ]
-        }
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv3",
+          author: "test_agent",
+          content: %{
+            role: :user,
+            parts: [
+              %{function_response: %{name: "tool_a", response: %{result: "a_done"}}},
+              %{function_response: %{name: "tool_b", response: %{result: "b_done"}}}
+            ]
+          }
+        })
+      )
 
       ctx = %ADK.Context{
         invocation_id: "inv4",
@@ -530,24 +571,30 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
           session_id: sid
         )
 
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv1",
-        author: "user",
-        content: %{parts: [%{text: "Do something"}]}
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv1",
+          author: "user",
+          content: %{parts: [%{text: "Do something"}]}
+        })
+      )
 
       # Model responds with text + function call in same content
-      ADK.Session.append_event(session_pid, Event.new(%{
-        invocation_id: "inv2",
-        author: "test_agent",
-        content: %{
-          role: :model,
-          parts: [
-            %{text: "I'll process this for you"},
-            %{function_call: %{name: "processor", args: %{"input" => "data"}}}
-          ]
-        }
-      }))
+      ADK.Session.append_event(
+        session_pid,
+        Event.new(%{
+          invocation_id: "inv2",
+          author: "test_agent",
+          content: %{
+            role: :model,
+            parts: [
+              %{text: "I'll process this for you"},
+              %{function_call: %{name: "processor", args: %{"input" => "data"}}}
+            ]
+          }
+        })
+      )
 
       ctx = %ADK.Context{
         invocation_id: "inv3",
@@ -595,16 +642,18 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
         "The tool failed, here's what happened"
       ])
 
-      tool = make_tool("failing_tool", fn _ctx, _args ->
-        {:error, "Something went wrong"}
-      end)
+      tool =
+        make_tool("failing_tool", fn _ctx, _args ->
+          {:error, "Something went wrong"}
+        end)
 
       agent = build_agent(tools: [tool])
       events = run_agent(agent, "Run the failing tool")
 
-      fr_event = Enum.find(events, fn e ->
-        extract_function_response_parts(e) != []
-      end)
+      fr_event =
+        Enum.find(events, fn e ->
+          extract_function_response_parts(e) != []
+        end)
 
       assert fr_event != nil, "Expected function_response event even for errors"
       [fr_part] = extract_function_response_parts(fr_event)
@@ -624,9 +673,10 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
         "I see there was an error"
       ])
 
-      tool = make_tool("crashing_tool", fn _ctx, _args ->
-        raise "Boom!"
-      end)
+      tool =
+        make_tool("crashing_tool", fn _ctx, _args ->
+          raise "Boom!"
+        end)
 
       agent = build_agent(tools: [tool])
 

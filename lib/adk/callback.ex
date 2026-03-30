@@ -46,7 +46,8 @@ defmodule ADK.Callback do
   @callback after_agent([ADK.Event.t()], callback_ctx()) :: [ADK.Event.t()]
 
   @doc "Called before a model call. Return `{:cont, callback_ctx}` to continue or `{:halt, {:ok, response}}` to short-circuit."
-  @callback before_model(callback_ctx()) :: {:cont, callback_ctx()} | {:halt, {:ok, map()} | {:error, term()}}
+  @callback before_model(callback_ctx()) ::
+              {:cont, callback_ctx()} | {:halt, {:ok, map()} | {:error, term()}}
 
   @doc "Called after a model call. Receives the response and callback context; returns (possibly transformed) response."
   @callback after_model({:ok, map()} | {:error, term()}, callback_ctx()) ::
@@ -95,7 +96,8 @@ defmodule ADK.Callback do
   Run a list of "before" callbacks in order. Returns `{:cont, callback_ctx}` if all
   callbacks continue, or `{:halt, result}` on the first halt.
   """
-  @spec run_before([module()], atom(), callback_ctx()) :: {:cont, callback_ctx()} | {:halt, term()}
+  @spec run_before([module()], atom(), callback_ctx()) ::
+          {:cont, callback_ctx()} | {:halt, term()}
   def run_before(callbacks, hook, callback_ctx) do
     Enum.reduce_while(callbacks, {:cont, callback_ctx}, fn mod, {:cont, ctx} ->
       if function_exported?(mod, hook, 1) do

@@ -5,7 +5,10 @@ defmodule ADK.LLM.CircuitBreakerTest do
 
   setup do
     name = :"cb_test_#{:erlang.unique_integer([:positive])}"
-    {:ok, pid} = CircuitBreaker.start_link(name: name, failure_threshold: 3, reset_timeout_ms: 100)
+
+    {:ok, pid} =
+      CircuitBreaker.start_link(name: name, failure_threshold: 3, reset_timeout_ms: 100)
+
     %{cb: name, pid: pid}
   end
 
@@ -36,6 +39,7 @@ defmodule ADK.LLM.CircuitBreakerTest do
       for _ <- 1..3 do
         CircuitBreaker.call(cb, fn -> {:error, :boom} end)
       end
+
       Process.sleep(10)
 
       assert {:error, :circuit_open} = CircuitBreaker.call(cb, fn -> {:ok, :nope} end)
@@ -47,6 +51,7 @@ defmodule ADK.LLM.CircuitBreakerTest do
       for _ <- 1..3 do
         CircuitBreaker.call(cb, fn -> {:error, :boom} end)
       end
+
       Process.sleep(10)
       assert :open == CircuitBreaker.get_state(cb)
 
@@ -59,6 +64,7 @@ defmodule ADK.LLM.CircuitBreakerTest do
       for _ <- 1..3 do
         CircuitBreaker.call(cb, fn -> {:error, :boom} end)
       end
+
       Process.sleep(110)
 
       assert {:ok, :recovered} = CircuitBreaker.call(cb, fn -> {:ok, :recovered} end)
@@ -70,6 +76,7 @@ defmodule ADK.LLM.CircuitBreakerTest do
       for _ <- 1..3 do
         CircuitBreaker.call(cb, fn -> {:error, :boom} end)
       end
+
       Process.sleep(110)
 
       assert {:error, :still_bad} = CircuitBreaker.call(cb, fn -> {:error, :still_bad} end)
@@ -83,6 +90,7 @@ defmodule ADK.LLM.CircuitBreakerTest do
       for _ <- 1..3 do
         CircuitBreaker.call(cb, fn -> {:error, :boom} end)
       end
+
       Process.sleep(10)
       assert :open == CircuitBreaker.get_state(cb)
 

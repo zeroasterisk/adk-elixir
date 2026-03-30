@@ -44,7 +44,9 @@ defmodule ADK.Agents.ContextCacheConfigTest do
     test "cache_intervals validation" do
       # Valid range
       assert %ContextCacheConfig{cache_intervals: 1} = ContextCacheConfig.new(cache_intervals: 1)
-      assert %ContextCacheConfig{cache_intervals: 100} = ContextCacheConfig.new(cache_intervals: 100)
+
+      assert %ContextCacheConfig{cache_intervals: 100} =
+               ContextCacheConfig.new(cache_intervals: 100)
 
       # Invalid: too low
       assert_raise RuntimeError, ~r/greater than or equal to 1/, fn ->

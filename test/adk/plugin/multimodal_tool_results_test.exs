@@ -14,7 +14,7 @@ defmodule ADK.Plugin.MultimodalToolResultsTest do
     # Simulate after_tool hook
     result = MultimodalToolResults.after_tool(%ADK.Context{}, "mock_tool", parts)
     assert result == nil
-    
+
     # State is stored in process dict
     assert Process.get(:temp_parts_returned_by_tools) == parts
 

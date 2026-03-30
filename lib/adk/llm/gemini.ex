@@ -51,8 +51,11 @@ defmodule ADK.LLM.Gemini do
 
     req_options =
       case auth do
-        {:api_key, key} -> req_options ++ [params: [key: key]]
-        {:bearer, token} -> update_in(req_options[:headers], &([{"authorization", "Bearer #{token}"} | &1]))
+        {:api_key, key} ->
+          req_options ++ [params: [key: key]]
+
+        {:bearer, token} ->
+          update_in(req_options[:headers], &[{"authorization", "Bearer #{token}"} | &1])
       end
 
     req_options =
@@ -141,8 +144,12 @@ defmodule ADK.LLM.Gemini do
     # Apply generate_config as generationConfig
     body =
       case Map.get(request, :generate_config) do
-        nil -> body
-        config when config == %{} -> body
+        nil ->
+          body
+
+        config when config == %{} ->
+          body
+
         config ->
           gen_config = %{}
           gen_config = put_if(gen_config, :temperature, config[:temperature])
@@ -234,7 +241,9 @@ defmodule ADK.LLM.Gemini do
     %{executable_code: %{language: lang, code: code}}
   end
 
-  defp parse_response_part(%{"codeExecutionResult" => %{"outcome" => outcome, "output" => output}}) do
+  defp parse_response_part(%{
+         "codeExecutionResult" => %{"outcome" => outcome, "output" => output}
+       }) do
     %{code_execution_result: %{outcome: outcome, output: output}}
   end
 

@@ -265,10 +265,9 @@ defmodule ADK.CLI.ServiceRegistryParityTest do
         ADK.Runner.new(
           app_name: "test",
           agent: agent,
-          memory_store: {ADK.Memory.Store.VertexAI,
-           project_id: "my-project",
-           location: "us-central1",
-           reasoning_engine_id: "456"}
+          memory_store:
+            {ADK.Memory.Store.VertexAI,
+             project_id: "my-project", location: "us-central1", reasoning_engine_id: "456"}
         )
 
       assert match?({ADK.Memory.Store.VertexAI, _}, runner.memory_store)

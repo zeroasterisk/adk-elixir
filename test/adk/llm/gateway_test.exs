@@ -45,12 +45,14 @@ defmodule ADK.LLM.GatewayTest do
   setup do
     # Clean up any existing gateway
     pid = Process.whereis(Gateway)
+
     if pid && Process.alive?(pid) do
       try do
         Supervisor.stop(pid, :normal)
       catch
         :exit, _ -> :ok
       end
+
       :timer.sleep(50)
     end
 
@@ -93,6 +95,7 @@ defmodule ADK.LLM.GatewayTest do
       default_backend(%{id: :fail1, backend: FailBackend, priority: 1}),
       default_backend(%{id: :mock2, backend: MockBackend, priority: 2})
     ]
+
     config = gateway_config(backends)
     {:ok, _} = Gateway.start_link(config)
 
@@ -104,6 +107,7 @@ defmodule ADK.LLM.GatewayTest do
       default_backend(%{id: :fail1, backend: FailBackend, priority: 1}),
       default_backend(%{id: :fail2, backend: FailBackend, priority: 2})
     ]
+
     config = gateway_config(backends)
     {:ok, _} = Gateway.start_link(config)
 

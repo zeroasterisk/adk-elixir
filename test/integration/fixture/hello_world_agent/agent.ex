@@ -14,7 +14,10 @@ defmodule ADK.Integration.Fixture.HelloWorldAgent do
           parameters: %{
             "type" => "object",
             "properties" => %{
-              "sides" => %{"type" => "integer", "description" => "The number of sides on the die."}
+              "sides" => %{
+                "type" => "integer",
+                "description" => "The number of sides on the die."
+              }
             },
             "required" => ["sides"]
           }
@@ -22,6 +25,7 @@ defmodule ADK.Integration.Fixture.HelloWorldAgent do
       ],
       run_fn: fn _agent, _ctx ->
         []
-      end)
+      end
+    )
   end
 end

@@ -39,7 +39,8 @@ defmodule ADK.Policy do
   @type tool_decision :: :allow | {:deny, String.t()}
 
   @doc "Authorize a tool call. Return `:allow` or `{:deny, reason}`."
-  @callback authorize_tool(tool :: map(), args :: map(), ctx :: ADK.Context.t()) :: tool_decision()
+  @callback authorize_tool(tool :: map(), args :: map(), ctx :: ADK.Context.t()) ::
+              tool_decision()
 
   @doc "Filter user input before the LLM sees it. Return `{:cont, content}` or `{:halt, [ADK.Event.t()]}`."
   @callback filter_input(content :: map(), ctx :: ADK.Context.t()) ::

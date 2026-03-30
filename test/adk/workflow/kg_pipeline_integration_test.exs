@@ -31,35 +31,52 @@ defmodule ADK.Workflow.KgPipelineIntegrationTest do
   # `extract_response` controls what the mock extractor returns.
   # `qa_pass_on` controls which attempt (1-indexed) QA passes on.
   defp build_pipeline(opts \\ []) do
-    extract_response = Keyword.get(opts, :extract_response, ~s|{"entities": ["Elixir", "OTP"], "relationships": [["Elixir", "runs_on", "OTP"]]}|)
+    extract_response =
+      Keyword.get(
+        opts,
+        :extract_response,
+        ~s|{"entities": ["Elixir", "OTP"], "relationships": [["Elixir", "runs_on", "OTP"]]}|
+      )
+
     qa_pass_on = Keyword.get(opts, :qa_pass_on, 1)
     store_agent = Keyword.get(opts, :store_agent)
 
     # Shared counter for QA attempts (to support conditional retry)
     qa_counter = :atomics.new(1, [])
 
-    ingest_step = Step.new(:ingest, fn ctx ->
-      text = ctx.temp_state[:input_text] || "Elixir runs on the OTP platform."
-      [event("ingest", text)]
-    end)
+    ingest_step =
+      Step.new(:ingest, fn ctx ->
+        text = ctx.temp_state[:input_text] || "Elixir runs on the OTP platform."
+        [event("ingest", text)]
+      end)
 
-    extract_step = Step.new_with_opts(:extract, fn _ctx ->
-      # Mock LLM extraction — returns canned JSON
-      [event("extract", extract_response)]
-    end, retry_times: 2, backoff: 1)
+    extract_step =
+      Step.new_with_opts(
+        :extract,
+        fn _ctx ->
+          # Mock LLM extraction — returns canned JSON
+          [event("extract", extract_response)]
+        end,
+        retry_times: 2,
+        backoff: 1
+      )
 
-    qa_step = Step.new(:qa, fn _ctx ->
-      attempt = :atomics.add_get(qa_counter, 1, 1)
-      if attempt >= qa_pass_on do
-        [event("qa", "QA passed", %{route: "pass"})]
-      else
-        [event("qa", "QA failed: low quality", %{route: "fail"})]
-      end
-    end)
+    qa_step =
+      Step.new(:qa, fn _ctx ->
+        attempt = :atomics.add_get(qa_counter, 1, 1)
 
-    store_step = store_agent || Step.new(:store, fn _ctx ->
-      [event("store", "Stored 2 entities, 1 relationship")]
-    end)
+        if attempt >= qa_pass_on do
+          [event("qa", "QA passed", %{route: "pass"})]
+        else
+          [event("qa", "QA failed: low quality", %{route: "fail"})]
+        end
+      end)
+
+    store_step =
+      store_agent ||
+        Step.new(:store, fn _ctx ->
+          [event("store", "Stored 2 entities, 1 relationship")]
+        end)
 
     # Graph:
     #   START → ingest → extract → qa →(pass)→ store → END
@@ -93,18 +110,21 @@ defmodule ADK.Workflow.KgPipelineIntegrationTest do
     #                       --fail--> re_extract → re_qa → store → END
     # This is a DAG (no cycles).
 
-    re_extract_step = Step.new(:re_extract, fn _ctx ->
-      [event("re_extract", extract_response)]
-    end)
+    re_extract_step =
+      Step.new(:re_extract, fn _ctx ->
+        [event("re_extract", extract_response)]
+      end)
 
-    re_qa_step = Step.new(:re_qa, fn _ctx ->
-      [event("re_qa", "QA passed on retry")]
-    end)
+    re_qa_step =
+      Step.new(:re_qa, fn _ctx ->
+        [event("re_qa", "QA passed on retry")]
+      end)
 
     # Separate store nodes to avoid join-node blocking
-    store_retry_step = Step.new(:store_retry, fn _ctx ->
-      [event("store_retry", "Stored 2 entities, 1 relationship (after retry)")]
-    end)
+    store_retry_step =
+      Step.new(:store_retry, fn _ctx ->
+        [event("store_retry", "Stored 2 entities, 1 relationship (after retry)")]
+      end)
 
     nodes = %{
       ingest: ingest_step,

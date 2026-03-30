@@ -73,8 +73,11 @@ defmodule ADK.Phoenix.Controller do
   defp plug_conn do
     # Runtime lookup to avoid compile-time dependency on Plug
     case Code.ensure_loaded(Plug.Conn) do
-      {:module, mod} -> mod
-      _ -> raise "Plug.Conn is required for ADK.Phoenix.Controller. Add :plug to your dependencies."
+      {:module, mod} ->
+        mod
+
+      _ ->
+        raise "Plug.Conn is required for ADK.Phoenix.Controller. Add :plug to your dependencies."
     end
   end
 

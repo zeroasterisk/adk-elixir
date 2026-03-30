@@ -158,7 +158,10 @@ defmodule ADK.Agent.RemoteA2aAgentParityTest do
 
           texts =
             (msg["parts"] || [])
-            |> Enum.map(fn %{"text" => t} -> t; _ -> "" end)
+            |> Enum.map(fn
+              %{"text" => t} -> t
+              _ -> ""
+            end)
             |> Enum.join("|")
 
           response = %{
@@ -478,7 +481,9 @@ defmodule ADK.Agent.RemoteA2aAgentParityTest do
       assert String.contains?(text, "Second")
     end
 
-    test "full_history_when_stateless=true with existing context only sends new events", %{url: url} do
+    test "full_history_when_stateless=true with existing context only sends new events", %{
+      url: url
+    } do
       agent =
         RemoteA2aAgent.new(
           name: "remote_agent",

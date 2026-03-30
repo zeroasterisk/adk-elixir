@@ -86,12 +86,13 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
 
       sub = LlmAgent.new(name: "sub_agent_1", model: "test", instruction: "Sub agent.")
 
-      root = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Route requests.",
-        sub_agents: [sub]
-      )
+      root =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Route requests.",
+          sub_agents: [sub]
+        )
 
       {:ok, session_pid} =
         ADK.Session.start_link(app_name: "evt-prod", user_id: "u1", session_id: unique_id("ep"))
@@ -136,12 +137,13 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
 
       helper = LlmAgent.new(name: "helper", model: "test", instruction: "Help.")
 
-      root = LlmAgent.new(
-        name: "root",
-        model: "test",
-        instruction: "Route.",
-        sub_agents: [helper]
-      )
+      root =
+        LlmAgent.new(
+          name: "root",
+          model: "test",
+          instruction: "Route.",
+          sub_agents: [helper]
+        )
 
       runner = Runner.new(app_name: "sticky", agent: root)
       sid = unique_id("sticky")
@@ -214,18 +216,20 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
         "Summary: revenue up 15%."
       ])
 
-      analyzer = LlmAgent.new(
-        name: "analyzer",
-        model: "test",
-        instruction: "Analyze data.",
-        output_key: "analysis_result"
-      )
+      analyzer =
+        LlmAgent.new(
+          name: "analyzer",
+          model: "test",
+          instruction: "Analyze data.",
+          output_key: "analysis_result"
+        )
 
-      reporter = LlmAgent.new(
-        name: "reporter",
-        model: "test",
-        instruction: "Report on: {analysis_result}"
-      )
+      reporter =
+        LlmAgent.new(
+          name: "reporter",
+          model: "test",
+          instruction: "Report on: {analysis_result}"
+        )
 
       seq = SequentialAgent.new(name: "pipeline", sub_agents: [analyzer, reporter])
 
@@ -369,12 +373,13 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
       sub1 = LlmAgent.new(name: "sub1", model: "test", instruction: "Sub 1.")
       sub2 = LlmAgent.new(name: "sub2", model: "test", instruction: "Sub 2.")
 
-      root = LlmAgent.new(
-        name: "root",
-        model: "test",
-        instruction: "Root.",
-        sub_agents: [sub1, sub2]
-      )
+      root =
+        LlmAgent.new(
+          name: "root",
+          model: "test",
+          instruction: "Root.",
+          sub_agents: [sub1, sub2]
+        )
 
       # Use find_active_agent with a fake session that has no transfer events
       {:ok, session_pid} =
@@ -426,11 +431,12 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
     test "session state set before run is available to agent via instruction template" do
       ADK.LLM.Mock.set_responses(["Hello, Alice!"])
 
-      agent = LlmAgent.new(
-        name: "greeter",
-        model: "test",
-        instruction: "Greet the user named {user_name}."
-      )
+      agent =
+        LlmAgent.new(
+          name: "greeter",
+          model: "test",
+          instruction: "Greet the user named {user_name}."
+        )
 
       {:ok, session_pid} =
         ADK.Session.start_link(
@@ -462,18 +468,20 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
         "Report: Based on research, Elixir rocks."
       ])
 
-      researcher = LlmAgent.new(
-        name: "researcher",
-        model: "test",
-        instruction: "Research.",
-        output_key: "research"
-      )
+      researcher =
+        LlmAgent.new(
+          name: "researcher",
+          model: "test",
+          instruction: "Research.",
+          output_key: "research"
+        )
 
-      reporter = LlmAgent.new(
-        name: "reporter",
-        model: "test",
-        instruction: "Report on: {research}"
-      )
+      reporter =
+        LlmAgent.new(
+          name: "reporter",
+          model: "test",
+          instruction: "Report on: {research}"
+        )
 
       seq = SequentialAgent.new(name: "pipeline", sub_agents: [researcher, reporter])
 
@@ -510,12 +518,13 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
           end
         )
 
-      agent = LlmAgent.new(
-        name: "state_agent",
-        model: "test",
-        instruction: "Manage state.",
-        tools: [mutate_tool]
-      )
+      agent =
+        LlmAgent.new(
+          name: "state_agent",
+          model: "test",
+          instruction: "Manage state.",
+          tools: [mutate_tool]
+        )
 
       {:ok, session_pid} =
         ADK.Session.start_link(
@@ -563,12 +572,13 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
       sub1 = LlmAgent.new(name: "alpha", model: "test", instruction: "A.")
       sub2 = LlmAgent.new(name: "beta", model: "test", instruction: "B.")
 
-      root = LlmAgent.new(
-        name: "root",
-        model: "test",
-        instruction: "Route.",
-        sub_agents: [sub1, sub2]
-      )
+      root =
+        LlmAgent.new(
+          name: "root",
+          model: "test",
+          instruction: "Route.",
+          sub_agents: [sub1, sub2]
+        )
 
       tools = LlmAgent.effective_tools(root)
       names = Enum.map(tools, & &1.name)
@@ -593,13 +603,14 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
 
       sub = LlmAgent.new(name: "helper", model: "test", instruction: "Help.")
 
-      agent = LlmAgent.new(
-        name: "coordinator",
-        model: "test",
-        instruction: "Coordinate.",
-        tools: [own_tool],
-        sub_agents: [sub]
-      )
+      agent =
+        LlmAgent.new(
+          name: "coordinator",
+          model: "test",
+          instruction: "Coordinate.",
+          tools: [own_tool],
+          sub_agents: [sub]
+        )
 
       tools = LlmAgent.effective_tools(agent)
       names = Enum.map(tools, & &1.name)
@@ -612,12 +623,13 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
     test "transfer tool for SequentialAgent sub-agent is also generated" do
       seq_sub = SequentialAgent.new(name: "my_pipeline", sub_agents: [])
 
-      root = LlmAgent.new(
-        name: "root",
-        model: "test",
-        instruction: "Route.",
-        sub_agents: [seq_sub]
-      )
+      root =
+        LlmAgent.new(
+          name: "root",
+          model: "test",
+          instruction: "Route.",
+          sub_agents: [seq_sub]
+        )
 
       tools = LlmAgent.effective_tools(root)
       names = Enum.map(tools, & &1.name)
@@ -626,19 +638,21 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
     end
 
     test "transfer tool declaration has correct structure" do
-      sub = LlmAgent.new(
-        name: "researcher",
-        model: "test",
-        instruction: "Research.",
-        description: "A specialized research agent"
-      )
+      sub =
+        LlmAgent.new(
+          name: "researcher",
+          model: "test",
+          instruction: "Research.",
+          description: "A specialized research agent"
+        )
 
-      root = LlmAgent.new(
-        name: "root",
-        model: "test",
-        instruction: "Route.",
-        sub_agents: [sub]
-      )
+      root =
+        LlmAgent.new(
+          name: "root",
+          model: "test",
+          instruction: "Route.",
+          sub_agents: [sub]
+        )
 
       [tool] = LlmAgent.effective_tools(root)
       decl = ADK.Tool.declaration(tool)
@@ -659,25 +673,27 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
 
   describe "disallow_transfer flags (parity: test_auto_to_single)" do
     test "agent can be created with disallow_transfer_to_parent: true" do
-      single = LlmAgent.new(
-        name: "single_agent",
-        model: "test",
-        instruction: "Do one thing.",
-        disallow_transfer_to_parent: true
-      )
+      single =
+        LlmAgent.new(
+          name: "single_agent",
+          model: "test",
+          instruction: "Do one thing.",
+          disallow_transfer_to_parent: true
+        )
 
       assert single.disallow_transfer_to_parent == true
       assert single.disallow_transfer_to_peers == false
     end
 
     test "agent can be created with both disallow flags set" do
-      single = LlmAgent.new(
-        name: "single_agent",
-        model: "test",
-        instruction: "Do one thing.",
-        disallow_transfer_to_parent: true,
-        disallow_transfer_to_peers: true
-      )
+      single =
+        LlmAgent.new(
+          name: "single_agent",
+          model: "test",
+          instruction: "Do one thing.",
+          disallow_transfer_to_parent: true,
+          disallow_transfer_to_peers: true
+        )
 
       assert single.disallow_transfer_to_parent == true
       assert single.disallow_transfer_to_peers == true
@@ -691,13 +707,14 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
     end
 
     test "single-turn agent (disallow both) has no transfer tools when no sub-agents" do
-      single = LlmAgent.new(
-        name: "single",
-        model: "test",
-        instruction: "Single turn.",
-        disallow_transfer_to_parent: true,
-        disallow_transfer_to_peers: true
-      )
+      single =
+        LlmAgent.new(
+          name: "single",
+          model: "test",
+          instruction: "Single turn.",
+          disallow_transfer_to_parent: true,
+          disallow_transfer_to_peers: true
+        )
 
       # No sub-agents → no transfer tools
       assert LlmAgent.effective_tools(single) == []
@@ -706,14 +723,15 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
     test "agent with sub-agents and disallow flags still generates sub-agent transfer tools" do
       child = LlmAgent.new(name: "child", model: "test", instruction: "Child.")
 
-      parent = LlmAgent.new(
-        name: "parent",
-        model: "test",
-        instruction: "Parent.",
-        sub_agents: [child],
-        disallow_transfer_to_parent: true,
-        disallow_transfer_to_peers: true
-      )
+      parent =
+        LlmAgent.new(
+          name: "parent",
+          model: "test",
+          instruction: "Parent.",
+          sub_agents: [child],
+          disallow_transfer_to_parent: true,
+          disallow_transfer_to_peers: true
+        )
 
       tools = LlmAgent.effective_tools(parent)
       names = Enum.map(tools, & &1.name)
@@ -767,12 +785,13 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
     end
 
     test "output_key is saved to session after Runner.run" do
-      agent = LlmAgent.new(
-        name: "outputter",
-        model: "test",
-        instruction: "Generate output.",
-        output_key: "last_response"
-      )
+      agent =
+        LlmAgent.new(
+          name: "outputter",
+          model: "test",
+          instruction: "Generate output.",
+          output_key: "last_response"
+        )
 
       runner = Runner.new(app_name: "output-key", agent: agent)
       sid = unique_id("ok")
@@ -798,12 +817,13 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
       sub1 = LlmAgent.new(name: "sub_agent_1", model: "test", instruction: "Sub 1.")
       sub2 = LlmAgent.new(name: "sub_agent_2", model: "test", instruction: "Sub 2.")
 
-      root = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Route.",
-        sub_agents: [sub1, sub2]
-      )
+      root =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Route.",
+          sub_agents: [sub1, sub2]
+        )
 
       tools = LlmAgent.effective_tools(root)
       names = Enum.map(tools, & &1.name)
@@ -817,12 +837,13 @@ defmodule ADK.Agent.MultiAgentTransferParityTest do
       sub1 = LlmAgent.new(name: "sub_agent_1", model: "test", instruction: "Sub 1.")
       sub2 = LlmAgent.new(name: "sub_agent_2", model: "test", instruction: "Sub 2.")
 
-      root = LlmAgent.new(
-        name: "root_agent",
-        model: "test",
-        instruction: "Route.",
-        sub_agents: [sub1, sub2]
-      )
+      root =
+        LlmAgent.new(
+          name: "root_agent",
+          model: "test",
+          instruction: "Route.",
+          sub_agents: [sub1, sub2]
+        )
 
       runner = Runner.new(app_name: "circ", agent: root)
       sid = unique_id("circ")

@@ -1,4 +1,3 @@
-
 defmodule Adk.Phoenix.AdkWebServerRunLiveTest do
   use ExUnit.Case, async: true
 
@@ -57,15 +56,15 @@ defmodule Adk.Phoenix.AdkWebServerRunLiveTest do
 
   for {query, expected_enable_affective, expected_proactive_audio,
        expected_session_resumption_transparent} <-
-      [
-        [%{}, nil, nil, nil],
-        [%{"proactive_audio" => "true"}, nil, true, nil],
-        [%{"proactive_audio" => "false"}, nil, false, nil],
-        [%{"enable_affective_dialog" => "true"}, true, nil, nil],
-        [%{"enable_affective_dialog" => "false"}, false, nil, nil],
-        [%{"enable_session_resumption" => "true"}, nil, nil, true],
-        [%{"enable_session_resumption" => "false"}, nil, nil, false]
-      ] do
+        [
+          [%{}, nil, nil, nil],
+          [%{"proactive_audio" => "true"}, nil, true, nil],
+          [%{"proactive_audio" => "false"}, nil, false, nil],
+          [%{"enable_affective_dialog" => "true"}, true, nil, nil],
+          [%{"enable_affective_dialog" => "false"}, false, nil, nil],
+          [%{"enable_session_resumption" => "true"}, nil, nil, true],
+          [%{"enable_session_resumption" => "false"}, nil, nil, false]
+        ] do
     test "run_live defaults and individual options with query #{inspect(query)}" do
       params =
         %{

@@ -4,7 +4,8 @@ defmodule ADK.LLM.Gateway.KeyPoolTest do
   alias ADK.LLM.Gateway.{Auth, KeyPool}
 
   defp make_keys(n) do
-    for i <- 1..n, do: %Auth{type: :api_key, source: {:static, "key-#{i}"}, resolved_token: "key-#{i}"}
+    for i <- 1..n,
+        do: %Auth{type: :api_key, source: {:static, "key-#{i}"}, resolved_token: "key-#{i}"}
   end
 
   defp start_pool(keys, opts \\ []) do

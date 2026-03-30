@@ -17,7 +17,9 @@ defmodule ADK.CallbackOnModelErrorTest do
 
     @impl true
     def on_model_error({:error, _reason}, _callback_ctx) do
-      {:fallback, {:ok, %{content: %{role: :model, parts: [%{text: "fallback response"}]}, usage_metadata: nil}}}
+      {:fallback,
+       {:ok,
+        %{content: %{role: :model, parts: [%{text: "fallback response"}]}, usage_metadata: nil}}}
     end
   end
 
@@ -63,7 +65,10 @@ defmodule ADK.CallbackOnModelErrorTest do
 
     test "first non-error callback wins" do
       cb_ctx = %{agent: nil, context: nil}
-      result = Callback.run_on_error([PassthroughCallback, FallbackCallback], {:error, :boom}, cb_ctx)
+
+      result =
+        Callback.run_on_error([PassthroughCallback, FallbackCallback], {:error, :boom}, cb_ctx)
+
       assert {:fallback, _} = result
     end
   end

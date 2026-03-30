@@ -30,7 +30,6 @@ defmodule ADK.Flows.LlmFlows.RequestConfirmation do
 
   alias ADK.Event
   alias ADK.Tool.Confirmation
-  
 
   @request_confirmation_function_call_name "adk_request_confirmation"
 
@@ -47,7 +46,9 @@ defmodule ADK.Flows.LlmFlows.RequestConfirmation do
   @spec run(list(Event.t()), ADK.Agent.t(), ADK.Context.t()) :: process_result()
   def run(events, agent, ctx) do
     case find_confirmations(events) do
-      [] -> :noop
+      [] ->
+        :noop
+
       confirmations ->
         case resolve_and_reexecute(events, confirmations, agent, ctx) do
           nil -> :noop
@@ -62,7 +63,9 @@ defmodule ADK.Flows.LlmFlows.RequestConfirmation do
     |> Enum.reverse()
     |> Enum.find(fn e -> e.author == "user" end)
     |> case do
-      nil -> []
+      nil ->
+        []
+
       event ->
         event
         |> Event.function_responses()
@@ -75,7 +78,11 @@ defmodule ADK.Flows.LlmFlows.RequestConfirmation do
 
   defp parse_confirmation(response) when is_map(response) do
     # Handle the ADK {'response': json_string} wrapper if present
-    data = if Map.has_key?(response, "response"), do: Jason.decode!(response["response"]), else: response
+    data =
+      if Map.has_key?(response, "response"),
+        do: Jason.decode!(response["response"]),
+        else: response
+
     Confirmation.from_map(data)
   end
 
@@ -94,9 +101,12 @@ defmodule ADK.Flows.LlmFlows.RequestConfirmation do
       end)
 
     case target do
-      nil -> nil
+      nil ->
+        nil
+
       fc ->
         conf = Map.get(confirmation_map, fc["id"])
+
         if conf.confirmed do
           # Re-execute the original tool call
           original_fc = fc["args"]["originalFunctionCall"]
@@ -121,16 +131,19 @@ defmodule ADK.Flows.LlmFlows.RequestConfirmation do
         author: agent.name,
         content: %{
           role: :model,
-          parts: [%{
-            function_response: %{
-              name: tool.name,
-              id: fc["id"],
-              response: case res do
-                {:ok, val} -> val
-                {:error, reason} -> %{"error" => inspect(reason)}
-              end
+          parts: [
+            %{
+              function_response: %{
+                name: tool.name,
+                id: fc["id"],
+                response:
+                  case res do
+                    {:ok, val} -> val
+                    {:error, reason} -> %{"error" => inspect(reason)}
+                  end
+              }
             }
-          }]
+          ]
         }
       })
     end

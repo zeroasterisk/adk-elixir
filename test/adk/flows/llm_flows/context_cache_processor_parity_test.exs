@@ -129,11 +129,11 @@ defmodule ADK.Flows.LlmFlows.ContextCacheProcessorParityTest do
 
     CacheMetadata.new(
       cache_name: "projects/test/locations/us-central1/cachedContents/#{cache_name}",
-      expire_time: (now + 1800) + 0.0,
+      expire_time: now + 1800 + 0.0,
       fingerprint: "test_fingerprint",
       invocations_used: invocations_used,
       contents_count: contents_count,
-      created_at: (now - 600) + 0.0
+      created_at: now - 600 + 0.0
     )
   end
 

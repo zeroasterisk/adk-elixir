@@ -168,7 +168,9 @@ defmodule ADK.Flows.ModelCallbacksParityTest do
     """
     test "replaces model response with callback response" do
       model_response = make_response("model_response")
-      result = ADK.Callback.run_after([MockAfterModelCallback], :after_model, model_response, make_ctx())
+
+      result =
+        ADK.Callback.run_after([MockAfterModelCallback], :after_model, model_response, make_ctx())
 
       assert response_text(result) == "after_model_callback"
     end

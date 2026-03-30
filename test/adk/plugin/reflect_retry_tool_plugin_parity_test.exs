@@ -245,10 +245,11 @@ defmodule ADK.Plugin.ReflectRetryToolParityTest do
       %{text: "response1"}
     ])
 
-        case ADK.Plugin.Registry.start_link() do
+    case ADK.Plugin.Registry.start_link() do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> :ok
     end
+
     ADK.Plugin.Registry.clear()
     ADK.Plugin.Registry.register(ADK.Plugin.ReflectRetryTool)
 

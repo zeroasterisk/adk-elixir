@@ -182,10 +182,16 @@ defmodule ADK.CLI.FastApiParityTest do
     end
 
     test "streaming response body contains data: lines on success" do
-      conn = router_call(:post, "/api/chat/stream", %{"message" => "hello", "session_id" => "stream-sess"})
+      conn =
+        router_call(:post, "/api/chat/stream", %{
+          "message" => "hello",
+          "session_id" => "stream-sess"
+        })
 
       if conn.status == 200 do
-        sse_lines = conn.resp_body |> String.split("\n") |> Enum.filter(&String.starts_with?(&1, "data: "))
+        sse_lines =
+          conn.resp_body |> String.split("\n") |> Enum.filter(&String.starts_with?(&1, "data: "))
+
         # At minimum a session event should be present
         assert length(sse_lines) >= 1
 
@@ -520,24 +526,26 @@ defmodule ADK.CLI.FastApiParityTest do
 
   describe "ADK.A2A.AgentCard — agent card generation" do
     test "from_agent/2 returns a map with name" do
-      agent = ADK.Agent.LlmAgent.new(
-        name: "card_agent",
-        model: "test",
-        instruction: "test",
-        description: "A card agent"
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "card_agent",
+          model: "test",
+          instruction: "test",
+          description: "A card agent"
+        )
 
       card = AgentCard.from_agent(agent, url: "http://localhost:4000/a2a")
       assert card["name"] == "card_agent"
     end
 
     test "from_agent/2 includes description" do
-      agent = ADK.Agent.LlmAgent.new(
-        name: "described",
-        model: "test",
-        instruction: "do stuff",
-        description: "Does stuff well"
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "described",
+          model: "test",
+          instruction: "do stuff",
+          description: "Does stuff well"
+        )
 
       card = AgentCard.from_agent(agent, url: "http://example.com/a2a")
       assert card["description"] == "Does stuff well"
@@ -561,17 +569,19 @@ defmodule ADK.CLI.FastApiParityTest do
     end
 
     test "from_agent/2 generates skills from tools" do
-      tool = ADK.Tool.FunctionTool.new("greet",
-        description: "Says hello",
-        func: fn _ctx, _args -> {:ok, "hi"} end
-      )
+      tool =
+        ADK.Tool.FunctionTool.new("greet",
+          description: "Says hello",
+          func: fn _ctx, _args -> {:ok, "hi"} end
+        )
 
-      agent = ADK.Agent.LlmAgent.new(
-        name: "tool_agent",
-        model: "t",
-        instruction: "i",
-        tools: [tool]
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "tool_agent",
+          model: "t",
+          instruction: "i",
+          tools: [tool]
+        )
 
       card = AgentCard.from_agent(agent, url: "http://localhost/a2a")
       skills = card["skills"]
@@ -598,11 +608,12 @@ defmodule ADK.CLI.FastApiParityTest do
     end
 
     test "Custom agent card includes agent name" do
-      custom_agent = ADK.Agent.Custom.new(
-        name: "custom_a2a",
-        description: "Custom A2A agent",
-        run_fn: fn _a, _c -> [] end
-      )
+      custom_agent =
+        ADK.Agent.Custom.new(
+          name: "custom_a2a",
+          description: "Custom A2A agent",
+          run_fn: fn _a, _c -> [] end
+        )
 
       card = AgentCard.from_agent(custom_agent, url: "http://localhost/a2a")
       assert card["name"] == "custom_a2a"

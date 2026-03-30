@@ -11,7 +11,8 @@ defmodule ADK.LLM.TestHelperTest do
 
   describe "mock_tool_call/2" do
     test "builds a function call response" do
-      assert {:ok, %{content: %{parts: [%{function_call: %{name: "search", args: %{"q" => "x"}}}]}}} =
+      assert {:ok,
+              %{content: %{parts: [%{function_call: %{name: "search", args: %{"q" => "x"}}}]}}} =
                mock_tool_call("search", %{"q" => "x"})
     end
   end
@@ -49,7 +50,9 @@ defmodule ADK.LLM.TestHelperTest do
       setup_mock_llm([])
 
       assert {:ok, %{content: %{parts: [%{text: "Mock: " <> _}]}}} =
-               ADK.LLM.MockBackend.generate("m", %{messages: [%{role: :user, parts: [%{text: "hi"}]}]})
+               ADK.LLM.MockBackend.generate("m", %{
+                 messages: [%{role: :user, parts: [%{text: "hi"}]}]
+               })
     end
   end
 

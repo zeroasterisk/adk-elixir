@@ -142,10 +142,11 @@ defmodule ADK.RunConfigTest do
   end
 
   test "new/1 accepts audio transcription configs" do
-    config = RunConfig.new(
-      output_audio_transcription: %{language: "en"},
-      input_audio_transcription: %{language: "fr"}
-    )
+    config =
+      RunConfig.new(
+        output_audio_transcription: %{language: "en"},
+        input_audio_transcription: %{language: "fr"}
+      )
 
     assert config.output_audio_transcription == %{language: "en"}
     assert config.input_audio_transcription == %{language: "fr"}
@@ -177,12 +178,14 @@ defmodule ADK.RunConfigTest do
   end
 
   test "all new fields round-trip through Context" do
-    config = RunConfig.new(
-      output_config: %{response_mime_type: "application/json"},
-      response_modalities: ["text"],
-      support_cfc: true,
-      custom_metadata: %{foo: "bar"}
-    )
+    config =
+      RunConfig.new(
+        output_config: %{response_mime_type: "application/json"},
+        response_modalities: ["text"],
+        support_cfc: true,
+        custom_metadata: %{foo: "bar"}
+      )
+
     ctx = %ADK.Context{invocation_id: "test", run_config: config}
     assert ctx.run_config.output_config == %{response_mime_type: "application/json"}
     assert ctx.run_config.response_modalities == ["text"]

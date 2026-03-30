@@ -106,6 +106,7 @@ defmodule ADK.Tool.GoogleApiTool.GoogleApiToOpenApiConverter do
 
   defp convert_schemas(api_spec) do
     schemas = Map.get(api_spec, "schemas", %{})
+
     Enum.reduce(schemas, %{}, fn {name, def}, acc ->
       Map.put(acc, name, convert_schema_object(def))
     end)
@@ -118,14 +119,16 @@ defmodule ADK.Tool.GoogleApiTool.GoogleApiToOpenApiConverter do
       case Map.get(schema_def, "type") do
         "object" ->
           r = Map.put(result, "type", "object")
-          
+
           properties = Map.get(schema_def, "properties", %{})
+
           r =
             if map_size(properties) > 0 do
               converted_props =
                 Enum.reduce(properties, %{}, fn {name, pdef}, acc ->
                   Map.put(acc, name, convert_schema_object(pdef))
                 end)
+
               Map.put(r, "properties", converted_props)
             else
               r
@@ -144,6 +147,7 @@ defmodule ADK.Tool.GoogleApiTool.GoogleApiToOpenApiConverter do
         "array" ->
           r = Map.put(result, "type", "array")
           items = Map.get(schema_def, "items")
+
           if items do
             Map.put(r, "items", convert_schema_object(items))
           else
@@ -160,14 +164,16 @@ defmodule ADK.Tool.GoogleApiTool.GoogleApiToOpenApiConverter do
             %{"type" => "null"}
           ])
 
-        nil -> result
-        
+        nil ->
+          result
+
         type ->
           Map.put(result, "type", type)
       end
 
     # Handle refs
     ref = Map.get(schema_def, "$ref")
+
     result =
       if ref do
         ref_formatted =
@@ -176,6 +182,7 @@ defmodule ADK.Tool.GoogleApiTool.GoogleApiToOpenApiConverter do
           else
             "#/components/schemas/" <> ref
           end
+
         Map.put(result, "$ref", ref_formatted)
       else
         result
@@ -219,13 +226,13 @@ defmodule ADK.Tool.GoogleApiTool.GoogleApiToOpenApiConverter do
       rest_path = if String.starts_with?(rest_path, "/"), do: rest_path, else: "/" <> rest_path
 
       path_params = extract_path_parameters(rest_path)
-      
+
       paths = Map.get(spec_acc, "paths", %{})
       path_entry = Map.get(paths, rest_path, %{})
-      
+
       operation = convert_operation(method_data, path_params)
       path_entry = Map.put(path_entry, http_method, operation)
-      
+
       Map.put(spec_acc, "paths", Map.put(paths, rest_path, path_entry))
     end)
   end
@@ -233,7 +240,9 @@ defmodule ADK.Tool.GoogleApiTool.GoogleApiToOpenApiConverter do
   defp extract_path_parameters(path) do
     path
     |> String.split("/")
-    |> Enum.filter(fn segment -> String.starts_with?(segment, "{") and String.ends_with?(segment, "}") end)
+    |> Enum.filter(fn segment ->
+      String.starts_with?(segment, "{") and String.ends_with?(segment, "}")
+    end)
     |> Enum.map(fn segment -> String.slice(segment, 1..-2//1) end)
   end
 
@@ -253,36 +262,41 @@ defmodule ADK.Tool.GoogleApiTool.GoogleApiToOpenApiConverter do
       }
     }
 
-    params = Enum.map(path_params, fn param_name ->
-      %{
-        "name" => param_name,
-        "in" => "path",
-        "required" => true,
-        "schema" => %{"type" => "string"}
-      }
-    end)
+    params =
+      Enum.map(path_params, fn param_name ->
+        %{
+          "name" => param_name,
+          "in" => "path",
+          "required" => true,
+          "schema" => %{"type" => "string"}
+        }
+      end)
 
     query_params = Map.get(method_data, "parameters", %{})
-    params = Enum.reduce(query_params, params, fn {param_name, param_data}, acc ->
-      if param_name in path_params do
-        acc
-      else
-        param = %{
-          "name" => param_name,
-          "in" => Map.get(param_data, "location", "query"),
-          "description" => Map.get(param_data, "description", ""),
-          "required" => Map.get(param_data, "required", false),
-          "schema" => convert_parameter_schema(param_data)
-        }
-        acc ++ [param]
-      end
-    end)
+
+    params =
+      Enum.reduce(query_params, params, fn {param_name, param_data}, acc ->
+        if param_name in path_params do
+          acc
+        else
+          param = %{
+            "name" => param_name,
+            "in" => Map.get(param_data, "location", "query"),
+            "description" => Map.get(param_data, "description", ""),
+            "required" => Map.get(param_data, "required", false),
+            "schema" => convert_parameter_schema(param_data)
+          }
+
+          acc ++ [param]
+        end
+      end)
 
     operation = Map.put(operation, "parameters", params)
 
     operation =
       if Map.has_key?(method_data, "request") do
         request_ref = Map.get(method_data["request"], "$ref", "")
+
         if request_ref != "" do
           openapi_ref =
             if String.starts_with?(request_ref, "#") do
@@ -306,6 +320,7 @@ defmodule ADK.Tool.GoogleApiTool.GoogleApiToOpenApiConverter do
     operation =
       if Map.has_key?(method_data, "response") do
         response_ref = Map.get(method_data["response"], "$ref", "")
+
         if response_ref != "" do
           openapi_ref =
             if String.starts_with?(response_ref, "#") do
@@ -315,9 +330,11 @@ defmodule ADK.Tool.GoogleApiTool.GoogleApiToOpenApiConverter do
             end
 
           responses = operation["responses"]
-          responses_200 = Map.put(responses["200"], "content", %{
-            "application/json" => %{"schema" => %{"$ref" => openapi_ref}}
-          })
+
+          responses_200 =
+            Map.put(responses["200"], "content", %{
+              "application/json" => %{"schema" => %{"$ref" => openapi_ref}}
+            })
 
           Map.put(operation, "responses", Map.put(responses, "200", responses_200))
         else
@@ -328,6 +345,7 @@ defmodule ADK.Tool.GoogleApiTool.GoogleApiToOpenApiConverter do
       end
 
     scopes = Map.get(method_data, "scopes", [])
+
     if length(scopes) > 0 do
       Map.put(operation, "security", [%{"oauth2" => scopes}])
     else
@@ -337,7 +355,7 @@ defmodule ADK.Tool.GoogleApiTool.GoogleApiToOpenApiConverter do
 
   defp convert_parameter_schema(param_data) do
     schema = %{}
-    
+
     schema = Map.put(schema, "type", Map.get(param_data, "type", "string"))
     schema = put_if_present(schema, param_data, "enum")
     schema = put_if_present(schema, param_data, "format")

@@ -47,17 +47,19 @@ defmodule ADK.Runner.StreamingTest do
         "The time is now!"
       ])
 
-      get_time = ADK.Tool.FunctionTool.new("get_time",
-        description: "Get current time",
-        func: fn _ctx, _args -> {:ok, "12:00 PM"} end
-      )
+      get_time =
+        ADK.Tool.FunctionTool.new("get_time",
+          description: "Get current time",
+          func: fn _ctx, _args -> {:ok, "12:00 PM"} end
+        )
 
-      agent = ADK.Agent.LlmAgent.new(
-        name: "bot",
-        model: "test",
-        instruction: "Help with time",
-        tools: [get_time]
-      )
+      agent =
+        ADK.Agent.LlmAgent.new(
+          name: "bot",
+          model: "test",
+          instruction: "Help with time",
+          tools: [get_time]
+        )
 
       runner = ADK.Runner.new(app_name: "stream_test", agent: agent)
       test_pid = self()

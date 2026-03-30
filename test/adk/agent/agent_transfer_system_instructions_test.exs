@@ -90,7 +90,8 @@ defmodule ADK.Agent.AgentTransferSystemInstructionsTest do
     end
 
     test "transfer instruction contains delegation guidance" do
-      sub = LlmAgent.new(name: "specialist", model: "test", description: "Handles specialist tasks")
+      sub =
+        LlmAgent.new(name: "specialist", model: "test", description: "Handles specialist tasks")
 
       agent =
         LlmAgent.new(

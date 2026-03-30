@@ -51,6 +51,7 @@ defmodule ADK.LLM.Gateway.Stats do
   @spec get_all_stats() :: map()
   def get_all_stats do
     all = :ets.tab2list(@table)
+
     all
     |> Enum.map(fn {_k, v} -> v end)
     |> Enum.group_by(& &1.backend_id)
@@ -90,7 +91,16 @@ defmodule ADK.LLM.Gateway.Stats do
     end
   end
 
-  defp aggregate([]), do: %{total_requests: 0, total_tokens: 0, rpm: 0, tpm: 0, error_rate: 0.0, p50_latency: 0, p95_latency: 0}
+  defp aggregate([]),
+    do: %{
+      total_requests: 0,
+      total_tokens: 0,
+      rpm: 0,
+      tpm: 0,
+      error_rate: 0.0,
+      p50_latency: 0,
+      p95_latency: 0
+    }
 
   defp aggregate(entries) do
     now = System.monotonic_time(:millisecond)
@@ -119,6 +129,7 @@ defmodule ADK.LLM.Gateway.Stats do
   end
 
   defp percentile([], _), do: 0
+
   defp percentile(sorted, p) do
     idx = max(0, round(p * length(sorted)) - 1)
     Enum.at(sorted, idx, 0)

@@ -30,7 +30,9 @@ defmodule ADK.SystemInstruction do
     Regex.replace(~r/\{([^}]+)\}/, template, fn _, var ->
       val =
         case Map.fetch(context, var) do
-          {:ok, v} -> v
+          {:ok, v} ->
+            v
+
           :error ->
             try do
               Map.get(context, String.to_existing_atom(var))
@@ -38,6 +40,7 @@ defmodule ADK.SystemInstruction do
               ArgumentError -> nil
             end
         end
+
       serialize(val)
     end)
   end

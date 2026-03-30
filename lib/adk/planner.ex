@@ -8,10 +8,12 @@ defmodule ADK.Planner do
   @doc """
   Builds the system instruction to be appended to the LLM request for planning.
   """
-  @callback build_planning_instruction(ctx :: ADK.Context.t(), request :: map()) :: String.t() | nil
+  @callback build_planning_instruction(ctx :: ADK.Context.t(), request :: map()) ::
+              String.t() | nil
 
   @doc """
   Processes the LLM response for planning, extracting/modifying parts.
   """
-  @callback process_planning_response(ctx :: ADK.Context.t(), parts :: list(map())) :: list(map()) | nil
+  @callback process_planning_response(ctx :: ADK.Context.t(), parts :: list(map())) ::
+              list(map()) | nil
 end

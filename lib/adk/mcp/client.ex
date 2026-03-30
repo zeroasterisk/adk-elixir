@@ -166,7 +166,9 @@ defmodule ADK.MCP.Client do
     case wait_for_response(state.port, id, 10_000) do
       {:ok, result, state_updates} ->
         # Send initialized notification
-        notification = Jason.encode!(%{"jsonrpc" => "2.0", "method" => "notifications/initialized"})
+        notification =
+          Jason.encode!(%{"jsonrpc" => "2.0", "method" => "notifications/initialized"})
+
         send_line(state.port, notification)
 
         {:ok,
@@ -217,7 +219,9 @@ defmodule ADK.MCP.Client do
 
   defp handle_message(%{"id" => id, "result" => result}, state) do
     case Map.pop(state.pending, id) do
-      {nil, _} -> state
+      {nil, _} ->
+        state
+
       {from, pending} ->
         GenServer.reply(from, {:ok, result})
         %{state | pending: pending}
@@ -226,7 +230,9 @@ defmodule ADK.MCP.Client do
 
   defp handle_message(%{"id" => id, "error" => error}, state) do
     case Map.pop(state.pending, id) do
-      {nil, _} -> state
+      {nil, _} ->
+        state
+
       {from, pending} ->
         GenServer.reply(from, {:error, error})
         %{state | pending: pending}

@@ -119,10 +119,11 @@ defmodule ADK.Workflow.Graph.Mutation do
   defp validate_edge_refs(%Graph{nodes: nodes}, edge) do
     known = MapSet.new(Map.keys(nodes))
 
-    refs = case edge do
-      {from, %{} = routes} -> [from | Map.values(routes)]
-      {from, to} -> [from, to]
-    end
+    refs =
+      case edge do
+        {from, %{} = routes} -> [from | Map.values(routes)]
+        {from, to} -> [from, to]
+      end
 
     missing = Enum.reject(refs, &MapSet.member?(known, &1))
 

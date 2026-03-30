@@ -42,23 +42,24 @@ defmodule ADK.Eval.SingleAgentParityTest do
   # Mirrors Python's home_automation_agent fixture: turn off device_2.
   # The mock LLM will first do a tool call, then reply with text.
   defp home_automation_agent do
-    set_device_info = ADK.Tool.FunctionTool.new(:set_device_info,
-      description: "Update an AC device's status and/or location.",
-      func: fn args ->
-        device_id = Map.get(args, "device_id", "unknown")
-        status = Map.get(args, "status", "")
-        "Device #{device_id} information updated: status -> #{status}."
-      end,
-      parameters: %{
-        "type" => "object",
-        "properties" => %{
-          "device_id" => %{"type" => "string"},
-          "status"    => %{"type" => "string"},
-          "location"  => %{"type" => "string"}
-        },
-        "required" => ["device_id"]
-      }
-    )
+    set_device_info =
+      ADK.Tool.FunctionTool.new(:set_device_info,
+        description: "Update an AC device's status and/or location.",
+        func: fn args ->
+          device_id = Map.get(args, "device_id", "unknown")
+          status = Map.get(args, "status", "")
+          "Device #{device_id} information updated: status -> #{status}."
+        end,
+        parameters: %{
+          "type" => "object",
+          "properties" => %{
+            "device_id" => %{"type" => "string"},
+            "status" => %{"type" => "string"},
+            "location" => %{"type" => "string"}
+          },
+          "required" => ["device_id"]
+        }
+      )
 
     LlmAgent.new(
       name: "home_automation_agent",
@@ -90,7 +91,7 @@ defmodule ADK.Eval.SingleAgentParityTest do
               "type" => "object",
               "properties" => %{
                 "device_id" => %{"type" => "string"},
-                "status"    => %{"type" => "string"}
+                "status" => %{"type" => "string"}
               },
               "required" => ["device_id"]
             }
@@ -102,20 +103,21 @@ defmodule ADK.Eval.SingleAgentParityTest do
 
   # hello_world_agent: rolls a die. Mirrors the async agent fixture.
   defp hello_world_agent do
-    roll_die = ADK.Tool.FunctionTool.new(:roll_die,
-      description: "Roll a die with a given number of sides.",
-      func: fn args ->
-        sides = Map.get(args, "sides", 6)
-        "You rolled a #{Enum.random(1..sides)}"
-      end,
-      parameters: %{
-        "type" => "object",
-        "properties" => %{
-          "sides" => %{"type" => "integer"}
-        },
-        "required" => ["sides"]
-      }
-    )
+    roll_die =
+      ADK.Tool.FunctionTool.new(:roll_die,
+        description: "Roll a die with a given number of sides.",
+        func: fn args ->
+          sides = Map.get(args, "sides", 6)
+          "You rolled a #{Enum.random(1..sides)}"
+        end,
+        parameters: %{
+          "type" => "object",
+          "properties" => %{
+            "sides" => %{"type" => "integer"}
+          },
+          "required" => ["sides"]
+        }
+      )
 
     LlmAgent.new(
       name: "hello_world_agent",
@@ -150,7 +152,12 @@ defmodule ADK.Eval.SingleAgentParityTest do
         %{score: 1.0, pass: true, details: "Tool #{tool_name} was called."}
       else
         names = Enum.map(calls, fn %{function_call: fc} -> fc[:name] || fc["name"] end)
-        %{score: 0.0, pass: false, details: "Tool #{tool_name} not called. Got: #{inspect(names)}"}
+
+        %{
+          score: 0.0,
+          pass: false,
+          details: "Tool #{tool_name} not called. Got: #{inspect(names)}"
+        }
       end
     end
   end
@@ -163,7 +170,13 @@ defmodule ADK.Eval.SingleAgentParityTest do
   test "test_eval_agent: single-turn eval with tool call passes scorer" do
     # Mock: first call is a function call; second call is the final text reply.
     ADK.LLM.Mock.set_responses([
-      %{function_call: %{name: "set_device_info", args: %{"device_id" => "device_2", "status" => "OFF"}, id: "fc-1"}},
+      %{
+        function_call: %{
+          name: "set_device_info",
+          args: %{"device_id" => "device_2", "status" => "OFF"},
+          id: "fc-1"
+        }
+      },
       "Device device_2 has been turned OFF."
     ])
 
@@ -181,6 +194,7 @@ defmodule ADK.Eval.SingleAgentParityTest do
     report = Eval.run(runner, cases)
 
     assert report.total == 1
+
     assert report.passed == 1,
            "Expected 1 passed, got #{report.passed}. Details: #{inspect(report.results)}"
   end
@@ -192,7 +206,13 @@ defmodule ADK.Eval.SingleAgentParityTest do
 
   test "test_eval_agent_with_agent_suffix_in_module_name: agent callable via .agent/0" do
     ADK.LLM.Mock.set_responses([
-      %{function_call: %{name: "set_device_info", args: %{"device_id" => "device_1", "status" => "ON"}, id: "fc-2"}},
+      %{
+        function_call: %{
+          name: "set_device_info",
+          args: %{"device_id" => "device_1", "status" => "ON"},
+          id: "fc-2"
+        }
+      },
       "Device device_1 has been turned ON."
     ])
 
@@ -211,6 +231,7 @@ defmodule ADK.Eval.SingleAgentParityTest do
     report = Eval.run(runner, cases)
 
     assert report.total == 1
+
     assert report.passed == 1,
            "Expected 1 passed. Details: #{inspect(report.results)}"
   end
@@ -240,6 +261,7 @@ defmodule ADK.Eval.SingleAgentParityTest do
     report = Eval.run(runner, cases)
 
     assert report.total == 1
+
     assert report.passed == 1,
            "Expected 1 passed. Details: #{inspect(report.results)}"
   end
@@ -253,12 +275,20 @@ defmodule ADK.Eval.SingleAgentParityTest do
     # Set up 4 responses for 4 independent runs
     for _i <- 1..4 do
       ADK.LLM.Mock.set_responses([
-        %{function_call: %{name: "set_device_info", args: %{"device_id" => "device_2", "status" => "OFF"}, id: "fc-multi"}},
+        %{
+          function_call: %{
+            name: "set_device_info",
+            args: %{"device_id" => "device_2", "status" => "OFF"},
+            id: "fc-multi"
+          }
+        },
         "Device device_2 status updated: status -> OFF."
       ])
 
       agent = home_automation_agent()
-      runner = Runner.new(app_name: "eval_multi_run_#{System.unique_integer([:positive])}", agent: agent)
+
+      runner =
+        Runner.new(app_name: "eval_multi_run_#{System.unique_integer([:positive])}", agent: agent)
 
       cases = [
         Case.new(
@@ -269,6 +299,7 @@ defmodule ADK.Eval.SingleAgentParityTest do
       ]
 
       report = Eval.run(runner, cases)
+
       assert report.passed == report.total,
              "Run failed. Details: #{inspect(report.results)}"
     end
@@ -297,7 +328,9 @@ defmodule ADK.Eval.SingleAgentParityTest do
                 %{text: t} when is_binary(t) -> t
                 _ -> ""
               end)
-            _ -> []
+
+            _ ->
+              []
           end
         end)
         |> Enum.join("")
@@ -305,7 +338,11 @@ defmodule ADK.Eval.SingleAgentParityTest do
       if String.contains?(actual, needle) do
         %{score: 1.0, pass: true, details: nil}
       else
-        %{score: 0.0, pass: false, details: "Response does not contain #{inspect(needle)}. Got: #{inspect(actual)}"}
+        %{
+          score: 0.0,
+          pass: false,
+          details: "Response does not contain #{inspect(needle)}. Got: #{inspect(actual)}"
+        }
       end
     end
   end
