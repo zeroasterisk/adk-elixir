@@ -32,6 +32,7 @@ defmodule ADK.Agent.LlmAgent do
     sub_agents: [],
     _peer_agents: [],
     max_iterations: 10,
+    iteration_delay_ms: 0,
     generate_config: %{},
     disallow_transfer_to_parent: false,
     disallow_transfer_to_peers: false
@@ -58,6 +59,7 @@ defmodule ADK.Agent.LlmAgent do
           tools: [map()],
           sub_agents: [map()],
           max_iterations: pos_integer(),
+          iteration_delay_ms: non_neg_integer(),
           generate_config: map(),
           disallow_transfer_to_parent: boolean(),
           disallow_transfer_to_peers: boolean()
@@ -167,6 +169,11 @@ defmodule ADK.Agent.LlmAgent do
   end
 
   def do_run(ctx, agent, iteration) do
+    # Rate-limit-friendly delay between iterations (skip first iteration)
+    if iteration > 0 and agent.iteration_delay_ms > 0 do
+      Process.sleep(agent.iteration_delay_ms)
+    end
+
     # Build LLM request
     request = build_request(ctx, agent)
 
