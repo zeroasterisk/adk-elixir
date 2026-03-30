@@ -81,6 +81,11 @@ defmodule ADK.LLM.Router do
   # Short penalty for non-rate-limit transient errors (ms)
   @transient_error_penalty_ms 10_000
 
+  # Max wait-and-retry attempts when all backends are temporarily unavailable
+  @max_wait_retries 3
+  # Max ms we're willing to sleep waiting for a backend to become available
+  @max_wait_sleep_ms 60_000
+
   # ----- Public API -----
 
   @doc "Start the router GenServer (supervised by ADK.Application)."
@@ -164,8 +169,9 @@ defmodule ADK.LLM.Router do
       end
 
     backends = Enum.sort_by(backends, & &1.priority)
+    wait_retries = Keyword.get(opts, :max_wait_retries, @max_wait_retries)
 
-    do_generate(backends, request, opts, server)
+    do_generate(backends, request, opts, server, wait_retries)
   end
 
   # ----- GenServer callbacks -----
@@ -186,6 +192,20 @@ defmodule ADK.LLM.Router do
 
   def handle_call({:available?, id}, _from, state) do
     {:reply, available_now?(state, id), state}
+  end
+
+  def handle_call(:soonest_available, _from, state) do
+    now = System.monotonic_time(:millisecond)
+
+    soonest =
+      state
+      |> Enum.filter(fn {_id, %{available_at: at}} -> at != nil and at > now end)
+      |> Enum.min_by(fn {_id, %{available_at: at}} -> at end, fn -> nil end)
+
+    case soonest do
+      {id, %{available_at: at}} -> {:reply, {:ok, id, at - now}, state}
+      nil -> {:reply, :none, state}
+    end
   end
 
   @impl true
@@ -240,24 +260,49 @@ defmodule ADK.LLM.Router do
 
   # ----- Private helpers -----
 
-  defp do_generate([], _request, opts, _server) do
+  defp do_generate([], request, opts, server, wait_retries) when wait_retries > 0 do
+    # All backends skipped — check if any are just temporarily backed off
+    case soonest_available_ms(server) do
+      {:ok, backend_id, wait_ms} when wait_ms <= @max_wait_sleep_ms ->
+        Logger.info(
+          "[Router] All backends backed off; waiting #{wait_ms}ms for #{backend_id} " <>
+            "(#{wait_retries} retries left)"
+        )
+
+        Process.sleep(wait_ms + 50)
+        backends = configured_backends() |> Enum.sort_by(& &1.priority)
+        do_generate(backends, request, opts, server, wait_retries - 1)
+
+      _ ->
+        fallback =
+          Keyword.get(
+            opts,
+            :fallback_error,
+            router_config(:fallback_error, :all_backends_failed)
+          )
+
+        {:error, fallback}
+    end
+  end
+
+  defp do_generate([], _request, opts, _server, _wait_retries) do
     fallback =
       Keyword.get(opts, :fallback_error, router_config(:fallback_error, :all_backends_failed))
 
     {:error, fallback}
   end
 
-  defp do_generate([backend | rest], request, opts, server) do
+  defp do_generate([backend | rest], request, opts, server, wait_retries) do
     # Skip backed-off backends
     unless available_backend?(server, backend.id) do
       Logger.debug("[Router] Skipping #{backend.id} (backed off)")
-      do_generate(rest, request, opts, server)
+      do_generate(rest, request, opts, server, wait_retries)
     else
-      attempt(backend, request, opts, server, rest)
+      attempt(backend, request, opts, server, rest, wait_retries)
     end
   end
 
-  defp attempt(backend, request, opts, server, rest) do
+  defp attempt(backend, request, opts, server, rest, wait_retries) do
     Logger.debug("[Router] Trying backend #{backend.id} (#{backend.backend} / #{backend.model})")
 
     result = call_backend(backend, request, opts)
@@ -269,19 +314,19 @@ defmodule ADK.LLM.Router do
 
       {:error, :rate_limited} ->
         record_rate_limited(server, backend.id)
-        do_generate(rest, request, opts, server)
+        do_generate(rest, request, opts, server, wait_retries)
 
       {:error, :circuit_open} ->
         Logger.debug("[Router] Backend #{backend.id} circuit open, failing over")
-        do_generate(rest, request, opts, server)
+        do_generate(rest, request, opts, server, wait_retries)
 
       {:error, reason} when reason in [:timeout, :econnrefused, :closed] ->
         record_transient_error(server, backend.id)
-        do_generate(rest, request, opts, server)
+        do_generate(rest, request, opts, server, wait_retries)
 
       {:error, {:api_error, status, _}} when status in [500, 502, 503, 504] ->
         record_transient_error(server, backend.id)
-        do_generate(rest, request, opts, server)
+        do_generate(rest, request, opts, server, wait_retries)
 
       {:error, _} = error ->
         # Non-transient errors (e.g., 401, 403, bad config): do not penalise or retry
@@ -330,6 +375,14 @@ defmodule ADK.LLM.Router do
       end
 
     state_available and cb_available
+  end
+
+  defp soonest_available_ms(server) do
+    try do
+      GenServer.call(server, :soonest_available, 1_000)
+    catch
+      :exit, _ -> :none
+    end
   end
 
   defp available_now?(state, id) do

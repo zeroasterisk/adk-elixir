@@ -152,11 +152,12 @@ defmodule ADK.LLM.RouterTest do
       assert {:ok, _} = generate_with(server: router)
     end
 
-    test "returns error when all backends exhausted", %{router: router} do
+    test "returns error when all backends exhausted (no wait retries)", %{router: router} do
       set_response(:fake_a, rate_limited_fn())
       set_response(:fake_b, rate_limited_fn())
 
-      assert {:error, :all_backends_failed} = generate_with(server: router)
+      assert {:error, :all_backends_failed} =
+               generate_with(server: router, max_wait_retries: 0)
     end
 
     test "does not fail over on non-transient auth error", %{router: router} do
@@ -190,7 +191,11 @@ defmodule ADK.LLM.RouterTest do
       set_response(:fake_b, rate_limited_fn())
 
       assert {:error, :my_custom_error} =
-               generate_with(server: router, fallback_error: :my_custom_error)
+               generate_with(
+                 server: router,
+                 fallback_error: :my_custom_error,
+                 max_wait_retries: 0
+               )
     end
   end
 
