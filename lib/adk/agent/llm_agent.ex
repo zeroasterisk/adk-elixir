@@ -741,11 +741,9 @@ defmodule ADK.Agent.LlmAgent do
       if ctx.session_pid do
         ADK.Session.get_events(ctx.session_pid)
         |> Enum.map(fn e ->
-          if e.author == "user" do
-            %{role: :user, parts: (e.content || %{})[:parts] || []}
-          else
-            %{role: :model, parts: (e.content || %{})[:parts] || []}
-          end
+          parts = (e.content || %{})[:parts] || []
+          role = infer_message_role(e, parts)
+          %{role: role, parts: parts}
         end)
       else
         []
@@ -764,6 +762,43 @@ defmodule ADK.Agent.LlmAgent do
 
     (history ++ user_msg)
     |> ADK.Transcript.Repair.repair()
+  end
+
+  # Determine the correct Gemini role for a session event.
+  # Tool response events (containing function_response parts) must use :user role
+  # even though their author is the agent name, because Gemini requires
+  # function_response parts to appear in user-role messages.
+  defp infer_message_role(event, parts) do
+    cond do
+      event.author == "user" ->
+        :user
+
+      has_function_response?(parts) ->
+        :user
+
+      # Respect explicit content role if set (e.g. tool response events)
+      match?(%{role: :user}, event.content) and not has_text_only?(parts) ->
+        :user
+
+      true ->
+        :model
+    end
+  end
+
+  defp has_function_response?(parts) do
+    Enum.any?(parts, fn
+      %{function_response: _} -> true
+      %{"function_response" => _} -> true
+      _ -> false
+    end)
+  end
+
+  defp has_text_only?(parts) do
+    Enum.all?(parts, fn
+      %{text: _} -> true
+      %{"text" => _} -> true
+      _ -> false
+    end)
   end
 
   defp truncate_history(history, nil), do: history

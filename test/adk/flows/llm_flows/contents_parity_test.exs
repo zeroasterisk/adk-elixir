@@ -566,9 +566,10 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
       assert fc_msg.role == :model
       assert Enum.any?(fc_msg.parts, fn p -> Map.has_key?(p, :function_call) end)
 
-      # Third: function response — authored by agent so build_messages maps to :model
+      # Third: function response — must be :user role for Gemini API compatibility
+      # (function_response parts must appear in user-role messages)
       fr_msg = Enum.at(messages, 2)
-      assert fr_msg.role == :model
+      assert fr_msg.role == :user
       assert Enum.any?(fr_msg.parts, fn p -> Map.has_key?(p, :function_response) end)
     end
 
