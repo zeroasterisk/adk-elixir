@@ -65,6 +65,8 @@ defmodule ADK.Agent.LlmAgent do
           disallow_transfer_to_peers: boolean()
         }
 
+  require Logger
+
   @doc """
   Create a new LLM agent.
 
@@ -146,8 +148,6 @@ defmodule ADK.Agent.LlmAgent do
   @doc false
   @spec do_run(ADK.Context.t(), t(), non_neg_integer()) :: [ADK.Event.t()]
   def do_run(ctx, agent, iteration) when iteration >= agent.max_iterations do
-    require Logger
-
     Logger.warning(
       "[LlmAgent] Max iterations (#{agent.max_iterations}) reached for agent #{agent.name}"
     )
@@ -169,8 +169,6 @@ defmodule ADK.Agent.LlmAgent do
   end
 
   def do_run(ctx, agent, iteration) do
-    require Logger
-
     Logger.info(
       "[LlmAgent] #{agent.name} iteration=#{iteration}/#{agent.max_iterations} invocation=#{ctx.invocation_id}"
     )
@@ -843,8 +841,6 @@ defmodule ADK.Agent.LlmAgent do
         event
 
       event.author != agent.name ->
-        require Logger
-
         Logger.debug(
           "Skipping output save for agent #{agent.name}: event authored by #{event.author}"
         )
