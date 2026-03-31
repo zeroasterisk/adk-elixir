@@ -169,8 +169,18 @@ defmodule ADK.Agent.LlmAgent do
   end
 
   def do_run(ctx, agent, iteration) do
+    require Logger
+
+    Logger.info(
+      "[LlmAgent] #{agent.name} iteration=#{iteration}/#{agent.max_iterations} invocation=#{ctx.invocation_id}"
+    )
+
     # Rate-limit-friendly delay between iterations (skip first iteration)
     if iteration > 0 and agent.iteration_delay_ms > 0 do
+      Logger.info(
+        "[LlmAgent] #{agent.name} iteration=#{iteration} delay=#{agent.iteration_delay_ms}ms"
+      )
+
       Process.sleep(agent.iteration_delay_ms)
     end
 
@@ -267,6 +277,12 @@ defmodule ADK.Agent.LlmAgent do
 
                 calls ->
                   # Tool calls — execute them and loop
+                  tool_names = Enum.map(calls, fn c -> c["name"] || Map.get(c, :name, "?") end)
+
+                  Logger.info(
+                    "[LlmAgent] #{agent.name} iteration=#{iteration} tool_calls=#{inspect(tool_names)}"
+                  )
+
                   ADK.Context.emit_event(ctx, event)
                   tool_results = execute_tools(ctx, agent, calls)
 
