@@ -6,59 +6,88 @@ defmodule ADK.Agent.LlmAgent.ToolRoleTest do
 
   Regression test for: agent run stalls on tool-use queries because
   build_messages mapped tool response events to role: :model.
+
+  Uses async: false because the inline mock module mutates global Application
+  env and uses an ETS table for cross-process state.
   """
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   setup do
     Application.put_env(:adk, :llm_backend, ADK.LLM.Mock)
     on_exit(fn -> Application.put_env(:adk, :llm_backend, ADK.LLM.Mock) end)
   end
 
-  test "tool response events get :user role in messages sent to LLM" do
-    # Track the request sent to the LLM on the second call (after tool execution)
-    test_pid = self()
+  defmodule ToolRoleCaptureMock do
+    @moduledoc false
+    @behaviour ADK.LLM
 
-    # Custom backend that captures the second request
-    defmodule CaptureMock do
-      @behaviour ADK.LLM
-      def generate(_model, request) do
-        pid = Process.get(:test_pid)
+    def init(test_pid) do
+      table = :ets.new(:tool_role_capture, [:public, :named_table])
+      :ets.insert(table, {:test_pid, test_pid})
+      :ets.insert(table, {:call_count, 0})
+      table
+    end
 
-        case Process.get(:call_count, 0) do
-          0 ->
-            Process.put(:call_count, 1)
-
-            # First call: return a tool call
-            {:ok,
-             %{
-               content: %{
-                 role: :model,
-                 parts: [
-                   %{
-                     function_call: %{
-                       name: "web_search",
-                       args: %{"query" => "weather today"}
-                     }
-                   }
-                 ]
-               },
-               usage_metadata: nil
-             }}
-
-          _ ->
-            # Second call: capture request and return final text
-            if pid, do: send(pid, {:llm_request, request})
-
-            {:ok,
-             %{
-               content: %{role: :model, parts: [%{text: "It's sunny and 22°C."}]},
-               usage_metadata: nil
-             }}
-        end
+    def cleanup do
+      try do
+        :ets.delete(:tool_role_capture)
+      rescue
+        _ -> :ok
       end
     end
 
-    Application.put_env(:adk, :llm_backend, CaptureMock)
+    def generate(_model, request) do
+      count =
+        case :ets.lookup(:tool_role_capture, :call_count) do
+          [{_, n}] -> n
+          _ -> 0
+        end
+
+      :ets.insert(:tool_role_capture, {:call_count, count + 1})
+
+      case count do
+        0 ->
+          # First call: return a tool call
+          {:ok,
+           %{
+             content: %{
+               role: :model,
+               parts: [
+                 %{
+                   function_call: %{
+                     name: "web_search",
+                     args: %{"query" => "weather today"}
+                   }
+                 }
+               ]
+             },
+             usage_metadata: nil
+           }}
+
+        _ ->
+          # Second call: capture request and return final text
+          pid =
+            case :ets.lookup(:tool_role_capture, :test_pid) do
+              [{_, p}] -> p
+              _ -> nil
+            end
+
+          if pid, do: send(pid, {:llm_request, request})
+
+          {:ok,
+           %{
+             content: %{role: :model, parts: [%{text: "It's sunny and 22°C."}]},
+             usage_metadata: nil
+           }}
+      end
+    end
+  end
+
+  test "tool response events get :user role in messages sent to LLM" do
+    ToolRoleCaptureMock.init(self())
+    on_exit(fn -> ToolRoleCaptureMock.cleanup() end)
+
+    Application.put_env(:adk, :llm_backend, ToolRoleCaptureMock)
 
     tool =
       ADK.Tool.FunctionTool.new(:web_search,
@@ -81,9 +110,6 @@ defmodule ADK.Agent.LlmAgent.ToolRoleTest do
 
     {:ok, session_pid} =
       ADK.Session.start_link(app_name: "test_role", user_id: "u1", session_id: "role_test")
-
-    Process.put(:test_pid, test_pid)
-    Process.put(:call_count, 0)
 
     ctx = %ADK.Context{
       invocation_id: "inv-role",
