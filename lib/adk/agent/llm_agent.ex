@@ -824,7 +824,31 @@ defmodule ADK.Agent.LlmAgent do
     if len <= max_messages do
       history
     else
-      Enum.drop(history, len - max_messages)
+      # Drop from the front, but find a clean cut point where we don't
+      # split a function_call / function_response pair.
+      truncated = Enum.drop(history, len - max_messages)
+      drop_leading_orphaned_responses(truncated)
+    end
+  end
+
+  # Drop messages from the front that contain function_response parts
+  # without a preceding function_call. These are orphaned by truncation.
+  defp drop_leading_orphaned_responses([]), do: []
+
+  defp drop_leading_orphaned_responses([msg | rest] = messages) do
+    parts = msg[:parts] || []
+
+    has_func_response =
+      Enum.any?(parts, fn
+        %{function_response: _} -> true
+        %{"function_response" => _} -> true
+        _ -> false
+      end)
+
+    if has_func_response do
+      drop_leading_orphaned_responses(rest)
+    else
+      messages
     end
   end
 
