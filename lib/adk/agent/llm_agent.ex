@@ -766,6 +766,11 @@ defmodule ADK.Agent.LlmAgent do
     max_turns = if ctx.agent, do: ctx.agent.max_history_turns, else: nil
     history = truncate_history(history, max_turns)
 
+    # Only append user_content if it's not already present in history.
+    # Runner.run appends the user event to the session before calling do_run,
+    # so on subsequent tool-loop iterations the message is already in history.
+    # Appending it again causes the LLM to see a duplicate user request after
+    # tool responses, which triggers infinite tool-call loops.
     user_msg =
       case ctx.user_content do
         %{text: text} -> [%{role: :user, parts: [%{text: text}]}]
@@ -774,9 +779,34 @@ defmodule ADK.Agent.LlmAgent do
         _ -> []
       end
 
+    user_msg =
+      if user_msg != [] and history_contains_user_text?(history, user_msg) do
+        []
+      else
+        user_msg
+      end
+
     (history ++ user_msg)
     |> ADK.Transcript.Repair.repair()
   end
+
+  # Check if the user message text is already present in the history.
+  # This prevents duplicate user messages when Runner.run has already appended
+  # the user event to the session.
+  defp history_contains_user_text?(history, [%{role: :user, parts: [%{text: text}]}]) do
+    Enum.any?(history, fn
+      %{role: :user, parts: parts} ->
+        Enum.any?(parts, fn
+          %{text: ^text} -> true
+          _ -> false
+        end)
+
+      _ ->
+        false
+    end)
+  end
+
+  defp history_contains_user_text?(_history, _user_msg), do: false
 
   # Determine the correct Gemini role for a session event.
   # Tool response events (containing function_response parts) must use :user role
