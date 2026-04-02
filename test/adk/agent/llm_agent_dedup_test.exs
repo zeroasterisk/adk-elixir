@@ -1,99 +1,131 @@
 defmodule ADK.Agent.LlmAgentDedupTest do
-  use ExUnit.Case, async: true
+  @moduledoc """
+  Tests for the user-message dedup logic in LlmAgent.build_messages/1.
 
-  # Access the private function via Module.concat to avoid exposing it publicly.
-  # We call build_messages/1 indirectly through the dedup logic, but since
-  # last_user_message_matches?/2 is private, we test it through a thin wrapper.
+  Instead of copying the private `last_user_message_matches?/2` function,
+  these tests exercise dedup through the public API: `ADK.Runner.run/5`
+  with a mock LLM backend, then inspect the messages sent to the LLM to
+  verify correct dedup behaviour.
+  """
 
-  # We can test the dedup behaviour by invoking the private function via
-  # Kernel.apply and :erlang.apply won't work on defp. Instead we replicate
-  # the exact logic here for unit-level coverage, and rely on integration
-  # tests for the full build_messages path.
+  use ExUnit.Case, async: false
+  use ADK.LLM.TestHelper
 
-  # Re-implement the function under test so we can unit-test the algorithm
-  # without exposing it. This mirrors the production code exactly.
-  defp last_user_message_matches?(history, [%{role: :user, parts: [%{text: text}]}]) do
-    history
-    |> Enum.reverse()
-    |> Enum.find(fn
-      %{role: :user} -> true
-      _ -> false
+  alias ADK.Runner
+  alias ADK.Agent.LlmAgent
+
+  setup do
+    # Route LLM calls through MockBackend (which records calls) instead of
+    # the default ADK.LLM.Mock (which only consumes responses).
+    prev = Application.get_env(:adk, :llm_backend)
+    Application.put_env(:adk, :llm_backend, ADK.LLM.MockBackend)
+
+    on_exit(fn ->
+      if prev, do: Application.put_env(:adk, :llm_backend, prev),
+      else: Application.delete_env(:adk, :llm_backend)
     end)
-    |> case do
-      %{role: :user, parts: parts} ->
-        Enum.any?(parts, fn
-          %{text: ^text} -> true
-          _ -> false
-        end)
 
-      _ ->
-        false
-    end
+    :ok
   end
 
-  defp last_user_message_matches?(_history, _user_msg), do: false
+  defp build_runner do
+    agent = LlmAgent.new(name: "dedup_test", model: "mock", instruction: "You are a test bot.")
+    Runner.new(app_name: "dedup_test_app", agent: agent)
+  end
 
-  describe "last_user_message_matches?/2" do
-    test "returns true when last user message matches the text" do
-      history = [
-        %{role: :model, parts: [%{text: "Hello"}]},
-        %{role: :user, parts: [%{text: "do something"}]}
-      ]
+  defp user_texts_in_call(call) do
+    call.request.messages
+    |> Enum.filter(fn msg -> msg.role == :user end)
+    |> Enum.flat_map(fn msg ->
+      msg.parts
+      |> Enum.filter(&Map.has_key?(&1, :text))
+      |> Enum.map(& &1.text)
+    end)
+  end
 
-      assert last_user_message_matches?(history, [
-               %{role: :user, parts: [%{text: "do something"}]}
-             ])
+  # Keep session alive across multiple Runner.run calls so history accumulates.
+  @run_opts [stop_session: false]
+
+  describe "dedup through public API" do
+    test "first run: user message appears exactly once in LLM call" do
+      setup_mock_llm([mock_response("Hello!")])
+
+      runner = build_runner()
+      sid = "dedup-first-#{System.unique_integer([:positive])}"
+      _events = Runner.run(runner, "user1", sid, "do something", @run_opts)
+
+      call = last_call()
+      assert call != nil, "Expected at least one LLM call"
+      texts = user_texts_in_call(call)
+
+      assert Enum.count(texts, &(&1 == "do something")) == 1
     end
 
-    test "returns false when last user message differs" do
-      history = [
-        %{role: :user, parts: [%{text: "do something"}]},
-        %{role: :model, parts: [%{text: "ok"}]},
-        %{role: :user, parts: [%{text: "do something else"}]}
-      ]
+    test "second run with same text: dedup prevents duplicate in LLM messages" do
+      setup_mock_llm([mock_response("First reply"), mock_response("Second reply")])
 
-      refute last_user_message_matches?(history, [
-               %{role: :user, parts: [%{text: "do something"}]}
-             ])
+      runner = build_runner()
+      sid = "dedup-same-#{System.unique_integer([:positive])}"
+
+      _events1 = Runner.run(runner, "user1", sid, "do something", @run_opts)
+      _events2 = Runner.run(runner, "user1", sid, "do something", @run_opts)
+
+      calls = all_calls()
+      assert length(calls) == 2
+      second_call = Enum.at(calls, 1)
+      texts = user_texts_in_call(second_call)
+
+      # Session history after Run 2 append:
+      #   user("do something"), model("First reply"), user("do something")
+      # build_messages sees last user = "do something" matches user_content →
+      # dedup strips the extra append → LLM sees exactly 2 user messages
+      # (both from history), not 3.
+      assert Enum.count(texts, &(&1 == "do something")) == 2
     end
 
-    test "returns false when same text appears earlier but last user msg is different" do
-      history = [
-        %{role: :user, parts: [%{text: "repeat me"}]},
-        %{role: :model, parts: [%{text: "noted"}]},
-        %{role: :user, parts: [%{text: "something new"}]}
-      ]
+    test "second run with different text: new message IS appended (no false dedup)" do
+      setup_mock_llm([mock_response("First reply"), mock_response("Second reply")])
 
-      refute last_user_message_matches?(history, [
-               %{role: :user, parts: [%{text: "repeat me"}]}
-             ])
+      runner = build_runner()
+      sid = "dedup-diff-#{System.unique_integer([:positive])}"
+
+      _events1 = Runner.run(runner, "user1", sid, "do something", @run_opts)
+      _events2 = Runner.run(runner, "user1", sid, "do something else", @run_opts)
+
+      calls = all_calls()
+      assert length(calls) == 2
+      second_call = Enum.at(calls, 1)
+      texts = user_texts_in_call(second_call)
+
+      # Different text → dedup does NOT strip → both messages present
+      assert "do something" in texts
+      assert "do something else" in texts
     end
 
-    test "returns false when history is empty" do
-      refute last_user_message_matches?([], [
-               %{role: :user, parts: [%{text: "hello"}]}
-             ])
-    end
+    test "same text earlier but last user msg differs: no false dedup" do
+      setup_mock_llm([
+        mock_response("Reply 1"),
+        mock_response("Reply 2"),
+        mock_response("Reply 3")
+      ])
 
-    test "returns false when history has no user messages" do
-      history = [
-        %{role: :model, parts: [%{text: "I am a model"}]},
-        %{role: :model, parts: [%{text: "Still model"}]}
-      ]
+      runner = build_runner()
+      sid = "dedup-earlier-#{System.unique_integer([:positive])}"
 
-      refute last_user_message_matches?(history, [
-               %{role: :user, parts: [%{text: "hello"}]}
-             ])
-    end
+      _events1 = Runner.run(runner, "user1", sid, "repeat me", @run_opts)
+      _events2 = Runner.run(runner, "user1", sid, "something new", @run_opts)
+      _events3 = Runner.run(runner, "user1", sid, "repeat me", @run_opts)
 
-    test "returns true for multi-part user message where one part matches" do
-      history = [
-        %{role: :user, parts: [%{text: "first part"}, %{text: "target text"}]}
-      ]
+      calls = all_calls()
+      assert length(calls) == 3
+      third_call = Enum.at(calls, 2)
+      texts = user_texts_in_call(third_call)
 
-      assert last_user_message_matches?(history, [
-               %{role: :user, parts: [%{text: "target text"}]}
-             ])
+      # "repeat me" appears in turns 1 and 3, dedup matches last user msg
+      # (which IS "repeat me" from history), so no extra append.
+      # History: user(repeat), model, user(new), model, user(repeat)
+      assert Enum.count(texts, &(&1 == "repeat me")) == 2
+      assert "something new" in texts
     end
   end
 end
