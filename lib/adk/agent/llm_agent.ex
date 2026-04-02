@@ -780,7 +780,7 @@ defmodule ADK.Agent.LlmAgent do
       end
 
     user_msg =
-      if user_msg != [] and history_contains_user_text?(history, user_msg) do
+      if user_msg != [] and last_user_message_matches?(history, user_msg) do
         []
       else
         user_msg
@@ -790,11 +790,18 @@ defmodule ADK.Agent.LlmAgent do
     |> ADK.Transcript.Repair.repair()
   end
 
-  # Check if the user message text is already present in the history.
+  # Check if the LAST user-role message in history already contains the text.
   # This prevents duplicate user messages when Runner.run has already appended
-  # the user event to the session.
-  defp history_contains_user_text?(history, [%{role: :user, parts: [%{text: text}]}]) do
-    Enum.any?(history, fn
+  # the user event to the session, without falsely deduplicating when the user
+  # intentionally sends the same text again later in the conversation.
+  defp last_user_message_matches?(history, [%{role: :user, parts: [%{text: text}]}]) do
+    history
+    |> Enum.reverse()
+    |> Enum.find(fn
+      %{role: :user} -> true
+      _ -> false
+    end)
+    |> case do
       %{role: :user, parts: parts} ->
         Enum.any?(parts, fn
           %{text: ^text} -> true
@@ -803,10 +810,10 @@ defmodule ADK.Agent.LlmAgent do
 
       _ ->
         false
-    end)
+    end
   end
 
-  defp history_contains_user_text?(_history, _user_msg), do: false
+  defp last_user_message_matches?(_history, _user_msg), do: false
 
   # Determine the correct Gemini role for a session event.
   # Tool response events (containing function_response parts) must use :user role
