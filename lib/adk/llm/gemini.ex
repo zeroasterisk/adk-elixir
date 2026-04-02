@@ -186,10 +186,14 @@ defmodule ADK.LLM.Gemini do
     }
   end
 
-  defp format_part(%{text: text}), do: %{text: text}
+  defp format_part(%{text: text} = part) do
+    base = %{text: text}
+    maybe_add_thought_signature(base, part)
+  end
 
-  defp format_part(%{function_call: %{name: name, args: args}}) do
-    %{functionCall: %{name: name, args: args}}
+  defp format_part(%{function_call: %{name: name, args: args}} = part) do
+    base = %{functionCall: %{name: name, args: args}}
+    maybe_add_thought_signature(base, part)
   end
 
   defp format_part(%{function_response: %{name: name, response: resp}}) do
@@ -197,6 +201,15 @@ defmodule ADK.LLM.Gemini do
   end
 
   defp format_part(other), do: other
+
+  # Gemini 2.5+/3 models return thoughtSignature in function_call and text parts.
+  # These MUST be passed back in subsequent turns for function calling to work.
+  defp maybe_add_thought_signature(base, part) do
+    case Map.get(part, :thought_signature) do
+      nil -> base
+      sig -> Map.put(base, :thoughtSignature, sig)
+    end
+  end
 
   defp format_tools(tools) do
     Enum.map(tools, fn tool ->
@@ -239,10 +252,20 @@ defmodule ADK.LLM.Gemini do
     %{role: :model, parts: [%{text: ""}]}
   end
 
-  defp parse_response_part(%{"text" => text}), do: %{text: text}
+  defp parse_response_part(%{"text" => text} = part) do
+    case part do
+      %{"thoughtSignature" => sig} -> %{text: text, thought_signature: sig}
+      _ -> %{text: text}
+    end
+  end
 
-  defp parse_response_part(%{"functionCall" => %{"name" => name, "args" => args}}) do
-    %{function_call: %{name: name, args: args}}
+  defp parse_response_part(%{"functionCall" => %{"name" => name, "args" => args}} = part) do
+    base = %{function_call: %{name: name, args: args}}
+
+    case part do
+      %{"thoughtSignature" => sig} -> Map.put(base, :thought_signature, sig)
+      _ -> base
+    end
   end
 
   # Code execution response parts
