@@ -193,4 +193,98 @@ defmodule ADK.Agent.LlmAgentMaxHistoryTest do
       assert texts == ["hello"]
     end
   end
+
+  describe "truncation drops orphaned function_call turns" do
+    defp make_fc_event(author, tool_name) do
+      Event.new(%{
+        invocation_id: "inv-1",
+        author: author,
+        content: %{
+          role: :model,
+          parts: [%{function_call: %{name: tool_name, args: %{}}}]
+        }
+      })
+    end
+
+    defp make_fr_event(author, tool_name) do
+      Event.new(%{
+        invocation_id: "inv-1",
+        author: author,
+        content: %{
+          role: :user,
+          parts: [%{function_response: %{name: tool_name, response: %{"result" => "ok"}}}]
+        }
+      })
+    end
+
+    test "leading model function_call turns are dropped after truncation" do
+      agent = LlmAgent.new(name: "a", model: "m", instruction: "hi", max_history_turns: 2)
+
+      # Build a history where truncation leaves a function_call at the start:
+      # u1, m1(text), u2, m2(fc), fr2, m3(text), u3, m3(text), u4
+      events = [
+        make_event("user", "u1"),
+        make_event("model", "m1"),
+        make_event("user", "u2"),
+        make_fc_event("agent", "write"),
+        make_fr_event("agent", "write"),
+        make_event("model", "m3-text"),
+        make_event("user", "u3")
+      ]
+
+      pid = start_session_with_events(events)
+      ctx = build_ctx(pid, agent, "current")
+      req = LlmAgent.build_request(ctx, agent)
+
+      # After truncation (max 4 msgs from 7), we'd get:
+      # [fc(write), fr(write), m3-text, u3] + current
+      # The fc(write) and fr(write) should be dropped as orphaned
+      # Leaving: [m3-text, u3, current]
+      messages = req.messages
+
+      # First message should NOT be a function_call
+      first_parts = hd(messages).parts
+
+      refute Enum.any?(first_parts, fn
+        %{function_call: _} -> true
+        _ -> false
+      end)
+
+      # Should not contain function_response either
+      refute Enum.any?(List.flatten(Enum.map(messages, & &1.parts)), fn
+        %{function_response: _} -> true
+        _ -> false
+      end)
+    end
+
+    test "many function_call/response pairs at start are all dropped" do
+      agent = LlmAgent.new(name: "a", model: "m", instruction: "hi", max_history_turns: 5)
+
+      # Build history: many tool calls then user text
+      events =
+        Enum.flat_map(1..20, fn _i ->
+          [make_fc_event("agent", "exec"), make_fr_event("agent", "exec")]
+        end) ++
+          [
+            make_event("model", "summary"),
+            make_event("user", "thanks"),
+            make_event("model", "welcome"),
+            make_event("user", "bye")
+          ]
+
+      pid = start_session_with_events(events)
+      ctx = build_ctx(pid, agent, "current")
+      req = LlmAgent.build_request(ctx, agent)
+
+      messages = req.messages
+
+      # First message should be a text message, not a function_call
+      first_parts = hd(messages).parts
+
+      refute Enum.any?(first_parts, fn
+        %{function_call: _} -> true
+        _ -> false
+      end)
+    end
+  end
 end

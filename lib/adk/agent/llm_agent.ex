@@ -868,11 +868,17 @@ defmodule ADK.Agent.LlmAgent do
     end
   end
 
-  # Drop messages from the front that contain function_response parts
-  # without a preceding function_call. These are orphaned by truncation.
+  # Drop messages from the front that are orphaned by truncation.
+  # After truncation, the history may start with:
+  # 1. User messages containing only function_response parts (orphaned tool results
+  #    with no preceding function_call)
+  # 2. Model messages containing function_call parts (which Gemini rejects if not
+  #    preceded by a user or function_response turn)
+  # We drop these leading messages until we reach a clean starting point.
   defp drop_leading_orphaned_responses([]), do: []
 
   defp drop_leading_orphaned_responses([msg | rest] = messages) do
+    role = msg[:role]
     parts = msg[:parts] || []
 
     has_func_response =
@@ -882,10 +888,27 @@ defmodule ADK.Agent.LlmAgent do
         _ -> false
       end)
 
-    if has_func_response do
-      drop_leading_orphaned_responses(rest)
-    else
-      messages
+    has_func_call =
+      Enum.any?(parts, fn
+        %{function_call: _} -> true
+        %{"function_call" => _} -> true
+        _ -> false
+      end)
+
+    cond do
+      # Drop user messages that only contain function_response (orphaned tool results)
+      has_func_response ->
+        drop_leading_orphaned_responses(rest)
+
+      # Drop model messages with function_call at the start (no preceding user turn)
+      # Gemini requires: "function call turn comes immediately after a user turn
+      # or after a function response turn"
+      role == :model and has_func_call ->
+        drop_leading_orphaned_responses(rest)
+
+      # Any other message (user text, model text) — this is fine as a start
+      true ->
+        messages
     end
   end
 
