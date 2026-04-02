@@ -260,6 +260,153 @@ defmodule ADK.LLM.GeminiTest do
     end
   end
 
+  describe "generate/2 - thoughtSignature round-trip" do
+    test "parses thoughtSignature from text parts" do
+      stub_gemini(200, %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "role" => "model",
+              "parts" => [
+                %{"text" => "Let me think...", "thoughtSignature" => "abc123"}
+              ]
+            }
+          }
+        ]
+      })
+
+      assert {:ok, resp} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "Hi"}]}]
+               })
+
+      assert [%{text: "Let me think...", thought_signature: "abc123"}] = resp.content.parts
+    end
+
+    test "parses thoughtSignature from function call parts" do
+      stub_gemini(200, %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "role" => "model",
+              "parts" => [
+                %{
+                  "functionCall" => %{
+                    "name" => "get_weather",
+                    "args" => %{"city" => "London"}
+                  },
+                  "thoughtSignature" => "sig456"
+                }
+              ]
+            }
+          }
+        ]
+      })
+
+      assert {:ok, resp} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "Weather?"}]}],
+                 tools: [%{name: "get_weather", description: "Get weather"}]
+               })
+
+      assert [%{function_call: %{name: "get_weather"}, thought_signature: "sig456"}] =
+               resp.content.parts
+    end
+
+    test "text parts without thoughtSignature have no thought_signature key" do
+      stub_gemini(200, %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "role" => "model",
+              "parts" => [%{"text" => "No signature here"}]
+            }
+          }
+        ]
+      })
+
+      assert {:ok, resp} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "Hi"}]}]
+               })
+
+      assert [%{text: "No signature here"} = part] = resp.content.parts
+      refute Map.has_key?(part, :thought_signature)
+    end
+
+    test "formats thought_signature back to camelCase thoughtSignature in request" do
+      Req.Test.stub(Gemini, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        # Check that the assistant message's text part has thoughtSignature (camelCase)
+        assistant_content =
+          Enum.find(decoded["contents"], &(&1["role"] == "model"))
+
+        assert assistant_content
+        text_part = hd(assistant_content["parts"])
+        assert text_part["thoughtSignature"] == "roundtrip_sig"
+        assert text_part["text"] == "thinking..."
+
+        Req.Test.json(conn, %{
+          "candidates" => [
+            %{"content" => %{"role" => "model", "parts" => [%{"text" => "done"}]}}
+          ]
+        })
+      end)
+
+      assert {:ok, _} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [
+                   %{role: :user, parts: [%{text: "Hi"}]},
+                   %{role: :model, parts: [%{text: "thinking...", thought_signature: "roundtrip_sig"}]},
+                   %{role: :user, parts: [%{text: "Continue"}]}
+                 ]
+               })
+    end
+
+    test "formats thought_signature on function_call parts back to camelCase" do
+      Req.Test.stub(Gemini, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        assistant_content =
+          Enum.find(decoded["contents"], &(&1["role"] == "model"))
+
+        assert assistant_content
+        fc_part = hd(assistant_content["parts"])
+        assert fc_part["thoughtSignature"] == "fc_sig"
+        assert fc_part["functionCall"]["name"] == "search"
+
+        Req.Test.json(conn, %{
+          "candidates" => [
+            %{"content" => %{"role" => "model", "parts" => [%{"text" => "ok"}]}}
+          ]
+        })
+      end)
+
+      assert {:ok, _} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [
+                   %{role: :user, parts: [%{text: "Search"}]},
+                   %{
+                     role: :model,
+                     parts: [
+                       %{
+                         function_call: %{name: "search", args: %{"q" => "test"}},
+                         thought_signature: "fc_sig"
+                       }
+                     ]
+                   },
+                   %{
+                     role: :user,
+                     parts: [%{function_response: %{name: "search", response: %{"r" => "ok"}}}]
+                   }
+                 ]
+               })
+    end
+  end
+
   describe "generate/2 - default model" do
     test "uses default model when nil" do
       Req.Test.stub(Gemini, fn conn ->
