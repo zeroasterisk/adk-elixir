@@ -134,6 +134,103 @@ defmodule ADK.Transcript.RepairTest do
     end
   end
 
+  describe "merge_consecutive_roles/1" do
+    test "returns empty list unchanged" do
+      assert Repair.merge_consecutive_roles([]) == []
+    end
+
+    test "single message list unchanged" do
+      messages = [%{role: :user, parts: [%{text: "hello"}]}]
+      assert Repair.merge_consecutive_roles(messages) == messages
+    end
+
+    test "two consecutive model turns get merged" do
+      messages = [
+        %{role: :model, parts: [%{text: "first"}]},
+        %{role: :model, parts: [%{text: "second"}]}
+      ]
+
+      result = Repair.merge_consecutive_roles(messages)
+      assert length(result) == 1
+      assert [%{role: :model, parts: [%{text: "first"}, %{text: "second"}]}] = result
+    end
+
+    test "two consecutive user turns get merged" do
+      messages = [
+        %{role: :user, parts: [%{text: "a"}]},
+        %{role: :user, parts: [%{text: "b"}]}
+      ]
+
+      result = Repair.merge_consecutive_roles(messages)
+      assert length(result) == 1
+      assert [%{role: :user, parts: [%{text: "a"}, %{text: "b"}]}] = result
+    end
+
+    test "three+ consecutive same-role turns all merge" do
+      messages = [
+        %{role: :model, parts: [%{text: "a"}]},
+        %{role: :model, parts: [%{text: "b"}]},
+        %{role: :model, parts: [%{text: "c"}]}
+      ]
+
+      result = Repair.merge_consecutive_roles(messages)
+      assert length(result) == 1
+      assert [%{role: :model, parts: [%{text: "a"}, %{text: "b"}, %{text: "c"}]}] = result
+    end
+
+    test "mixed: user, model, model, user -> user, model, user" do
+      messages = [
+        %{role: :user, parts: [%{text: "u1"}]},
+        %{role: :model, parts: [%{text: "m1"}]},
+        %{role: :model, parts: [%{text: "m2"}]},
+        %{role: :user, parts: [%{text: "u2"}]}
+      ]
+
+      result = Repair.merge_consecutive_roles(messages)
+      assert length(result) == 3
+      assert [
+        %{role: :user, parts: [%{text: "u1"}]},
+        %{role: :model, parts: [%{text: "m1"}, %{text: "m2"}]},
+        %{role: :user, parts: [%{text: "u2"}]}
+      ] = result
+    end
+
+    test "alternating roles unchanged" do
+      messages = [
+        %{role: :user, parts: [%{text: "u"}]},
+        %{role: :model, parts: [%{text: "m"}]},
+        %{role: :user, parts: [%{text: "u2"}]}
+      ]
+
+      assert Repair.merge_consecutive_roles(messages) == messages
+    end
+  end
+
+  describe "repair/1 with consecutive roles" do
+    test "consecutive model turns with function_call get merged then orphan repaired" do
+      messages = [
+        %{role: :user, parts: [%{text: "hello"}]},
+        %{role: :model, parts: [%{text: "thinking..."}]},
+        %{role: :model, parts: [%{function_call: %{id: "fc-1", name: "search", args: %{}}}]}
+      ]
+
+      repaired = Repair.repair(messages)
+
+      # After merge: user, model (with text + function_call)
+      # After orphan repair: user, model, user (synthetic response)
+      assert length(repaired) == 3
+
+      merged_model = Enum.at(repaired, 1)
+      assert merged_model.role == :model
+      assert length(merged_model.parts) == 2
+
+      synthetic = List.last(repaired)
+      assert synthetic.role == :user
+      assert [%{function_response: fr}] = synthetic.parts
+      assert fr.id == "fc-1"
+    end
+  end
+
   describe "orphaned_calls/1" do
     test "returns empty list when no orphans" do
       messages = [

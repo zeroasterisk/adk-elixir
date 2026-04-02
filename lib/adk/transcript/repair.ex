@@ -1,15 +1,17 @@
 defmodule ADK.Transcript.Repair do
   @moduledoc """
-  Repairs conversation transcripts that contain orphaned tool calls.
+  Repairs conversation transcripts to satisfy Gemini API turn-ordering rules.
 
-  When an agent session crashes or is interrupted mid-tool-execution, the
-  conversation history can contain `function_call` parts (in model messages)
-  with no corresponding `function_response` (in user messages). LLMs —
-  especially Gemini — reject such histories because every `function_call`
-  **must** have a matching `function_response`.
+  The Gemini API requires strict alternating user/model turns and that every
+  `function_call` has a matching `function_response`. This module provides
+  two repair passes:
 
-  This module scans a message list, detects orphaned calls, and synthesises
-  minimal error responses so the transcript is always well-formed.
+  1. **Consecutive-role merging** — folds adjacent messages with the same
+     role into a single message by concatenating their `parts` lists.
+  2. **Orphaned-call synthesis** — appends synthetic error responses for any
+     `function_call` that lacks a corresponding `function_response`.
+
+  `repair/1` runs both passes in order (merge first, then orphan repair).
 
   > **Elixir-only enhancement** — this repair pass does not exist in the
   > upstream Python ADK. It is specific to ADK Elixir.
@@ -30,14 +32,51 @@ defmodule ADK.Transcript.Repair do
   end
 
   @doc """
-  Repairs `messages` by appending synthetic `function_response` parts for
-  every orphaned `function_call`. Returns the messages unchanged when there
-  are no orphans.
+  Merges consecutive messages that share the same role into a single message
+  by concatenating their `parts` lists. The merged message keeps the role
+  from the first message in each run.
+  """
+  @spec merge_consecutive_roles(list(map())) :: list(map())
+  def merge_consecutive_roles([]), do: []
+
+  def merge_consecutive_roles(messages) do
+    messages
+    |> Enum.chunk_while(
+      nil,
+      fn msg, acc ->
+        role = msg[:role] || msg["role"]
+
+        case acc do
+          nil ->
+            {:cont, {role, msg}}
+
+          {acc_role, acc_msg} when acc_role == role ->
+            acc_parts = acc_msg[:parts] || acc_msg["parts"] || []
+            msg_parts = msg[:parts] || msg["parts"] || []
+            merged = Map.put(acc_msg, :parts, acc_parts ++ msg_parts)
+            {:cont, {acc_role, merged}}
+
+          {_acc_role, acc_msg} ->
+            {:cont, acc_msg, {role, msg}}
+        end
+      end,
+      fn
+        nil -> {:cont, []}
+        {_role, acc_msg} -> {:cont, acc_msg, nil}
+      end
+    )
+  end
+
+  @doc """
+  Repairs `messages` by first merging consecutive same-role turns, then
+  appending synthetic `function_response` parts for every orphaned
+  `function_call`. Returns the messages unchanged when no repairs are needed.
   """
   @spec repair(list(map())) :: list(map())
   def repair([]), do: []
 
   def repair(messages) do
+    messages = merge_consecutive_roles(messages)
     orphans = orphaned_calls(messages)
 
     case orphans do

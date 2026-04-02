@@ -495,9 +495,8 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
       request = LlmAgent.build_request(ctx, agent)
       messages = request[:messages]
 
-      # Both events are mapped (nil content → empty parts); Python filters these out
-      # but Elixir includes them in build_messages without filtering
-      assert length(messages) == 2
+      # Both events are user role → merge_consecutive_roles merges them into one message
+      assert length(messages) == 1
     end
 
     test "function call events in session produce correct message structure" do
