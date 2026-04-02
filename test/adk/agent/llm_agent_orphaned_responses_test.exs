@@ -193,8 +193,9 @@ defmodule ADK.Agent.LlmAgentOrphanedResponsesTest do
       ctx = build_ctx(pid, agent)
       req = LlmAgent.build_request(ctx, agent)
 
-      # All 4 history + 1 current = 5
-      assert length(req.messages) == 5
+      # After merge_consecutive_roles, consecutive same-role messages are merged:
+      # user(u1), model(fc), user(fr+u2+current) = 3
+      assert length(req.messages) == 3
     end
   end
 end

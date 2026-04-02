@@ -173,11 +173,13 @@ defmodule ADK.Agent.LlmAgentMaxHistoryTest do
       req = LlmAgent.build_request(ctx, agent)
       texts = extract_texts(req)
 
-      # last 2 of 3 history msgs: m1, u2; + current = 3
-      assert length(texts) == 3
-      refute "u1" in texts
-      assert "m1" in texts
-      assert "u2" in texts
+      # last 2 of 3 history msgs: m1, u2; + current user msg
+      # merge_consecutive_roles folds u2 + current into one user turn → 2 messages
+      assert length(texts) == 2
+      all_text = Enum.join(texts, " ")
+      refute String.contains?(all_text, "u1")
+      assert String.contains?(all_text, "m1")
+      assert String.contains?(all_text, "u2")
     end
 
     test "empty history with max_history_turns set" do

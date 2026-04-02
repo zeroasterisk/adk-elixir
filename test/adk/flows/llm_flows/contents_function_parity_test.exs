@@ -456,8 +456,9 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
       request = LlmAgent.build_request(ctx, agent)
       messages = request[:messages]
 
-      # Should be: user text, model fc, model fr (author=test_agent), user followup
-      assert length(messages) == 4
+      # merge_consecutive_roles merges fr (user) + followup (user) into one message:
+      # user text, model fc, user(fr + followup) = 3
+      assert length(messages) == 3
 
       # First message: user text
       assert Enum.at(messages, 0).role == :user
@@ -480,8 +481,8 @@ defmodule ADK.Flows.LlmFlows.ContentsFunctionParityTest do
       fr_part = Enum.find(fr_msg.parts, fn p -> Map.has_key?(p, :function_response) end)
       assert fr_part.function_response.name == "search_tool"
 
-      # Fourth message: followup user text
-      assert Enum.at(messages, 3).role == :user
+      # Followup user text is merged into the third message (index 2) by merge_consecutive_roles
+      assert Enum.any?(Enum.at(messages, 2).parts, fn p -> p[:text] == "What did you find?" end)
     end
 
     test "parallel function calls in session produce messages with multiple parts" do
