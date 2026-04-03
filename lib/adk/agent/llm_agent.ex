@@ -33,6 +33,7 @@ defmodule ADK.Agent.LlmAgent do
     _peer_agents: [],
     max_iterations: 10,
     iteration_delay_ms: 0,
+    tool_config: nil,
     generate_config: %{},
     disallow_transfer_to_parent: false,
     disallow_transfer_to_peers: false
@@ -60,6 +61,7 @@ defmodule ADK.Agent.LlmAgent do
           sub_agents: [map()],
           max_iterations: pos_integer(),
           iteration_delay_ms: non_neg_integer(),
+          tool_config: map() | nil,
           generate_config: map(),
           disallow_transfer_to_parent: boolean(),
           disallow_transfer_to_peers: boolean()
@@ -542,6 +544,16 @@ defmodule ADK.Agent.LlmAgent do
       case agent.generate_config do
         config when is_map(config) and map_size(config) > 0 ->
           Map.put(request, :generate_config, config)
+
+        _ ->
+          request
+      end
+
+    # Apply tool_config if set on agent
+    request =
+      case agent.tool_config do
+        config when is_map(config) and map_size(config) > 0 ->
+          Map.put(request, :tool_config, config)
 
         _ ->
           request
