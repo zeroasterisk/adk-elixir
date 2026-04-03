@@ -146,6 +146,76 @@ defmodule ADK.LLM.GeminiTest do
     end
   end
 
+  describe "generate/2 - toolConfig" do
+    test "sends toolConfig with AUTO mode when tools are present" do
+      Req.Test.stub(Gemini, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        assert decoded["tools"] != nil
+        assert decoded["toolConfig"] == %{
+                 "functionCallingConfig" => %{"mode" => "AUTO"}
+               }
+
+        Req.Test.json(conn, %{
+          "candidates" => [
+            %{"content" => %{"role" => "model", "parts" => [%{"text" => "ok"}]}}
+          ]
+        })
+      end)
+
+      assert {:ok, _} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "test"}]}],
+                 tools: [%{name: "search", description: "Search"}]
+               })
+    end
+
+    test "does not send toolConfig when no tools are present" do
+      Req.Test.stub(Gemini, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        refute Map.has_key?(decoded, "toolConfig")
+
+        Req.Test.json(conn, %{
+          "candidates" => [
+            %{"content" => %{"role" => "model", "parts" => [%{"text" => "ok"}]}}
+          ]
+        })
+      end)
+
+      assert {:ok, _} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "test"}]}]
+               })
+    end
+
+    test "allows custom toolConfig override" do
+      Req.Test.stub(Gemini, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        assert decoded["toolConfig"] == %{
+                 "functionCallingConfig" => %{"mode" => "ANY"}
+               }
+
+        Req.Test.json(conn, %{
+          "candidates" => [
+            %{"content" => %{"role" => "model", "parts" => [%{"text" => "ok"}]}}
+          ]
+        })
+      end)
+
+      assert {:ok, _} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "test"}]}],
+                 tools: [%{name: "search", description: "Search"}],
+                 tool_config: %{functionCallingConfig: %{mode: "ANY"}}
+               })
+    end
+  end
+
   describe "generate/2 - error handling" do
     test "returns :unauthorized on 401" do
       stub_gemini(401, %{"error" => %{"message" => "Invalid API key"}})

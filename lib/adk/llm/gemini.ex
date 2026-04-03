@@ -141,6 +141,23 @@ defmodule ADK.LLM.Gemini do
           end
       end
 
+    # Apply toolConfig — tells Gemini to use structured function calling.
+    # Without this, Gemini 2.5+ models may hallucinate tool calls in text
+    # (e.g. <tool_code> blocks) instead of returning structured functionCall parts.
+    # Matches the behaviour of the official Python/Go GenAI SDKs.
+    body =
+      if Map.has_key?(body, :tools) do
+        tool_config =
+          case Map.get(request, :tool_config) do
+            nil -> %{functionCallingConfig: %{mode: "AUTO"}}
+            config -> config
+          end
+
+        Map.put(body, :toolConfig, tool_config)
+      else
+        body
+      end
+
     # Apply generate_config as generationConfig
     body =
       case Map.get(request, :generate_config) do
