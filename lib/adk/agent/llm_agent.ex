@@ -455,7 +455,26 @@ defmodule ADK.Agent.LlmAgent do
   end
 
   @doc """
-  Build the LLM request from the current context and agent config.
+  Build the LLM request map from the current context and agent configuration.
+
+  Assembles everything the LLM provider needs for a generation call:
+
+    * `:model` — the model identifier from the agent config
+    * `:instruction` — compiled system instruction (may include dynamic parts)
+    * `:messages` — conversation history from the context
+    * `:tools` — tool declarations for all effective tools
+    * `:agent_name` — the agent's name (used for multi-agent routing)
+    * `:generate_config` — generation parameters (temperature, etc.) when set
+    * `:tool_config` — tool-calling mode/constraints when set
+    * `:live_connect_config` — real-time/streaming options from `RunConfig`
+      (audio transcription, affective dialog, proactivity, session resumption,
+      realtime input config, context window compression)
+
+  Planner configuration (e.g. `ADK.Planner.BuiltIn`) is applied last, which
+  may add thinking/reasoning parameters to the request.
+
+  The returned map is passed directly to the LLM provider module
+  (e.g. `ADK.LLM.Gemini`, `ADK.LLM.OpenAI`, `ADK.LLM.Anthropic`).
   """
   @spec build_request(ADK.Context.t(), t()) :: map()
   def build_request(ctx, agent) do
