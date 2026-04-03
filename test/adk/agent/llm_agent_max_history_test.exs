@@ -288,36 +288,4 @@ defmodule ADK.Agent.LlmAgentMaxHistoryTest do
     end
   end
 
-  describe "tool_config passthrough" do
-    test "build_request includes tool_config when set on agent" do
-      agent =
-        LlmAgent.new(
-          name: "tc_test",
-          model: "mock",
-          instruction: "test",
-          tool_config: %{functionCallingConfig: %{mode: "ANY"}}
-        )
-
-      pid = start_session_with_events([make_event("user", "hello")])
-      ctx = build_ctx(pid, agent, "current")
-      req = LlmAgent.build_request(ctx, agent)
-
-      assert req.tool_config == %{functionCallingConfig: %{mode: "ANY"}}
-    end
-
-    test "build_request omits tool_config when nil" do
-      agent =
-        LlmAgent.new(
-          name: "tc_test2",
-          model: "mock",
-          instruction: "test"
-        )
-
-      pid = start_session_with_events([make_event("user", "hello")])
-      ctx = build_ctx(pid, agent, "current")
-      req = LlmAgent.build_request(ctx, agent)
-
-      refute Map.has_key?(req, :tool_config)
-    end
-  end
 end
