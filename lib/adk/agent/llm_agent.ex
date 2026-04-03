@@ -233,9 +233,35 @@ defmodule ADK.Agent.LlmAgent do
         {:cont, _cb_ctx} ->
           # Call the LLM
           case ADK.LLM.generate(agent.model, request) do
-            {:ok, %{content: nil}} ->
-              # Empty/nil content response — emit nothing (filtered out)
-              []
+            {:ok, %{content: nil} = response} ->
+              # Empty/nil content — log finish_reason for debugging.
+              # On iteration 0 this is rare; after tool calls it may indicate
+              # a Gemini API issue (e.g. MALFORMED_FUNCTION_CALL).
+              finish_reason = Map.get(response, :finish_reason)
+
+              Logger.warning(
+                "[LlmAgent] #{agent.name} iteration=#{iteration} nil content " <>
+                  "(finish_reason=#{inspect(finish_reason)})"
+              )
+
+              if iteration > 0 do
+                # After tool calls, return a fallback event so the user gets something
+                fallback_event =
+                  ADK.Event.new(%{
+                    invocation_id: ctx.invocation_id,
+                    author: agent.name,
+                    content: %{
+                      role: :model,
+                      parts: [%{text: "(The model returned an empty response after tool execution)"}]
+                    }
+                  })
+
+                if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, fallback_event)
+                ADK.Context.emit_event(ctx, fallback_event)
+                [fallback_event]
+              else
+                []
+              end
 
             {:ok, %{partial: true} = response} ->
               # Partial (streaming chunk) response — emit and break the loop

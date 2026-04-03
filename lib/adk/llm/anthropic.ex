@@ -72,25 +72,25 @@ defmodule ADK.LLM.Anthropic do
         [receive_timeout: 30_000, connect_options: [timeout: 10_000]] ++
         req_test_options()
 
-    ADK.LLM.Retry.with_retry(fn ->
-      case Req.post(Req.new(req_options)) do
-        {:ok, %Req.Response{status: 200, body: body}} ->
-          {:ok, parse_response(body)}
+    # NOTE: Do NOT wrap in ADK.LLM.Retry here — ADK.LLM.generate/3 already
+    # applies retry logic around the backend call.
+    case Req.post(Req.new(req_options)) do
+      {:ok, %Req.Response{status: 200, body: body}} ->
+        {:ok, parse_response(body)}
 
-        {:ok, %Req.Response{status: 429} = resp} ->
-          retry_ms = ADK.LLM.Retry.extract_retry_after(resp)
-          {:retry_after, retry_ms, :rate_limited}
+      {:ok, %Req.Response{status: 429} = resp} ->
+        retry_ms = ADK.LLM.Retry.extract_retry_after(resp)
+        {:retry_after, retry_ms, :rate_limited}
 
-        {:ok, %Req.Response{status: 401}} ->
-          {:error, :unauthorized}
+      {:ok, %Req.Response{status: 401}} ->
+        {:error, :unauthorized}
 
-        {:ok, %Req.Response{status: status, body: body}} ->
-          {:error, {:api_error, status, body}}
+      {:ok, %Req.Response{status: status, body: body}} ->
+        {:error, {:api_error, status, body}}
 
-        {:error, reason} ->
-          {:error, {:request_failed, reason}}
-      end
-    end)
+      {:error, reason} ->
+        {:error, {:request_failed, reason}}
+    end
   end
 
   defp req_test_options do
