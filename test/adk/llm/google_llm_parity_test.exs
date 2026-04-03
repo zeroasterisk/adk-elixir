@@ -377,9 +377,11 @@ defmodule ADK.LLM.GoogleLLMParityTest do
   # ---------------------------------------------------------------------------
 
   describe "error handling" do
-    test "returns :rate_limited on 429 (resource exhausted)" do
+    test "returns :retry_after on 429 (resource exhausted)" do
       stub(429, %{"error" => %{"message" => "Quota exceeded"}})
-      assert {:error, :rate_limited} = Gemini.generate("gemini-flash-latest", %{messages: []})
+
+      assert {:retry_after, _ms, :rate_limited} =
+               Gemini.generate("gemini-flash-latest", %{messages: []})
     end
 
     test "returns :unauthorized on 401" do

@@ -222,9 +222,11 @@ defmodule ADK.LLM.GeminiTest do
       assert {:error, :unauthorized} = Gemini.generate("gemini-flash-latest", %{messages: []})
     end
 
-    test "returns :rate_limited on 429" do
+    test "returns :retry_after on 429 (retry handled by ADK.LLM.generate)" do
       stub_gemini(429, %{"error" => %{"message" => "Rate limited"}})
-      assert {:error, :rate_limited} = Gemini.generate("gemini-flash-latest", %{messages: []})
+
+      assert {:retry_after, _ms, :rate_limited} =
+               Gemini.generate("gemini-flash-latest", %{messages: []})
     end
 
     test "returns :api_error on 500" do

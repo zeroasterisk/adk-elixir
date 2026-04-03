@@ -203,10 +203,10 @@ defmodule ADK.LLM.AnthropicTest do
                Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
     end
 
-    test "returns :rate_limited on 429" do
+    test "returns :retry_after on 429 (retry handled by ADK.LLM.generate)" do
       stub_anthropic(429, %{"error" => %{"message" => "Rate limited"}})
 
-      assert {:error, :rate_limited} =
+      assert {:retry_after, _ms, :rate_limited} =
                Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
     end
 
