@@ -239,17 +239,32 @@ defmodule ADK.LLM.Gemini do
     end)
   end
 
-  defp parse_response(%{"candidates" => [%{"content" => content} | _]} = body) do
+  defp parse_response(%{"candidates" => [candidate | _]} = body) do
+    content = Map.get(candidate, "content", %{})
+    finish_reason = Map.get(candidate, "finishReason")
+
+    if content == %{} or content == nil do
+      finish_message = Map.get(candidate, "finishMessage", "")
+
+      Logger.warning(
+        "[Gemini] Empty content. finishReason=#{inspect(finish_reason)} finishMessage=#{inspect(finish_message)}"
+      )
+    end
+
     %{
-      content: parse_content(content),
-      usage_metadata: Map.get(body, "usageMetadata")
+      content: parse_content(content || %{}),
+      usage_metadata: Map.get(body, "usageMetadata"),
+      finish_reason: finish_reason
     }
   end
 
   defp parse_response(body) do
+    Logger.warning("[Gemini] No candidates in response: #{inspect(Map.keys(body || %{}))}")
+
     %{
       content: %{role: :model, parts: [%{text: ""}]},
-      usage_metadata: Map.get(body, "usageMetadata")
+      usage_metadata: Map.get(body, "usageMetadata"),
+      finish_reason: nil
     }
   end
 
