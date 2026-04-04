@@ -405,4 +405,237 @@ defmodule ADK.Integration.LLMIntegrationTest do
       end
     end
   end
+
+  # ── Test: Anthropic tool selection from multiple ────────────────────────
+
+  describe "tool use — Anthropic correct selection from multiple tools" do
+    for model <- @anthropic_models do
+      @tag :integration
+      @tag integration: :anthropic
+      @tag timeout: 60_000
+      test "#{model} selects add_numbers over get_capital for math" do
+        if is_nil(anthropic_key()), do: flunk("ANTHROPIC_API_KEY not set")
+        set_backend_for_model(unquote(model))
+
+        result =
+          run_agent(
+            unquote(model),
+            "You are a helpful assistant. Use tools when available. Be concise.",
+            "What is 17 + 25?",
+            tools: [get_capital_tool(), add_numbers_tool()]
+          )
+
+        add_calls = Enum.filter(result.tool_calls, &(&1.name == "add_numbers"))
+
+        assert length(add_calls) > 0,
+               "Expected add_numbers call, got: #{inspect(result.tool_calls)}, texts: #{inspect(result.texts)}"
+
+        combined = Enum.join(result.texts, " ")
+
+        assert String.contains?(combined, "42"),
+               "Expected answer to contain 42, got: #{combined}"
+      end
+    end
+  end
+
+  # ── Test: Anthropic multi-turn with tool use ────────────────────────────
+
+  describe "Anthropic multi-turn conversation with tools" do
+    for model <- @anthropic_models do
+      @tag :integration
+      @tag integration: :anthropic
+      @tag timeout: 120_000
+      test "#{model} maintains context across 3 turns with tool use" do
+        if is_nil(anthropic_key()), do: flunk("ANTHROPIC_API_KEY not set")
+        set_backend_for_model(unquote(model))
+
+        agent =
+          LlmAgent.new(
+            name: "multi_turn_test",
+            model: unquote(model),
+            instruction: "You are a helpful assistant. Use the get_capital tool to look up capitals. Be concise.",
+            tools: [get_capital_tool()]
+          )
+
+        runner = Runner.new(app_name: "multi_turn_test", agent: agent)
+        sid = "multi-turn-anthropic-#{System.unique_integer([:positive])}"
+
+        # Turn 1: ask about France
+        events1 = Runner.run(runner, "user1", sid, "What is the capital of France?", stop_session: false)
+        texts1 = extract_texts(events1)
+        combined1 = Enum.join(texts1, " ")
+        assert String.contains?(String.downcase(combined1), "paris"), "Turn 1 should mention Paris, got: #{combined1}"
+
+        # Anthropic rate limit buffer
+        Process.sleep(5_000)
+
+        # Turn 2: follow-up (should understand context)
+        events2 = Runner.run(runner, "user1", sid, "What about Japan?", stop_session: false)
+        texts2 = extract_texts(events2)
+        combined2 = Enum.join(texts2, " ")
+        assert String.contains?(String.downcase(combined2), "tokyo"), "Turn 2 should mention Tokyo, got: #{combined2}"
+
+        # Anthropic rate limit buffer
+        Process.sleep(5_000)
+
+        # Turn 3: verify context retention — references previous turns
+        events3 = Runner.run(runner, "user1", sid, "Which of those two cities did I ask about first?")
+        texts3 = extract_texts(events3)
+        combined3 = Enum.join(texts3, " ")
+        assert String.contains?(String.downcase(combined3), "paris"),
+               "Turn 3 should reference Paris (asked first), got: #{combined3}"
+
+        save_recording("multi_turn_anthropic_#{String.replace(unquote(model), "/", "_")}", %{
+          model: unquote(model),
+          turn1: texts1,
+          turn2: texts2,
+          turn3: texts3
+        })
+      end
+    end
+  end
+
+  # ── Test: Error handling — bad model name ───────────────────────────────
+
+  describe "error handling — bad model name" do
+    @tag :integration
+    @tag integration: :error_handling
+    @tag timeout: 30_000
+    test "Gemini with nonexistent model returns error or raises" do
+      if is_nil(gemini_key()), do: flunk("GEMINI_API_KEY not set")
+      Application.put_env(:adk, :llm_backend, ADK.LLM.Gemini)
+
+      try do
+        result =
+          run_agent(
+            "gemini-nonexistent-model-999",
+            "You are a helpful assistant.",
+            "Hello"
+          )
+
+        # If it didn't raise, check for error events or empty texts
+        error_events =
+          result.events
+          |> Enum.filter(fn e ->
+            (e.content && e.content.role == :error) or
+              Map.get(e, :error, false)
+          end)
+
+        assert length(error_events) > 0 or length(result.texts) == 0,
+               "Expected error events or no text for bad model, got texts: #{inspect(result.texts)}"
+      rescue
+        e ->
+          # Any exception is acceptable — the point is it doesn't silently succeed
+          assert Exception.message(e) != "",
+                 "Expected a meaningful error message, got empty"
+      end
+    end
+
+    @tag :integration
+    @tag integration: :error_handling
+    @tag timeout: 30_000
+    test "Anthropic with nonexistent model returns error or raises" do
+      if is_nil(anthropic_key()), do: flunk("ANTHROPIC_API_KEY not set")
+      Application.put_env(:adk, :llm_backend, ADK.LLM.Anthropic)
+
+      try do
+        result =
+          run_agent(
+            "claude-nonexistent-model-999",
+            "You are a helpful assistant.",
+            "Hello"
+          )
+
+        error_events =
+          result.events
+          |> Enum.filter(fn e ->
+            (e.content && e.content.role == :error) or
+              Map.get(e, :error, false)
+          end)
+
+        assert length(error_events) > 0 or length(result.texts) == 0,
+               "Expected error events or no text for bad model, got texts: #{inspect(result.texts)}"
+      rescue
+        e ->
+          assert Exception.message(e) != "",
+                 "Expected a meaningful error message, got empty"
+      end
+    end
+  end
+
+  # ── Test: Edge case — empty tool result ─────────────────────────────────
+
+  describe "edge case — empty tool result" do
+    @tag :integration
+    @tag integration: :edge_case
+    @tag timeout: 60_000
+    test "Gemini handles tool returning empty map gracefully" do
+      if is_nil(gemini_key()), do: flunk("GEMINI_API_KEY not set")
+      set_backend_for_model("gemini-2.5-flash")
+
+      empty_tool =
+        FunctionTool.new(:lookup_info,
+          description: "Look up information about a topic. Always use this tool when asked about any topic.",
+          parameters: %{
+            type: "object",
+            properties: %{
+              topic: %{type: "string", description: "The topic to look up"}
+            },
+            required: ["topic"]
+          },
+          func: fn _ctx, _args -> {:ok, %{}} end
+        )
+
+      result =
+        run_agent(
+          "gemini-2.5-flash",
+          "You are a helpful assistant. Always use the lookup_info tool when asked about topics. If the tool returns empty results, say you couldn't find information.",
+          "Look up information about dolphins.",
+          tools: [empty_tool]
+        )
+
+      # Should not crash — agent should handle empty result gracefully
+      assert length(result.events) > 0, "Expected at least one event"
+      assert length(result.texts) > 0, "Expected a text response even with empty tool result"
+    end
+  end
+
+  # ── Test: Edge case — large tool result ─────────────────────────────────
+
+  describe "edge case — large tool result" do
+    @tag :integration
+    @tag integration: :edge_case
+    @tag timeout: 60_000
+    test "Gemini handles 50KB tool result without crashing" do
+      if is_nil(gemini_key()), do: flunk("GEMINI_API_KEY not set")
+      set_backend_for_model("gemini-2.5-flash")
+
+      large_tool =
+        FunctionTool.new(:get_data,
+          description: "Get a large dataset. Always use this tool when asked for data.",
+          parameters: %{
+            type: "object",
+            properties: %{
+              query: %{type: "string", description: "What data to retrieve"}
+            },
+            required: ["query"]
+          },
+          func: fn _ctx, _args ->
+            {:ok, %{data: String.duplicate("x", 50_000), status: "complete"}}
+          end
+        )
+
+      result =
+        run_agent(
+          "gemini-2.5-flash",
+          "You are a helpful assistant. Use the get_data tool when asked for data. Summarize what you got back briefly.",
+          "Get me some data please.",
+          tools: [large_tool]
+        )
+
+      # Should not crash — ResultGuard should cap at 50KB
+      assert length(result.events) > 0, "Expected at least one event"
+      assert length(result.texts) > 0, "Expected a text response even with large tool result"
+    end
+  end
 end
