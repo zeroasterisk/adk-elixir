@@ -82,6 +82,10 @@ defmodule ADK.LLM.Anthropic do
         retry_ms = ADK.LLM.Retry.extract_retry_after(resp)
         {:retry_after, retry_ms, :rate_limited}
 
+      {:ok, %Req.Response{status: 529} = resp} ->
+        retry_ms = ADK.LLM.Retry.extract_retry_after(resp)
+        {:retry_after, retry_ms, :overloaded}
+
       {:ok, %Req.Response{status: 401}} ->
         {:error, :unauthorized}
 
@@ -120,6 +124,20 @@ defmodule ADK.LLM.Anthropic do
         nil -> body
         [] -> body
         tools -> Map.put(body, :tools, format_tools(tools))
+      end
+
+    body =
+      case Map.get(request, :tool_choice) do
+        nil -> body
+        choice -> Map.put(body, :tool_choice, format_tool_choice(choice))
+      end
+
+    # Metadata (user_id for abuse tracking)
+    body =
+      case Map.get(request, :metadata) do
+        nil -> body
+        meta when meta == %{} -> body
+        meta -> Map.put(body, :metadata, meta)
       end
 
     # Apply generate_config
@@ -209,11 +227,17 @@ defmodule ADK.LLM.Anthropic do
 
     content = extract_tool_result_content(resp)
 
-    %{
+    result = %{
       type: "tool_result",
       tool_use_id: id_from_resp,
       content: content
     }
+
+    # Propagate is_error flag when the tool execution failed
+    case Map.get(fr, :is_error, Map.get(resp, :is_error, Map.get(resp, "is_error"))) do
+      true -> Map.put(result, :is_error, true)
+      _ -> result
+    end
   end
 
   defp extract_tool_result_content(resp) do
@@ -342,21 +366,49 @@ defmodule ADK.LLM.Anthropic do
     end)
   end
 
+  defp format_tool_choice(:auto), do: %{type: "auto"}
+  defp format_tool_choice("auto"), do: %{type: "auto"}
+  defp format_tool_choice(:any), do: %{type: "any"}
+  defp format_tool_choice("any"), do: %{type: "any"}
+  defp format_tool_choice(:none), do: %{type: "none"}
+  defp format_tool_choice("none"), do: %{type: "none"}
+
+  defp format_tool_choice(%{type: "tool", name: name}),
+    do: %{type: "tool", name: name}
+
+  defp format_tool_choice({:tool, name}),
+    do: %{type: "tool", name: name}
+
+  # Pass through if already a map in the right format
+  defp format_tool_choice(%{type: _} = choice), do: choice
+
   # --- Response parsing ---
 
   defp parse_response(%{"content" => content} = body) do
     %{
       content: parse_content(content),
-      usage_metadata: Map.get(body, "usage")
+      usage_metadata: Map.get(body, "usage"),
+      stop_reason: parse_stop_reason(Map.get(body, "stop_reason")),
+      model: Map.get(body, "model"),
+      id: Map.get(body, "id")
     }
   end
 
   defp parse_response(body) do
     %{
       content: %{role: :model, parts: [%{text: ""}]},
-      usage_metadata: Map.get(body, "usage")
+      usage_metadata: Map.get(body, "usage"),
+      stop_reason: parse_stop_reason(Map.get(body, "stop_reason")),
+      model: Map.get(body, "model"),
+      id: Map.get(body, "id")
     }
   end
+
+  defp parse_stop_reason("end_turn"), do: :end_turn
+  defp parse_stop_reason("max_tokens"), do: :max_tokens
+  defp parse_stop_reason("stop_sequence"), do: :stop_sequence
+  defp parse_stop_reason("tool_use"), do: :tool_use
+  defp parse_stop_reason(_), do: nil
 
   defp parse_content(blocks) when is_list(blocks) do
     parts = Enum.map(blocks, &parse_block/1)
@@ -367,6 +419,10 @@ defmodule ADK.LLM.Anthropic do
 
   defp parse_block(%{"type" => "tool_use", "id" => id, "name" => name, "input" => input}) do
     %{function_call: %{name: name, args: input, id: id}}
+  end
+
+  defp parse_block(%{"type" => "thinking", "thinking" => thinking}) do
+    %{thinking: thinking}
   end
 
   defp parse_block(other), do: other

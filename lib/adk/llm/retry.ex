@@ -162,7 +162,8 @@ defmodule ADK.LLM.Retry do
   """
   @spec transient?(term()) :: boolean()
   def transient?(:rate_limited), do: true
-  def transient?({:api_error, status, _}) when status in [500, 502, 503, 504], do: true
+  def transient?(:overloaded), do: true
+  def transient?({:api_error, status, _}) when status in [500, 502, 503, 504, 529], do: true
   def transient?({:request_failed, _}), do: true
   def transient?(:timeout), do: true
   def transient?(:econnrefused), do: true

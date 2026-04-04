@@ -477,4 +477,337 @@ defmodule ADK.LLM.AnthropicTest do
       assert log =~ "Image data is not supported in Claude for assistant turns."
     end
   end
+
+  describe "generate/2 - tool_choice" do
+    test "sends tool_choice auto" do
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        assert decoded["tool_choice"] == %{"type" => "auto"}
+
+        Req.Test.json(conn, %{
+          "content" => [%{"type" => "text", "text" => "ok"}]
+        })
+      end)
+
+      assert {:ok, _} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{
+                 messages: [%{role: :user, parts: [%{text: "test"}]}],
+                 tools: [%{name: "search", description: "Search"}],
+                 tool_choice: :auto
+               })
+    end
+
+    test "sends tool_choice any" do
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        assert decoded["tool_choice"] == %{"type" => "any"}
+
+        Req.Test.json(conn, %{
+          "content" => [%{"type" => "text", "text" => "ok"}]
+        })
+      end)
+
+      assert {:ok, _} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{
+                 messages: [],
+                 tools: [%{name: "search", description: "Search"}],
+                 tool_choice: :any
+               })
+    end
+
+    test "sends tool_choice none" do
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        assert decoded["tool_choice"] == %{"type" => "none"}
+
+        Req.Test.json(conn, %{
+          "content" => [%{"type" => "text", "text" => "ok"}]
+        })
+      end)
+
+      assert {:ok, _} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{
+                 messages: [],
+                 tool_choice: :none
+               })
+    end
+
+    test "sends tool_choice with specific tool name" do
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        assert decoded["tool_choice"] == %{"type" => "tool", "name" => "get_weather"}
+
+        Req.Test.json(conn, %{
+          "content" => [%{"type" => "text", "text" => "ok"}]
+        })
+      end)
+
+      assert {:ok, _} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{
+                 messages: [],
+                 tools: [%{name: "get_weather", description: "Get weather"}],
+                 tool_choice: {:tool, "get_weather"}
+               })
+    end
+
+    test "does not send tool_choice when not specified" do
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        refute Map.has_key?(decoded, "tool_choice")
+
+        Req.Test.json(conn, %{
+          "content" => [%{"type" => "text", "text" => "ok"}]
+        })
+      end)
+
+      assert {:ok, _} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+    end
+  end
+
+  describe "generate/2 - 529 overloaded" do
+    test "returns :retry_after on 529 (overloaded)" do
+      stub_anthropic(529, %{"error" => %{"message" => "Overloaded"}})
+
+      assert {:retry_after, _ms, :overloaded} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+    end
+
+    test "extracts retry-after-ms header on 529" do
+      Req.Test.stub(Anthropic, fn conn ->
+        conn
+        |> Plug.Conn.put_resp_header("retry-after-ms", "5000")
+        |> Plug.Conn.put_status(529)
+        |> Req.Test.json(%{"error" => %{"message" => "Overloaded"}})
+      end)
+
+      assert {:retry_after, 5000, :overloaded} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+    end
+
+    test "extracts retry-after header (seconds) on 429" do
+      Req.Test.stub(Anthropic, fn conn ->
+        conn
+        |> Plug.Conn.put_resp_header("retry-after", "3")
+        |> Plug.Conn.put_status(429)
+        |> Req.Test.json(%{"error" => %{"message" => "Rate limited"}})
+      end)
+
+      assert {:retry_after, 3000, :rate_limited} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+    end
+  end
+
+  describe "generate/2 - response fields" do
+    test "parses stop_reason, model, and id from response" do
+      stub_anthropic(200, %{
+        "id" => "msg_01XFDUDYJgAACzvnptvVoYEL",
+        "type" => "message",
+        "role" => "assistant",
+        "model" => "claude-sonnet-4-20250514",
+        "content" => [%{"type" => "text", "text" => "Hello!"}],
+        "stop_reason" => "end_turn",
+        "usage" => %{"input_tokens" => 10, "output_tokens" => 5}
+      })
+
+      assert {:ok, resp} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{
+                 messages: [%{role: :user, parts: [%{text: "Hi"}]}]
+               })
+
+      assert resp.stop_reason == :end_turn
+      assert resp.model == "claude-sonnet-4-20250514"
+      assert resp.id == "msg_01XFDUDYJgAACzvnptvVoYEL"
+    end
+
+    test "parses tool_use stop_reason" do
+      stub_anthropic(200, %{
+        "content" => [
+          %{"type" => "tool_use", "id" => "toolu_1", "name" => "search", "input" => %{}}
+        ],
+        "stop_reason" => "tool_use"
+      })
+
+      assert {:ok, resp} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+
+      assert resp.stop_reason == :tool_use
+    end
+
+    test "parses max_tokens stop_reason" do
+      stub_anthropic(200, %{
+        "content" => [%{"type" => "text", "text" => "truncated..."}],
+        "stop_reason" => "max_tokens"
+      })
+
+      assert {:ok, resp} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+
+      assert resp.stop_reason == :max_tokens
+    end
+
+    test "parses stop_sequence stop_reason" do
+      stub_anthropic(200, %{
+        "content" => [%{"type" => "text", "text" => "stopped here"}],
+        "stop_reason" => "stop_sequence"
+      })
+
+      assert {:ok, resp} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+
+      assert resp.stop_reason == :stop_sequence
+    end
+
+    test "returns nil stop_reason for unknown values" do
+      stub_anthropic(200, %{
+        "content" => [%{"type" => "text", "text" => "ok"}],
+        "stop_reason" => "something_new"
+      })
+
+      assert {:ok, resp} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+
+      assert resp.stop_reason == nil
+    end
+  end
+
+  describe "generate/2 - is_error on tool_result" do
+    test "sends is_error: true when function_response has is_error" do
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        [msg] = decoded["messages"]
+        [block] = msg["content"]
+
+        assert block["type"] == "tool_result"
+        assert block["is_error"] == true
+
+        Req.Test.json(conn, %{
+          "content" => [%{"type" => "text", "text" => "I see the error"}]
+        })
+      end)
+
+      assert {:ok, _} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{
+                 messages: [
+                   %{
+                     role: :model,
+                     parts: [
+                       %{
+                         function_response: %{
+                           name: "failing_tool",
+                           id: "toolu_err1",
+                           is_error: true,
+                           response: %{result: "Error: something went wrong"}
+                         }
+                       }
+                     ]
+                   }
+                 ]
+               })
+    end
+
+    test "does not send is_error when not set" do
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        [msg] = decoded["messages"]
+        [block] = msg["content"]
+
+        assert block["type"] == "tool_result"
+        refute Map.has_key?(block, "is_error")
+
+        Req.Test.json(conn, %{
+          "content" => [%{"type" => "text", "text" => "ok"}]
+        })
+      end)
+
+      assert {:ok, _} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{
+                 messages: [
+                   %{
+                     role: :model,
+                     parts: [
+                       %{
+                         function_response: %{
+                           name: "ok_tool",
+                           id: "toolu_ok1",
+                           response: %{result: "success"}
+                         }
+                       }
+                     ]
+                   }
+                 ]
+               })
+    end
+  end
+
+  describe "generate/2 - metadata" do
+    test "sends metadata with user_id" do
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        assert decoded["metadata"] == %{"user_id" => "user-123"}
+
+        Req.Test.json(conn, %{
+          "content" => [%{"type" => "text", "text" => "ok"}]
+        })
+      end)
+
+      assert {:ok, _} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{
+                 messages: [],
+                 metadata: %{user_id: "user-123"}
+               })
+    end
+
+    test "does not send metadata when not specified" do
+      Req.Test.stub(Anthropic, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        refute Map.has_key?(decoded, "metadata")
+
+        Req.Test.json(conn, %{
+          "content" => [%{"type" => "text", "text" => "ok"}]
+        })
+      end)
+
+      assert {:ok, _} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{messages: []})
+    end
+  end
+
+  describe "generate/2 - thinking blocks" do
+    test "parses thinking blocks from response" do
+      stub_anthropic(200, %{
+        "content" => [
+          %{"type" => "thinking", "thinking" => "Let me consider this carefully..."},
+          %{"type" => "text", "text" => "Here is my answer."}
+        ],
+        "stop_reason" => "end_turn"
+      })
+
+      assert {:ok, resp} =
+               Anthropic.generate("claude-sonnet-4-20250514", %{
+                 messages: [%{role: :user, parts: [%{text: "Think about this"}]}]
+               })
+
+      assert [%{thinking: "Let me consider this carefully..."}, %{text: "Here is my answer."}] =
+               resp.content.parts
+    end
+  end
 end
