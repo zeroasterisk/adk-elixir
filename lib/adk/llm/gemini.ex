@@ -178,6 +178,14 @@ defmodule ADK.LLM.Gemini do
           gen_config = put_if(gen_config, :candidateCount, config[:candidate_count])
           gen_config = put_if(gen_config, :responseMimeType, config[:response_mime_type])
           gen_config = put_if(gen_config, :responseSchema, config[:response_schema])
+          gen_config = put_if(gen_config, :responseJsonSchema, config[:response_json_schema])
+          gen_config = put_if(gen_config, :presencePenalty, config[:presence_penalty])
+          gen_config = put_if(gen_config, :frequencyPenalty, config[:frequency_penalty])
+          gen_config = put_if(gen_config, :seed, config[:seed])
+          gen_config = put_if(gen_config, :responseLogprobs, config[:response_logprobs])
+          gen_config = put_if(gen_config, :logprobs, config[:logprobs])
+          gen_config = put_if(gen_config, :responseModalities, config[:response_modalities])
+          gen_config = put_if(gen_config, :thinkingConfig, config[:thinking_config])
           if gen_config == %{}, do: body, else: Map.put(body, :generationConfig, gen_config)
       end
 
@@ -209,8 +217,10 @@ defmodule ADK.LLM.Gemini do
     maybe_add_thought_signature(base, part)
   end
 
-  defp format_part(%{function_call: %{name: name, args: args}} = part) do
-    base = %{functionCall: %{name: name, args: args}}
+  defp format_part(%{function_call: %{name: name, args: args} = fc} = part) do
+    fc_map = %{name: name, args: args}
+    fc_map = if Map.has_key?(fc, :id), do: Map.put(fc_map, :id, fc.id), else: fc_map
+    base = %{functionCall: fc_map}
     maybe_add_thought_signature(base, part)
   end
 
@@ -252,11 +262,14 @@ defmodule ADK.LLM.Gemini do
       )
     end
 
-    %{
+    result = %{
       content: parse_content(content || %{}),
       usage_metadata: Map.get(body, "usageMetadata"),
       finish_reason: finish_reason
     }
+
+    result = put_if(result, :prompt_feedback, Map.get(body, "promptFeedback"))
+    put_if(result, :model_version, Map.get(body, "modelVersion"))
   end
 
   defp parse_response(body) do
@@ -286,14 +299,20 @@ defmodule ADK.LLM.Gemini do
   end
 
   defp parse_response_part(%{"text" => text} = part) do
+    base = %{text: text}
+    base = if part["thought"] == true, do: Map.put(base, :thought, true), else: base
+
     case part do
-      %{"thoughtSignature" => sig} -> %{text: text, thought_signature: sig}
-      _ -> %{text: text}
+      %{"thoughtSignature" => sig} -> Map.put(base, :thought_signature, sig)
+      _ -> base
     end
   end
 
-  defp parse_response_part(%{"functionCall" => %{"name" => name, "args" => args}} = part) do
-    base = %{function_call: %{name: name, args: args}}
+  defp parse_response_part(%{"functionCall" => %{"name" => name} = fc} = part) do
+    args = Map.get(fc, "args", %{})
+    fc_map = %{name: name, args: args}
+    fc_map = if Map.has_key?(fc, "id"), do: Map.put(fc_map, :id, fc["id"]), else: fc_map
+    base = %{function_call: fc_map}
 
     case part do
       %{"thoughtSignature" => sig} -> Map.put(base, :thought_signature, sig)
