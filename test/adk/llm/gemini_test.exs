@@ -494,4 +494,319 @@ defmodule ADK.LLM.GeminiTest do
       assert {:ok, _} = Gemini.generate(nil, %{messages: []})
     end
   end
+
+  describe "generate/2 - generationConfig fields from Python SDK" do
+    test "sends presencePenalty, frequencyPenalty, seed" do
+      Req.Test.stub(Gemini, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+        gc = decoded["generationConfig"]
+
+        assert gc["presencePenalty"] == 0.5
+        assert gc["frequencyPenalty"] == 0.3
+        assert gc["seed"] == 42
+
+        Req.Test.json(conn, %{
+          "candidates" => [
+            %{"content" => %{"role" => "model", "parts" => [%{"text" => "ok"}]}}
+          ]
+        })
+      end)
+
+      assert {:ok, _} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "test"}]}],
+                 generate_config: %{presence_penalty: 0.5, frequency_penalty: 0.3, seed: 42}
+               })
+    end
+
+    test "sends responseLogprobs, logprobs, responseModalities" do
+      Req.Test.stub(Gemini, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+        gc = decoded["generationConfig"]
+
+        assert gc["responseLogprobs"] == true
+        assert gc["logprobs"] == 5
+        assert gc["responseModalities"] == ["TEXT", "IMAGE"]
+
+        Req.Test.json(conn, %{
+          "candidates" => [
+            %{"content" => %{"role" => "model", "parts" => [%{"text" => "ok"}]}}
+          ]
+        })
+      end)
+
+      assert {:ok, _} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "test"}]}],
+                 generate_config: %{
+                   response_logprobs: true,
+                   logprobs: 5,
+                   response_modalities: ["TEXT", "IMAGE"]
+                 }
+               })
+    end
+
+    test "sends thinkingConfig in generationConfig" do
+      Req.Test.stub(Gemini, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+        gc = decoded["generationConfig"]
+
+        assert gc["thinkingConfig"] == %{"thinkingBudget" => 1024}
+
+        Req.Test.json(conn, %{
+          "candidates" => [
+            %{"content" => %{"role" => "model", "parts" => [%{"text" => "ok"}]}}
+          ]
+        })
+      end)
+
+      assert {:ok, _} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "test"}]}],
+                 generate_config: %{thinking_config: %{"thinkingBudget" => 1024}}
+               })
+    end
+
+    test "sends responseJsonSchema in generationConfig" do
+      Req.Test.stub(Gemini, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+        gc = decoded["generationConfig"]
+
+        assert gc["responseJsonSchema"] == %{"type" => "object"}
+
+        Req.Test.json(conn, %{
+          "candidates" => [
+            %{"content" => %{"role" => "model", "parts" => [%{"text" => "ok"}]}}
+          ]
+        })
+      end)
+
+      assert {:ok, _} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "test"}]}],
+                 generate_config: %{response_json_schema: %{"type" => "object"}}
+               })
+    end
+  end
+
+  describe "generate/2 - thought parts (thinking models)" do
+    test "parses thought: true on text parts" do
+      stub_gemini(200, %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "role" => "model",
+              "parts" => [
+                %{"text" => "Let me reason...", "thought" => true},
+                %{"text" => "The answer is 42."}
+              ]
+            }
+          }
+        ]
+      })
+
+      assert {:ok, resp} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "What is 6*7?"}]}]
+               })
+
+      [thought_part, answer_part] = resp.content.parts
+      assert thought_part.thought == true
+      assert thought_part.text == "Let me reason..."
+      refute Map.has_key?(answer_part, :thought)
+      assert answer_part.text == "The answer is 42."
+    end
+
+    test "thought and thoughtSignature can coexist" do
+      stub_gemini(200, %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "role" => "model",
+              "parts" => [
+                %{"text" => "thinking...", "thought" => true, "thoughtSignature" => "sig1"}
+              ]
+            }
+          }
+        ]
+      })
+
+      assert {:ok, resp} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "Hi"}]}]
+               })
+
+      [part] = resp.content.parts
+      assert part.thought == true
+      assert part.thought_signature == "sig1"
+    end
+  end
+
+  describe "generate/2 - response metadata" do
+    test "parses promptFeedback from response" do
+      stub_gemini(200, %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "role" => "model",
+              "parts" => [%{"text" => "ok"}]
+            }
+          }
+        ],
+        "promptFeedback" => %{"blockReason" => "SAFETY"}
+      })
+
+      assert {:ok, resp} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "test"}]}]
+               })
+
+      assert resp.prompt_feedback == %{"blockReason" => "SAFETY"}
+    end
+
+    test "parses modelVersion from response" do
+      stub_gemini(200, %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "role" => "model",
+              "parts" => [%{"text" => "ok"}]
+            }
+          }
+        ],
+        "modelVersion" => "gemini-2.5-flash-001"
+      })
+
+      assert {:ok, resp} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "test"}]}]
+               })
+
+      assert resp.model_version == "gemini-2.5-flash-001"
+    end
+
+    test "omits prompt_feedback and model_version when absent" do
+      stub_gemini(200, %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "role" => "model",
+              "parts" => [%{"text" => "ok"}]
+            }
+          }
+        ]
+      })
+
+      assert {:ok, resp} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "test"}]}]
+               })
+
+      refute Map.has_key?(resp, :prompt_feedback)
+      refute Map.has_key?(resp, :model_version)
+    end
+  end
+
+  describe "generate/2 - FunctionCall.id" do
+    test "parses id from function call response" do
+      stub_gemini(200, %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "role" => "model",
+              "parts" => [
+                %{
+                  "functionCall" => %{
+                    "name" => "search",
+                    "args" => %{"q" => "test"},
+                    "id" => "call_123"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      })
+
+      assert {:ok, resp} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "search"}]}],
+                 tools: [%{name: "search", description: "Search"}]
+               })
+
+      [%{function_call: fc}] = resp.content.parts
+      assert fc.name == "search"
+      assert fc.id == "call_123"
+    end
+
+    test "omits id from function call when absent" do
+      stub_gemini(200, %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "role" => "model",
+              "parts" => [
+                %{
+                  "functionCall" => %{
+                    "name" => "search",
+                    "args" => %{"q" => "test"}
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      })
+
+      assert {:ok, resp} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [%{role: :user, parts: [%{text: "search"}]}],
+                 tools: [%{name: "search", description: "Search"}]
+               })
+
+      [%{function_call: fc}] = resp.content.parts
+      refute Map.has_key?(fc, :id)
+    end
+
+    test "formats id back into functionCall request" do
+      Req.Test.stub(Gemini, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        decoded = Jason.decode!(body)
+
+        model_content = Enum.find(decoded["contents"], &(&1["role"] == "model"))
+        fc_part = hd(model_content["parts"])
+        assert fc_part["functionCall"]["id"] == "call_456"
+        assert fc_part["functionCall"]["name"] == "search"
+
+        Req.Test.json(conn, %{
+          "candidates" => [
+            %{"content" => %{"role" => "model", "parts" => [%{"text" => "done"}]}}
+          ]
+        })
+      end)
+
+      assert {:ok, _} =
+               Gemini.generate("gemini-flash-latest", %{
+                 messages: [
+                   %{role: :user, parts: [%{text: "search"}]},
+                   %{
+                     role: :model,
+                     parts: [
+                       %{function_call: %{name: "search", args: %{"q" => "test"}, id: "call_456"}}
+                     ]
+                   },
+                   %{
+                     role: :user,
+                     parts: [
+                       %{function_response: %{name: "search", response: %{"r" => "ok"}}}
+                     ]
+                   }
+                 ]
+               })
+    end
+  end
 end
