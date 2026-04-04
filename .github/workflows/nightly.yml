@@ -1,0 +1,35 @@
+name: Nightly Integration Tests
+
+on:
+  schedule:
+    # Run at 04:00 UTC daily
+    - cron: '0 4 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.17'
+          otp-version: '27'
+
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      - name: Run nightly integration tests
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MIX_ENV: test
+        run: bash scripts/nightly-integration.sh
