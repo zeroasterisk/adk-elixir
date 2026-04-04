@@ -31,7 +31,7 @@ defmodule ADK.Integration.LLMIntegrationTest do
 
   @anthropic_models [
     "claude-sonnet-4-6",
-    "claude-3-5-haiku-latest"
+    "claude-haiku-4-5"
   ]
 
   @recordings_dir Path.join([__DIR__, "..", "..", "support", "fixtures", "recordings"])
@@ -67,6 +67,8 @@ defmodule ADK.Integration.LLMIntegrationTest do
         Application.put_env(:adk, :llm_backend, ADK.LLM.Gemini)
       String.starts_with?(model, "claude") ->
         Application.put_env(:adk, :llm_backend, ADK.LLM.Anthropic)
+        # OAuth tokens have lower rate limits — add delay between Anthropic calls
+        Process.sleep(5_000)
       true ->
         raise "Unknown model provider for: #{model}"
     end
@@ -75,7 +77,7 @@ defmodule ADK.Integration.LLMIntegrationTest do
   # ── Helpers ──────────────────────────────────────────────────────────────
 
   defp gemini_key, do: System.get_env("GEMINI_API_KEY")
-  defp anthropic_key, do: System.get_env("ANTHROPIC_API_KEY")
+  defp anthropic_key, do: System.get_env("ANTHROPIC_API_KEY") || System.get_env("ANTHROPIC_OAUTH_TOKEN")
 
   defp recording?, do: System.get_env("RECORD") == "1"
 

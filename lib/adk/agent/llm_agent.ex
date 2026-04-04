@@ -364,12 +364,15 @@ defmodule ADK.Agent.LlmAgent do
                       # Build tool response and loop
                       response_parts =
                         Enum.map(tool_results, fn tr ->
-                          %{
-                            function_response: %{
-                              name: tr.name,
-                              response: wrap_tool_response(tr[:result] || tr[:error] || "")
-                            }
+                          fr = %{
+                            name: tr.name,
+                            response: wrap_tool_response(tr[:result] || tr[:error] || "")
                           }
+
+                          # Preserve tool_call_id for backends that need it (e.g. Anthropic)
+                          fr = if tr[:id], do: Map.put(fr, :id, tr[:id]), else: fr
+
+                          %{function_response: fr}
                         end)
 
                       response_event =
@@ -1271,6 +1274,10 @@ defmodule ADK.Agent.LlmAgent do
               %{name: call.name, error: inspect(reason)}
           end
       end
+      # Preserve tool call ID for backends that need it (e.g. Anthropic tool_use_id)
+      |> then(fn result ->
+        if call[:id], do: Map.put(result, :id, call[:id]), else: result
+      end)
     end)
   end
 

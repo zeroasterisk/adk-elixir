@@ -197,9 +197,15 @@ defmodule ADK.LLM.Anthropic do
     end
   end
 
-  defp format_function_response(%{name: name, response: resp}) do
-    # tool_call_id might be under atom or string key
-    id_from_resp = Map.get(resp, :tool_call_id, Map.get(resp, "tool_call_id", name))
+  defp format_function_response(%{name: name, response: resp} = fr) do
+    # tool_use_id resolution order:
+    # 1. :id on the function_response (preserved from tool_use block by agent loop)
+    # 2. :tool_call_id in the response map (legacy path)
+    # 3. tool name as fallback (generates a new id)
+    id_from_resp =
+      Map.get(fr, :id) ||
+        Map.get(resp, :tool_call_id, Map.get(resp, "tool_call_id", nil)) ||
+        generate_tool_use_id(name)
 
     content = extract_tool_result_content(resp)
 
