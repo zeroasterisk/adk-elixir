@@ -1,0 +1,12 @@
+{
+  "model": "gemini-3-flash-preview",
+  "turn1": [
+    "\nThe capital of France is Paris."
+  ],
+  "turn2": [
+    "\n\nThe capital of Japan is Tokyo."
+  ],
+  "turn3": [
+    "The first city you asked about was Paris."
+  ]
+}

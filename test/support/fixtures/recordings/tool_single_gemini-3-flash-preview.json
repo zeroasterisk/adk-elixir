@@ -1,0 +1,14 @@
+{
+  "model": "gemini-3-flash-preview",
+  "texts": [
+    "\nThe capital of France is Paris."
+  ],
+  "tool_calls": [
+    {
+      "args": {
+        "country": "France"
+      },
+      "name": "get_capital"
+    }
+  ]
+}

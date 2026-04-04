@@ -1,0 +1,7 @@
+{
+  "event_count": 1,
+  "model": "gemini-2.5-flash",
+  "texts": [
+    "The sum of 2 and 2 is 4."
+  ]
+}
