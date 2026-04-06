@@ -76,8 +76,19 @@ defmodule ADK.Integration.LLMIntegrationTest do
 
   # ── Helpers ──────────────────────────────────────────────────────────────
 
-  defp gemini_key, do: System.get_env("GEMINI_API_KEY")
-  defp anthropic_key, do: System.get_env("ANTHROPIC_API_KEY") || System.get_env("ANTHROPIC_OAUTH_TOKEN")
+  defp gemini_key do
+    case System.get_env("GEMINI_API_KEY") do
+      v when v in [nil, ""] -> nil
+      key -> key
+    end
+  end
+
+  defp anthropic_key do
+    case System.get_env("ANTHROPIC_API_KEY") || System.get_env("ANTHROPIC_OAUTH_TOKEN") do
+      v when v in [nil, ""] -> nil
+      key -> key
+    end
+  end
 
   defp recording?, do: System.get_env("RECORD") == "1"
 
