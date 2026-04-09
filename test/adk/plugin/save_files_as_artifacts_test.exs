@@ -8,7 +8,7 @@ defmodule ADK.Plugin.SaveFilesAsArtifactsTest do
     @behaviour ADK.Artifact.Store
 
     @impl true
-    def save(_app_name, _user_id, _session_id, filename, _artifact, opts) do
+    def save(_app_name, _user_id, _session_id, filename, _artifact, _opts) do
       if filename =~ "failure" do
         {:error, :storage_error}
       else
@@ -17,13 +17,13 @@ defmodule ADK.Plugin.SaveFilesAsArtifactsTest do
     end
 
     @impl true
-    def load(_app, _uid, _sid, _fname, _opts), do: {:error, :not_implemented}
+    def load(_app, _uid, _sid, _fname, __opts), do: {:error, :not_implemented}
 
     @impl true
-    def list(_app, _uid, _sid, _opts), do: {:error, :not_implemented}
+    def list(_app, _uid, _sid, __opts), do: {:error, :not_implemented}
 
     @impl true
-    def delete(_app, _uid, _sid, _fname, _opts), do: {:error, :not_implemented}
+    def delete(_app, _uid, _sid, _fname, __opts), do: {:error, :not_implemented}
   end
 
   setup do

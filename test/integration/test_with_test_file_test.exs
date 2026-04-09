@@ -25,7 +25,7 @@ defmodule ADK.Integration.TestWithTestFileTest do
   defp compile_agent_fixture do
     agent_file = Path.join(@fixture_dir, "agent.ex")
     Code.compile_file(agent_file)
-    ADK.Integration.Fixture.HomeAutomationAgent.agent()
+    apply(ADK.Integration.Fixture.HomeAutomationAgent, :agent, [])
   end
 
   defp load_eval_file(path) do

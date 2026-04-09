@@ -242,7 +242,7 @@ defmodule ADK.StreamingTest do
   # ── SSE format via WebRouter ─────────────────────────────────────────────────
 
   describe "POST /run_sse SSE format" do
-    defp build_conn(method, path, body \\ nil) do
+    defp build_conn(method, path, body) do
       conn = Plug.Test.conn(method, path, body && Jason.encode!(body))
 
       if body do
@@ -380,7 +380,7 @@ defmodule ADK.StreamingTest do
   # ── Dev Server SSE endpoint ───────────────────────────────────────────────────
 
   describe "POST /api/chat/stream (dev server)" do
-    defp build_dev_conn(method, path, body \\ nil) do
+    defp build_dev_conn(method, path, body) do
       conn = Plug.Test.conn(method, path, body && Jason.encode!(body))
 
       if body do

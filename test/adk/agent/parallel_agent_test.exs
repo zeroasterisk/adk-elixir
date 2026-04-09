@@ -3,7 +3,7 @@ defmodule ADK.Agent.ParallelAgentTest do
 
   alias ADK.Agent.ParallelAgent
 
-  defp slow_agent(name, delay_ms \\ 10) do
+  defp slow_agent(name, delay_ms) do
     ADK.Agent.Custom.new(
       name: name,
       run_fn: fn agent, _ctx ->

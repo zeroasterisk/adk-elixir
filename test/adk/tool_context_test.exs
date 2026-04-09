@@ -92,9 +92,10 @@ defmodule ADK.ToolContextTest do
   describe "artifacts with mock service" do
     setup %{ctx: ctx} do
       # Use an Agent process as a mock artifact store
-      {:ok, store_pid} = Agent.start_link(fn -> %{} end)
+      store_name = :"Agent_#{System.unique_integer([:positive])}"
+      {:ok, store_pid} = Agent.start_link(fn -> %{} end, name: store_name)
 
-      mock_module = create_artifact_mock(store_pid)
+      mock_module = create_artifact_mock(store_name)
 
       ctx = %{ctx | artifact_service: mock_module, app_name: "test", user_id: "user1"}
       tc = ToolContext.new(ctx, "call-1", %{name: "test_tool"})
@@ -160,9 +161,10 @@ defmodule ADK.ToolContextTest do
 
   describe "credentials with mock service" do
     setup %{ctx: ctx} do
-      {:ok, store_pid} = Agent.start_link(fn -> %{} end)
+      store_name = :"Agent_#{System.unique_integer([:positive])}"
+      {:ok, store_pid} = Agent.start_link(fn -> %{} end, name: store_name)
 
-      mock_module = create_credential_mock(store_pid)
+      mock_module = create_credential_mock(store_name)
 
       ctx = %{ctx | credential_service: mock_module}
       tc = ToolContext.new(ctx, "call-1", %{name: "test_tool"})
@@ -217,15 +219,15 @@ defmodule ADK.ToolContextTest do
 
   describe "legacy backward compatibility" do
     test "get_artifact delegates to load_artifact", %{tool_ctx: tc} do
-      assert {:error, :no_artifact_service} = ToolContext.get_artifact(tc, "file")
+      assert {:error, :no_artifact_service} = apply(ToolContext, :get_artifact, [tc, "file"])
     end
 
     test "set_artifact delegates to save_artifact", %{tool_ctx: tc} do
-      assert {:error, :no_artifact_service} = ToolContext.set_artifact(tc, "file", "data")
+      assert {:error, :no_artifact_service} = apply(ToolContext, :set_artifact, [tc, "file", "data"])
     end
 
     test "get_credential delegates to load_credential", %{tool_ctx: tc} do
-      assert {:error, :no_credential_service} = ToolContext.get_credential(tc, "key")
+      assert {:error, :no_credential_service} = apply(ToolContext, :get_credential, [tc, "key"])
     end
   end
 
@@ -233,7 +235,7 @@ defmodule ADK.ToolContextTest do
   # Mock Helpers
   # ===========================================================================
 
-  defp create_artifact_mock(store_pid) do
+  defp create_artifact_mock(store_name) do
     # We create a module dynamically for the mock
     mod_name = :"ADK.Test.ArtifactMock_#{System.unique_integer([:positive])}"
 
@@ -241,14 +243,14 @@ defmodule ADK.ToolContextTest do
       mod_name,
       quote do
         @behaviour ADK.Artifact.Store
-        @store_pid unquote(store_pid)
+        @store_name unquote(store_name)
 
         @impl true
         def save(_app, _user, session_id, filename, artifact, _opts) do
           key = {session_id, filename}
 
           version =
-            Agent.get_and_update(@store_pid, fn state ->
+            Agent.get_and_update(@store_name, fn state ->
               v = Map.get(state, {:version, key}, 0) + 1
               {v, state |> Map.put(key, artifact) |> Map.put({:version, key}, v)}
             end)
@@ -260,7 +262,7 @@ defmodule ADK.ToolContextTest do
         def load(_app, _user, session_id, filename, _opts) do
           key = {session_id, filename}
 
-          case Agent.get(@store_pid, &Map.get(&1, key)) do
+          case Agent.get(@store_name, &Map.get(&1, key)) do
             nil -> :not_found
             artifact -> {:ok, artifact}
           end
@@ -269,7 +271,7 @@ defmodule ADK.ToolContextTest do
         @impl true
         def list(_app, _user, session_id, _opts) do
           files =
-            Agent.get(@store_pid, fn state ->
+            Agent.get(@store_name, fn state ->
               state
               |> Enum.filter(fn
                 {{^session_id, _name}, _val} -> true
@@ -284,7 +286,7 @@ defmodule ADK.ToolContextTest do
 
         @impl true
         def delete(_app, _user, session_id, filename, _opts) do
-          Agent.update(@store_pid, &Map.delete(&1, {session_id, filename}))
+          Agent.update(@store_name, &Map.delete(&1, {session_id, filename}))
           :ok
         end
       end,
@@ -294,18 +296,18 @@ defmodule ADK.ToolContextTest do
     mod_name
   end
 
-  defp create_credential_mock(store_pid) do
+  defp create_credential_mock(store_name) do
     mod_name = :"ADK.Test.CredentialMock_#{System.unique_integer([:positive])}"
 
     Module.create(
       mod_name,
       quote do
         @behaviour ADK.Auth.CredentialStore
-        @store_pid unquote(store_pid)
+        @store_name unquote(store_name)
 
         @impl true
         def get(name, _opts) do
-          case Agent.get(@store_pid, &Map.get(&1, name)) do
+          case Agent.get(@store_name, &Map.get(&1, name)) do
             nil -> :not_found
             cred -> {:ok, cred}
           end
@@ -313,13 +315,13 @@ defmodule ADK.ToolContextTest do
 
         @impl true
         def put(name, credential, _opts) do
-          Agent.update(@store_pid, &Map.put(&1, name, credential))
+          Agent.update(@store_name, &Map.put(&1, name, credential))
           :ok
         end
 
         @impl true
         def delete(name, _opts) do
-          Agent.update(@store_pid, &Map.delete(&1, name))
+          Agent.update(@store_name, &Map.delete(&1, name))
           :ok
         end
       end,

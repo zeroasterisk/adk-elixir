@@ -3,7 +3,6 @@ defmodule Adk.Agents.McpInstructionProviderTest do
 
   import Mox
   alias Adk.Agents.McpInstructionProvider
-  alias Adk.Mcp.SessionManager
 
   Mox.defmock(MockMcpSessionManager, for: Adk.Mcp.SessionManager)
 

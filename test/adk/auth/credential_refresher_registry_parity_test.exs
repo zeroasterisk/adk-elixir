@@ -8,7 +8,6 @@ defmodule ADK.Auth.CredentialRefresherRegistryParityTest do
   """
   use ExUnit.Case, async: true
 
-  alias ADK.Auth.Refresher
   alias ADK.Auth.Refresher.Registry
 
   # Minimal test refresher implementing the behaviour

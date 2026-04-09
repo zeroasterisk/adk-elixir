@@ -66,7 +66,7 @@ defmodule ADK.Integration.SingleAgentTest do
         )
       end)
 
-    runner = Runner.new(app_name: "test", agent: agent_module.agent())
+    runner = Runner.new(app_name: "test", agent: apply(agent_module, :agent, []))
 
     ADK.LLM.Mock.set_responses([
       %{

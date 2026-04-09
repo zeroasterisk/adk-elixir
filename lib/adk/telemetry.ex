@@ -130,9 +130,9 @@ defmodule ADK.Telemetry do
 
   defp otel_span(event_prefix, metadata, fun) do
     span_name = Enum.join(event_prefix, ".")
-    tracer = :opentelemetry.get_tracer(:adk)
+    tracer = apply(:opentelemetry, :get_tracer, [:adk])
 
-    :otel_tracer.with_span(
+    apply(:otel_tracer, :with_span, [
       tracer,
       span_name,
       %{attributes: map_to_otel_attrs(metadata)},
@@ -140,14 +140,14 @@ defmodule ADK.Telemetry do
         telemetry_fun = fn ->
           case fun.() do
             {res, stop_metadata} ->
-              :otel_span.set_attributes(span_ctx, map_to_otel_attrs(stop_metadata))
+              apply(:otel_span, :set_attributes, [span_ctx, map_to_otel_attrs(stop_metadata)])
               {res, stop_metadata}
           end
         end
 
         telemetry_span(event_prefix, metadata, telemetry_fun)
       end
-    )
+    ])
   end
 
   defp map_to_otel_attrs(map) do

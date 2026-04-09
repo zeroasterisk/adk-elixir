@@ -104,7 +104,7 @@ defmodule ADK.Models.GeminiContextCacheManagerTest do
   describe "initialization" do
     test "creates manager with client" do
       m = Manager.new(MockClient)
-      assert m != nil
+      refute is_nil(m)
       assert m.client == MockClient
     end
   end

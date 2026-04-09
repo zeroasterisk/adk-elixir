@@ -526,11 +526,12 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
 
   describe "credential storage through EUC flow" do
     setup do
-      {:ok, store} = ADK.Auth.InMemoryStore.start_link()
-      %{store: store}
+      store_name = :"Agent_#{System.unique_integer([:positive])}"
+      {:ok, store} = ADK.Auth.InMemoryStore.start_link(name: store_name)
+      %{store: store, store_name: store_name}
     end
 
-    test "preprocessor stores exchanged credential from auth response", %{store: store} do
+    test "preprocessor stores exchanged credential from auth response", %{store: store, store_name: store_name} do
       auth_config = make_auth_config("client_1", "secret_1", credential_key: "my_api_cred")
 
       auth_response =
@@ -551,7 +552,7 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
       events = [euc_event, user_event]
 
       # Create store wrapper module
-      wrapper = create_store_wrapper(store)
+      wrapper = create_store_wrapper(store_name)
 
       assert {:resume, _} =
                Preprocessor.process(events, mock_llm_agent(), credential_service: wrapper)
@@ -598,23 +599,23 @@ defmodule ADK.Auth.FunctionsRequestEucTest do
   # Helpers
   # ---------------------------------------------------------------------------
 
-  defp create_store_wrapper(store_pid) do
+  defp create_store_wrapper(store_name) do
     mod_name = :"ADK.Test.EucStore_#{System.unique_integer([:positive])}"
 
     Module.create(
       mod_name,
       quote do
         @behaviour ADK.Auth.CredentialStore
-        @store_pid unquote(store_pid)
+        @store_name unquote(store_name)
 
         @impl true
-        def get(name, _opts), do: ADK.Auth.InMemoryStore.get(name, server: @store_pid)
+        def get(name, _opts), do: ADK.Auth.InMemoryStore.get(name, server: @store_name)
 
         @impl true
-        def put(name, cred, _opts), do: ADK.Auth.InMemoryStore.put(name, cred, server: @store_pid)
+        def put(name, cred, _opts), do: ADK.Auth.InMemoryStore.put(name, cred, server: @store_name)
 
         @impl true
-        def delete(name, _opts), do: ADK.Auth.InMemoryStore.delete(name, server: @store_pid)
+        def delete(name, _opts), do: ADK.Auth.InMemoryStore.delete(name, server: @store_name)
       end,
       Macro.Env.location(__ENV__)
     )
