@@ -79,7 +79,7 @@ defmodule ADK.Agent.LoopAgentTest do
         run_fn: fn _agent, ctx ->
           :counters.add(call_count, 1, 1)
           count = :counters.get(call_count, 1)
-          ctx = ADK.Context.put_temp(ctx, :iteration, count)
+          _ctx = ADK.Context.put_temp(ctx, :iteration, count)
           # We need to propagate the temp_state somehow
           # The child_ctx is what LoopAgent merges back
           [ADK.Event.new(%{author: "counting", content: "iter=#{count}"})]

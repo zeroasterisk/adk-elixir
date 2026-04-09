@@ -1,7 +1,6 @@
 defmodule ADK.EvalTest do
   use ExUnit.Case, async: true
 
-  alias ADK.Eval
   alias ADK.Eval.{Case, Report}
   alias ADK.Eval.Scorer.{ExactMatch, Contains, ResponseLength, ToolUsed}
 
@@ -37,7 +36,7 @@ defmodule ADK.EvalTest do
     end
 
     test "fails on mismatch" do
-      assert %{pass: false, score: 0.0} =
+      assert %{pass: false, score: +0.0} =
                ExactMatch.score(text_events("Hi!"), expected: "Hello!")
     end
   end
@@ -117,8 +116,8 @@ defmodule ADK.EvalTest do
           %ADK.Eval.Result{
             case_name: "b",
             pass: false,
-            aggregate_score: 0.0,
-            scores: [%{scorer: Contains, score: 0.0, pass: false, details: "nope"}],
+            aggregate_score: +0.0,
+            scores: [%{scorer: Contains, score: +0.0, pass: false, details: "nope"}],
             events: [],
             duration_ms: 50
           }

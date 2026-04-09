@@ -35,7 +35,7 @@ defmodule ADK.Tool.GoogleSearchTest do
 
   describe "run/2" do
     test "returns error (stub — native tool)" do
-      tool = GoogleSearch.new()
+      _tool = GoogleSearch.new()
       assert {:error, msg} = GoogleSearch.run(nil, %{})
       assert msg =~ "built-in"
     end

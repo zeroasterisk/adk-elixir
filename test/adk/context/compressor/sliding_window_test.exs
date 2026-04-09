@@ -114,7 +114,7 @@ defmodule ADK.Context.Compressor.SlidingWindowTest do
       ]
 
       assert {:ok, result} = SlidingWindow.compress(msgs, invocations: 1)
-      texts = Enum.map(result, fn m -> hd(m.parts) end)
+      _texts = Enum.map(result, fn m -> hd(m.parts) end)
       # Should keep last invocation: "latest question" + "latest answer"
       assert length(result) == 2
     end

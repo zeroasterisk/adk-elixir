@@ -62,7 +62,7 @@ defmodule ADK.CLI.FastApiParityTest do
     Router.call(req, @router_opts)
   end
 
-  defp a2a_config(name \\ "parity_agent") do
+  defp a2a_config(name) do
     agent =
       ADK.Agent.Custom.new(
         name: name,

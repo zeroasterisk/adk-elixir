@@ -4,7 +4,7 @@ defmodule ADK.Planner.PlanReActTest do
   alias ADK.Planner.PlanReAct
 
   test "build_planning_instruction returns string with formatting guidelines" do
-    planner = %PlanReAct{}
+    _planner = %PlanReAct{}
     instruction = PlanReAct.build_planning_instruction(nil, %{})
 
     assert is_binary(instruction)

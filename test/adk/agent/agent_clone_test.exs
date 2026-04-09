@@ -7,7 +7,7 @@ defmodule ADK.Agent.AgentCloneTest do
   alias ADK.Agent.ParallelAgent
   alias ADK.Agent.Clone
 
-  defp llm(opts \\ []) do
+  defp llm(opts) do
     defaults = [name: "agent", model: "test", instruction: "help"]
     LlmAgent.new(Keyword.merge(defaults, opts))
   end

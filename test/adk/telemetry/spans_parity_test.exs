@@ -1,7 +1,6 @@
 defmodule ADK.Telemetry.SpansParityTest do
   use ExUnit.Case, async: false
 
-  alias ADK.Telemetry.Contract
   alias ADK.Agent.LlmAgent
 
   setup do

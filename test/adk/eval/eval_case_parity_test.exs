@@ -56,7 +56,7 @@ defmodule ADK.Eval.EvalCaseParityTest do
     })
   end
 
-  defp string_key_tool_call_event(name, args \\ %{}) do
+  defp string_key_tool_call_event(name, args) do
     ADK.Event.new(%{
       author: "agent",
       partial: false,

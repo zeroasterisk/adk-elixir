@@ -129,10 +129,11 @@ defmodule ADK.Auth.ToolContextIntegrationTest do
   alias ADK.Auth.{Credential, InMemoryStore}
 
   setup do
-    {:ok, store} = InMemoryStore.start_link()
+    store_name = :"Agent_#{System.unique_integer([:positive])}"
+    {:ok, store} = InMemoryStore.start_link(name: store_name)
 
     # Create a wrapper module that passes the store pid to InMemoryStore
-    wrapper = create_credential_wrapper(store)
+    wrapper = create_credential_wrapper(store_name)
 
     %{store: store, credential_service: wrapper}
   end
@@ -213,23 +214,23 @@ defmodule ADK.Auth.ToolContextIntegrationTest do
     assert {:error, :no_credential_service} = ADK.ToolContext.load_credential(tool_ctx, "api_key")
   end
 
-  defp create_credential_wrapper(store_pid) do
+  defp create_credential_wrapper(store_name) do
     mod_name = :"ADK.Test.CredentialWrapper_#{System.unique_integer([:positive])}"
 
     Module.create(
       mod_name,
       quote do
         @behaviour ADK.Auth.CredentialStore
-        @store_pid unquote(store_pid)
+        @store_name unquote(store_name)
 
         @impl true
-        def get(name, _opts), do: ADK.Auth.InMemoryStore.get(name, server: @store_pid)
+        def get(name, _opts), do: ADK.Auth.InMemoryStore.get(name, server: @store_name)
 
         @impl true
-        def put(name, cred, _opts), do: ADK.Auth.InMemoryStore.put(name, cred, server: @store_pid)
+        def put(name, cred, _opts), do: ADK.Auth.InMemoryStore.put(name, cred, server: @store_name)
 
         @impl true
-        def delete(name, _opts), do: ADK.Auth.InMemoryStore.delete(name, server: @store_pid)
+        def delete(name, _opts), do: ADK.Auth.InMemoryStore.delete(name, server: @store_name)
       end,
       Macro.Env.location(__ENV__)
     )

@@ -30,7 +30,7 @@ defmodule ADK.Tool.BuiltInCodeExecutionTest do
 
   describe "run/2" do
     test "returns error (stub — native tool)" do
-      tool = BuiltInCodeExecution.new()
+      _tool = BuiltInCodeExecution.new()
       assert {:error, msg} = BuiltInCodeExecution.run(nil, %{})
       assert msg =~ "built-in"
     end

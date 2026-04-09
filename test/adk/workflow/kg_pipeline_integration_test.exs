@@ -30,7 +30,7 @@ defmodule ADK.Workflow.KgPipelineIntegrationTest do
   # Builds the KG pipeline workflow.
   # `extract_response` controls what the mock extractor returns.
   # `qa_pass_on` controls which attempt (1-indexed) QA passes on.
-  defp build_pipeline(opts \\ []) do
+  defp build_pipeline(opts) do
     extract_response =
       Keyword.get(
         opts,
