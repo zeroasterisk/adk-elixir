@@ -71,6 +71,7 @@ defmodule ADK.MixProject do
       {:telemetry, "~> 1.0"},
       {:opentelemetry_api, "~> 1.0", optional: true},
       {:opentelemetry, "~> 1.3", only: :test},
+      {:opentelemetry_exporter, "~> 1.0", only: :test},
       {:oban, "~> 2.18", optional: true},
       {:phoenix, "~> 1.7", optional: true},
       {:phoenix_live_view, "~> 1.0", optional: true},
