@@ -55,7 +55,15 @@ defmodule ADK.MCP.Client do
   @doc "Stop the client and terminate the subprocess."
   @spec close(GenServer.server()) :: :ok
   def close(client) do
-    GenServer.stop(client, :normal)
+    if Process.alive?(client) do
+      try do
+        GenServer.stop(client, :normal)
+      catch
+        :exit, _ -> :ok
+      end
+    else
+      :ok
+    end
   end
 
   # --- GenServer callbacks ---
