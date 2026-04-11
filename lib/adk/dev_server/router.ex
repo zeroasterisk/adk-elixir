@@ -321,7 +321,7 @@ if Code.ensure_loaded?(Plug.Router) do
         # (without LiveView WebSocket — pure server-rendered snapshot)
         store_state =
           if Process.whereis(ADK.Phoenix.ControlLive.Store) do
-            ADK.Phoenix.ControlLive.Store.get_state()
+            apply(ADK.Phoenix.ControlLive.Store, :get_state, [])
           else
             %{sessions: [], runs: [], tools: [], llm: [], errors: []}
           end
@@ -335,7 +335,9 @@ if Code.ensure_loaded?(Plug.Router) do
           })
 
         rendered =
-          Phoenix.LiveViewTest.rendered_to_string(ADK.Phoenix.ControlLive.render(assigns))
+          apply(Phoenix.LiveViewTest, :rendered_to_string, [
+            apply(ADK.Phoenix.ControlLive, :render, [assigns])
+          ])
 
         """
         <!DOCTYPE html>
@@ -382,7 +384,7 @@ if Code.ensure_loaded?(Plug.Router) do
 
       %{
         process_count: :erlang.system_info(:process_count),
-        memory_human: ADK.Phoenix.ControlLive.format_bytes(total_mem),
+        memory_human: apply(ADK.Phoenix.ControlLive, :format_bytes, [total_mem]),
         memory_total: total_mem,
         atom_count: :erlang.system_info(:atom_count),
         port_count: :erlang.system_info(:port_count),
@@ -407,9 +409,11 @@ if Code.ensure_loaded?(Plug.Router) do
         assigns = %{agent: agent, active_agent: nil}
 
         rendered =
-          Phoenix.LiveViewTest.rendered_to_string(ADK.Phoenix.FlowLive.flow_graph(assigns))
+          apply(Phoenix.LiveViewTest, :rendered_to_string, [
+            apply(ADK.Phoenix.FlowLive, :flow_graph, [assigns])
+          ])
 
-        agent_name = ADK.Phoenix.FlowLive.agent_name(agent)
+        agent_name = apply(ADK.Phoenix.FlowLive, :agent_name, [agent])
 
         """
         <!DOCTYPE html>
