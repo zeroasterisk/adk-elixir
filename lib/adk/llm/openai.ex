@@ -271,20 +271,12 @@ defmodule ADK.LLM.OpenAI do
 
   defp api_key do
     case ADK.Config.openai_api_key() do
-      nil ->
-        case System.get_env("OPENAI_API_KEY") do
-          nil -> {:error, :missing_api_key}
-          key -> {:ok, key}
-        end
-
-      key ->
-        {:ok, key}
+      nil -> {:error, :missing_api_key}
+      key -> {:ok, key}
     end
   end
 
   defp base_url do
-    ADK.Config.openai_base_url() ||
-      System.get_env("OPENAI_BASE_URL") ||
-      @default_base_url
+    ADK.Config.openai_base_url() || @default_base_url
   end
 end

@@ -295,9 +295,7 @@ defmodule ADK.Session.Store.VertexAI do
     %{
       project_id:
         Keyword.get(opts, :project_id) ||
-          ADK.Config.vertex_project_id() ||
-          System.get_env("GOOGLE_CLOUD_PROJECT") ||
-          System.get_env("GCLOUD_PROJECT"),
+          ADK.Config.vertex_project_id(),
       location:
         Keyword.get(opts, :location) ||
           ADK.Config.vertex_location() ||
@@ -307,8 +305,7 @@ defmodule ADK.Session.Store.VertexAI do
           ADK.Config.vertex_reasoning_engine_id(),
       credentials_file:
         Keyword.get(opts, :credentials_file) ||
-          ADK.Config.vertex_credentials_file() ||
-          System.get_env("GOOGLE_APPLICATION_CREDENTIALS"),
+          ADK.Config.vertex_credentials_file(),
       api_key:
         Keyword.get(opts, :api_key) ||
           ADK.Config.vertex_api_key()

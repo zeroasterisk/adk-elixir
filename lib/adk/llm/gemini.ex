@@ -41,7 +41,7 @@ defmodule ADK.LLM.Gemini do
   end
 
   defp do_generate(model, auth, request) do
-    base = Map.get(request, :base_url, System.get_env("GEMINI_BASE_URL") || @base_url)
+    base = Map.get(request, :base_url, ADK.Config.gemini_base_url() || @base_url)
     url = "#{base}/#{model}:generateContent"
     body = build_request_body(request)
 
@@ -340,21 +340,9 @@ defmodule ADK.LLM.Gemini do
   defp auth do
     case ADK.Config.gemini_api_key() do
       nil ->
-        case System.get_env("GEMINI_API_KEY") do
-          nil ->
-            case ADK.Config.gemini_bearer_token() do
-              nil ->
-                case System.get_env("GEMINI_BEARER_TOKEN") do
-                  nil -> {:error, :missing_api_key}
-                  token -> {:bearer, token}
-                end
-
-              token ->
-                {:bearer, token}
-            end
-
-          key ->
-            {:api_key, key}
+        case ADK.Config.gemini_bearer_token() do
+          nil -> {:error, :missing_api_key}
+          token -> {:bearer, token}
         end
 
       key ->
