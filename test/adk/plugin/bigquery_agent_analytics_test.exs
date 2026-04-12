@@ -26,7 +26,16 @@ defmodule ADK.Plugin.BigQueryAgentAnalyticsTest do
   end
 
   setup do
-    MockClient.start_link()
+    case MockClient.start_link() do
+      {:ok, pid} ->
+        on_exit(fn ->
+          if Process.alive?(pid) do
+            GenServer.stop(pid)
+          end
+        end)
+      {:error, {:already_started, _pid}} ->
+        :ok
+    end
     MockClient.clear()
 
     # Reset Application env
