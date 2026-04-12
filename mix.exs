@@ -20,6 +20,7 @@ defmodule ADK.MixProject do
       description: @description,
       source_url: @source_url,
       homepage_url: @source_url,
+      usage_rules: usage_rules(),
       docs: docs()
     ]
   end
@@ -56,6 +57,8 @@ defmodule ADK.MixProject do
       {:mox, "~> 1.0", only: :test},
       {:bypass, "~> 2.1", only: :test},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:benchee, "~> 1.3", only: :dev, runtime: false},
+      {:usage_rules, "~> 1.1", only: :dev, runtime: false},
       # A2A protocol support — optional, install {:a2a, "~> 0.2"} to enable
       # See: https://hex.pm/packages/a2a
       {:a2a, "~> 0.2", optional: true},
@@ -67,7 +70,6 @@ defmodule ADK.MixProject do
       {:ecto_sql, "~> 3.10", optional: true},
       {:exqlite, "~> 0.35", optional: true},
       {:ecto_sqlite3, "~> 0.17", only: :test},
-      {:benchee, "~> 1.3", only: :dev, runtime: false},
       {:telemetry, "~> 1.0"},
       {:opentelemetry_api, "~> 1.0", optional: true},
       {:opentelemetry, "~> 1.3", only: :test},
@@ -209,4 +211,21 @@ defmodule ADK.MixProject do
       ]
     ]
   end
+
+  defp usage_rules do
+    # Example for those using claude.
+    [
+      file: "CLAUDE.md",
+      skills: [
+        location: ".claude/skills",
+        build: [
+          "Ecto": [
+            description: "Use this skill working with Ecto or any of its extensions. Always consult this when making any domain changes, features or fixes.",
+            usage_rules: [:ecto, ~r/^ecto_/]
+          ]
+        ]
+      ]
+    ]
+  end
+
 end
