@@ -60,8 +60,9 @@ defmodule Mix.Tasks.Adk.Doctor do
     [
       check_elixir_version(opts),
       check_otp_version(opts),
-      check_env("GEMINI_API_KEY", required: true),
-      check_env("GOOGLE_API_KEY", required: false),
+      check_config("Gemini API Key", &ADK.Config.gemini_api_key/0, required: true),
+      check_config("Anthropic API Key", &ADK.Config.anthropic_api_key/0, required: false),
+      check_config("OpenAI API Key", &ADK.Config.openai_api_key/0, required: false),
       check_dep(:adk, required: true),
       check_dep(:phoenix, required: false, label: "Phoenix/Plug (web UI)"),
       check_dep(:protobuf, required: false, label: "Protobuf (gRPC features)"),
@@ -134,32 +135,32 @@ defmodule Mix.Tasks.Adk.Doctor do
     end
   end
 
-  defp check_env(var, opts) do
+  defp check_config(name, config_fn, opts) do
     required? = Keyword.get(opts, :required, false)
 
-    case System.get_env(var) do
+    case config_fn.() do
       nil when required? ->
         %{
-          group: :api_keys,
-          name: var,
+          group: :configuration,
+          name: name,
           status: :fail,
-          message: "#{var} is not set"
+          message: "#{name} is not set"
         }
 
       nil ->
         %{
-          group: :api_keys,
-          name: var,
+          group: :configuration,
+          name: name,
           status: :optional,
-          message: "#{var} is not set (optional)"
+          message: "#{name} is not set (optional)"
         }
 
       _value ->
         %{
-          group: :api_keys,
-          name: var,
+          group: :configuration,
+          name: name,
           status: :pass,
-          message: "#{var} is set"
+          message: "#{name} is set"
         }
     end
   end
@@ -305,7 +306,7 @@ defmodule Mix.Tasks.Adk.Doctor do
   end
 
   defp group_label(:environment), do: "Environment"
-  defp group_label(:api_keys), do: "API Keys"
+  defp group_label(:configuration), do: "Configuration"
   defp group_label(:dependencies), do: "Dependencies"
   defp group_label(:agents), do: "Agents"
   defp group_label(other), do: to_string(other)

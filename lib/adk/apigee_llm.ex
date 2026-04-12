@@ -9,7 +9,7 @@ defmodule ADK.ApigeeLlm do
 
   @impl true
   def generate(model, request) do
-    proxy_url = Map.get(request, :apigee_proxy_url) || System.get_env("APIGEE_PROXY_URL")
+    proxy_url = Map.get(request, :apigee_proxy_url) || ADK.Config.apigee_proxy_url()
     custom_headers = Map.get(request, :custom_headers, [])
     api_type = Map.get(request, :apigee_api_type, :unknown)
 
@@ -17,8 +17,8 @@ defmodule ADK.ApigeeLlm do
       {:ok,
        %{backend: backend, model_id: model_id, api_version: api_version, is_vertexai: is_vertexai}} ->
         if is_vertexai do
-          project = System.get_env("GOOGLE_CLOUD_PROJECT")
-          location = System.get_env("GOOGLE_CLOUD_LOCATION")
+          project = ADK.Config.google_cloud_project()
+          location = ADK.Config.google_cloud_location()
 
           if is_nil(project) or is_nil(location) do
             raise ArgumentError,
@@ -97,8 +97,7 @@ defmodule ADK.ApigeeLlm do
   end
 
   defp use_vertex_env? do
-    use_vertexai_env = String.downcase(System.get_env("GOOGLE_GENAI_USE_VERTEXAI") || "")
-    use_vertexai_env in ["true", "1"]
+    ADK.Config.google_genai_use_vertexai()
   end
 
   defp build_base_url(proxy_url, %{is_vertexai: is_vertexai, api_version: api_version, backend: backend}) do
@@ -110,8 +109,8 @@ defmodule ADK.ApigeeLlm do
     else
       if is_vertexai do
         version = api_version || "v1beta"
-        project = System.get_env("GOOGLE_CLOUD_PROJECT")
-        location = System.get_env("GOOGLE_CLOUD_LOCATION")
+        project = ADK.Config.google_cloud_project()
+        location = ADK.Config.google_cloud_location()
 
         "#{proxy_url}/#{version}/projects/#{project}/locations/#{location}/publishers/google/models"
       else

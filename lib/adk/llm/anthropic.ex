@@ -451,26 +451,16 @@ defmodule ADK.LLM.Anthropic do
   @doc false
   @spec resolve_auth() :: {:ok, auth()} | {:error, :missing_credentials}
   def resolve_auth do
-    with :skip <- check_oauth_config(),
-         :skip <- check_oauth_env(),
+    with :skip <- check_oauth(),
          :skip <- check_claude_code_session(),
-         :skip <- check_api_key_config(),
-         :skip <- check_api_key_env() do
+         :skip <- check_api_key() do
       # Return :missing_api_key for backward compatibility
       {:error, :missing_api_key}
     end
   end
 
-  defp check_oauth_config do
+  defp check_oauth do
     case ADK.Config.anthropic_oauth_token() do
-      nil -> :skip
-      "" -> :skip
-      token -> {:ok, {:oauth, token}}
-    end
-  end
-
-  defp check_oauth_env do
-    case System.get_env("ANTHROPIC_OAUTH_TOKEN") do
       nil -> :skip
       "" -> :skip
       token -> {:ok, {:oauth, token}}
@@ -481,7 +471,7 @@ defmodule ADK.LLM.Anthropic do
     # Check CLAUDE_AI_SESSION_KEY env var (set by Claude Code CLI)
     # Only when auto-discovery is enabled (default: false — opt-in)
     if ADK.Config.anthropic_auto_discover() do
-      case System.get_env("CLAUDE_AI_SESSION_KEY") do
+      case ADK.Config.claude_ai_session_key() do
         nil -> :skip
         "" -> :skip
         key -> {:ok, {:oauth, key}}
@@ -491,16 +481,8 @@ defmodule ADK.LLM.Anthropic do
     end
   end
 
-  defp check_api_key_config do
+  defp check_api_key do
     case ADK.Config.anthropic_api_key() do
-      nil -> :skip
-      "" -> :skip
-      key -> {:ok, {:api_key, key}}
-    end
-  end
-
-  defp check_api_key_env do
-    case System.get_env("ANTHROPIC_API_KEY") do
       nil -> :skip
       "" -> :skip
       key -> {:ok, {:api_key, key}}

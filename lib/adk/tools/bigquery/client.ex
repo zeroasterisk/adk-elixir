@@ -36,7 +36,7 @@ defmodule ADK.Tool.BigQuery.Client do
     credentials = Keyword.get(opts, :credentials)
 
     # In a full port, if project is nil, it fetches from auth/env. We'll simulate that logic
-    project = project || System.get_env("GOOGLE_CLOUD_PROJECT")
+    project = project || ADK.Config.google_cloud_project()
 
     location = Keyword.get(opts, :location)
     custom_user_agent = Keyword.get(opts, :user_agent)

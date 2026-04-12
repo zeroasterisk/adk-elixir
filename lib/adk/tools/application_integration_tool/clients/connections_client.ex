@@ -643,7 +643,7 @@ defmodule ADK.Tool.ApplicationIntegrationTool.Clients.ConnectionsClient do
     else
       # Simplified for test parity: usually we'd use Goth here.
       # But the Python test mocks _get_access_token, so we will do the same or just return "test_token"
-      System.get_env("GCP_ACCESS_TOKEN") || "test_token"
+      ADK.Config.gcp_access_token() || "test_token"
     end
   end
 

@@ -17,7 +17,7 @@ defmodule Mix.Tasks.Adk.DoctorTest do
       assert output =~ "ADK Doctor"
       assert output =~ "=========="
       assert output =~ "Environment"
-      assert output =~ "API Keys"
+      assert output =~ "Configuration"
       assert output =~ "Dependencies"
       assert output =~ "Summary:"
     end
@@ -80,7 +80,7 @@ defmodule Mix.Tasks.Adk.DoctorTest do
 
       {:ok, data} = Jason.decode(output)
       groups = data["checks"] |> Enum.map(& &1["group"]) |> Enum.uniq() |> Enum.sort()
-      assert "api_keys" in groups
+      assert "configuration" in groups
       assert "environment" in groups
       assert "dependencies" in groups
     end
@@ -108,7 +108,7 @@ defmodule Mix.Tasks.Adk.DoctorTest do
     test "returns a list of check results" do
       results = Mix.Tasks.Adk.Doctor.run_checks()
       assert is_list(results)
-      assert length(results) == 8
+      assert length(results) == 9
 
       Enum.each(results, fn check ->
         assert Map.has_key?(check, :group)
@@ -134,9 +134,9 @@ defmodule Mix.Tasks.Adk.DoctorTest do
 
     test "GEMINI_API_KEY check reflects env" do
       results = Mix.Tasks.Adk.Doctor.run_checks()
-      gemini_check = Enum.find(results, &(&1.name == "GEMINI_API_KEY"))
+      gemini_check = Enum.find(results, &(&1.name == "Gemini API Key"))
 
-      case System.get_env("GEMINI_API_KEY") do
+      case ADK.Config.gemini_api_key() do
         nil -> assert gemini_check.status == :fail
         _val -> assert gemini_check.status == :pass
       end
@@ -144,15 +144,15 @@ defmodule Mix.Tasks.Adk.DoctorTest do
 
     test "GOOGLE_API_KEY is optional" do
       results = Mix.Tasks.Adk.Doctor.run_checks()
-      google_check = Enum.find(results, &(&1.name == "GOOGLE_API_KEY"))
-      assert google_check.status in [:pass, :optional]
+      anthropic_check = Enum.find(results, &(&1.name == "Anthropic API Key"))
+      assert anthropic_check.status in [:pass, :optional]
     end
 
     test "does not leak API key values in messages" do
       results = Mix.Tasks.Adk.Doctor.run_checks()
 
       Enum.each(results, fn check ->
-        if check.group == :api_keys and check.status == :pass do
+        if check.group == :configuration and check.status == :pass do
           # Should only say "is set", never show the actual value
           refute check.message =~ ~r/[a-zA-Z0-9]{20,}/
           assert check.message =~ "is set"

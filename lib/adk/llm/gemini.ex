@@ -41,7 +41,7 @@ defmodule ADK.LLM.Gemini do
   end
 
   defp do_generate(model, auth, request) do
-    base = Map.get(request, :base_url, System.get_env("GEMINI_BASE_URL") || @base_url)
+    base = Map.get(request, :base_url, ADK.Config.gemini_base_url() || @base_url)
     url = "#{base}/#{model}:generateContent"
     body = build_request_body(request)
 
@@ -359,10 +359,8 @@ defmodule ADK.LLM.Gemini do
   end
 
   defp get_raw_credential do
-    use_vertex = System.get_env("GOOGLE_GENAI_USE_VERTEXAI") in ["true", "1"]
-
     cond do
-      use_vertex ->
+      ADK.Config.google_genai_use_vertexai() ->
         load_vertex_credential()
 
       true ->
@@ -371,7 +369,7 @@ defmodule ADK.LLM.Gemini do
   end
 
   defp load_vertex_credential do
-    case System.get_env("GOOGLE_APPLICATION_CREDENTIALS") do
+    case ADK.Config.google_application_credentials() do
       nil ->
         ADK.Auth.Credential.api_key(nil)
 
@@ -393,13 +391,7 @@ defmodule ADK.LLM.Gemini do
       key = System.get_env("GOOGLE_API_KEY") ->
         ADK.Auth.Credential.api_key(key)
 
-      key = System.get_env("GEMINI_API_KEY") ->
-        ADK.Auth.Credential.api_key(key)
-
       token = ADK.Config.gemini_bearer_token() ->
-        ADK.Auth.Credential.http_bearer(token)
-
-      token = System.get_env("GEMINI_BEARER_TOKEN") ->
         ADK.Auth.Credential.http_bearer(token)
 
       true ->

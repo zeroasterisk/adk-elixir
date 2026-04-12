@@ -17,7 +17,7 @@ defmodule ADK.Auth do
 
         @impl true
         def get_auth_credential(config, _context) do
-          {:ok, ADK.Auth.Credential.api_key(System.get_env("GITHUB_TOKEN"))}
+          {:ok, ADK.Auth.Credential.api_key(ADK.Config.github_token())}
         end
       end
 

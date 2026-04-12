@@ -224,7 +224,7 @@ defmodule ADK.Artifact.GCS do
   defp get_access_token(opts) do
     creds_file =
       Keyword.get(opts, :credentials_file) ||
-        System.get_env("GOOGLE_APPLICATION_CREDENTIALS")
+        ADK.Config.google_application_credentials()
 
     cond do
       creds_file && File.exists?(creds_file) ->

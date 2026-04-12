@@ -19,7 +19,7 @@ defmodule ADK.Telemetry.GoogleCloud do
     enable_cloud_tracing = Keyword.get(opts, :enable_cloud_tracing, false)
     enable_cloud_metrics = Keyword.get(opts, :enable_cloud_metrics, false)
     enable_cloud_logging = Keyword.get(opts, :enable_cloud_logging, false)
-    project_id = Keyword.get(opts, :project_id, System.get_env("GOOGLE_CLOUD_PROJECT"))
+    project_id = Keyword.get(opts, :project_id, ADK.Config.google_cloud_project())
 
     if is_nil(project_id) do
       # Like Python: return empty hooks if project_id is unknown
@@ -51,7 +51,7 @@ defmodule ADK.Telemetry.GoogleCloud do
 
   defp gcp_logs_exporter(project_id) do
     # Represents CloudLoggingExporter
-    log_name = System.get_env("GOOGLE_CLOUD_DEFAULT_LOG_NAME") || "adk-otel"
+    log_name = ADK.Config.google_cloud_default_log_name() || "adk-otel"
     {:cloud_logging_exporter, %{project_id: project_id, default_log_name: log_name}}
   end
 
@@ -78,7 +78,7 @@ defmodule ADK.Telemetry.GoogleCloud do
   end
 
   defp parse_env_resource_attributes do
-    env_str = System.get_env("OTEL_RESOURCE_ATTRIBUTES") || ""
+    env_str = ADK.Config.otel_resource_attributes() || ""
 
     env_str
     |> String.split(",", trim: true)
