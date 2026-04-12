@@ -101,13 +101,19 @@ defmodule ADK.LLM.OpenAI do
         body
 
       config ->
-        body
-        |> put_if(:temperature, config[:temperature])
-        |> put_if(:top_p, config[:top_p])
-        |> put_if(:max_tokens, config[:max_output_tokens])
-        |> put_if(:stop, config[:stop_sequences])
-        |> put_if(:n, config[:candidate_count])
-        |> put_if(:response_format, translate_response_format(config))
+        gen_config =
+          [
+            {:temperature, config[:temperature]},
+            {:top_p, config[:top_p]},
+            {:max_tokens, config[:max_output_tokens]},
+            {:stop, config[:stop_sequences]},
+            {:n, config[:candidate_count]},
+            {:response_format, translate_response_format(config)}
+          ]
+          |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+          |> Map.new()
+
+        Map.merge(body, gen_config)
     end
   end
 
@@ -270,15 +276,10 @@ defmodule ADK.LLM.OpenAI do
   defp parse_arguments(_), do: %{}
 
   defp api_key do
-    case ADK.Config.openai_api_key() do
-      nil ->
-        case System.get_env("OPENAI_API_KEY") do
-          nil -> {:error, :missing_api_key}
-          key -> {:ok, key}
-        end
-
-      key ->
-        {:ok, key}
+    cond do
+      key = ADK.Config.openai_api_key() -> {:ok, key}
+      key = System.get_env("OPENAI_API_KEY") -> {:ok, key}
+      true -> {:error, :missing_api_key}
     end
   end
 

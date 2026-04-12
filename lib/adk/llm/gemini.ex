@@ -169,24 +169,33 @@ defmodule ADK.LLM.Gemini do
           body
 
         config ->
-          gen_config = %{}
-          gen_config = put_if(gen_config, :temperature, config[:temperature])
-          gen_config = put_if(gen_config, :topP, config[:top_p])
-          gen_config = put_if(gen_config, :topK, config[:top_k])
-          gen_config = put_if(gen_config, :maxOutputTokens, config[:max_output_tokens])
-          gen_config = put_if(gen_config, :stopSequences, config[:stop_sequences])
-          gen_config = put_if(gen_config, :candidateCount, config[:candidate_count])
-          gen_config = put_if(gen_config, :responseMimeType, config[:response_mime_type])
-          gen_config = put_if(gen_config, :responseSchema, config[:response_schema])
-          gen_config = put_if(gen_config, :responseJsonSchema, config[:response_json_schema])
-          gen_config = put_if(gen_config, :presencePenalty, config[:presence_penalty])
-          gen_config = put_if(gen_config, :frequencyPenalty, config[:frequency_penalty])
-          gen_config = put_if(gen_config, :seed, config[:seed])
-          gen_config = put_if(gen_config, :responseLogprobs, config[:response_logprobs])
-          gen_config = put_if(gen_config, :logprobs, config[:logprobs])
-          gen_config = put_if(gen_config, :responseModalities, config[:response_modalities])
-          gen_config = put_if(gen_config, :thinkingConfig, config[:thinking_config])
-          if gen_config == %{}, do: body, else: Map.put(body, :generationConfig, gen_config)
+          gen_config =
+            [
+              {:temperature, config[:temperature]},
+              {:topP, config[:top_p]},
+              {:topK, config[:top_k]},
+              {:maxOutputTokens, config[:max_output_tokens]},
+              {:stopSequences, config[:stop_sequences]},
+              {:candidateCount, config[:candidate_count]},
+              {:responseMimeType, config[:response_mime_type]},
+              {:responseSchema, config[:response_schema]},
+              {:responseJsonSchema, config[:response_json_schema]},
+              {:presencePenalty, config[:presence_penalty]},
+              {:frequencyPenalty, config[:frequency_penalty]},
+              {:seed, config[:seed]},
+              {:responseLogprobs, config[:response_logprobs]},
+              {:logprobs, config[:logprobs]},
+              {:responseModalities, config[:response_modalities]},
+              {:thinkingConfig, config[:thinking_config]}
+            ]
+            |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+            |> Map.new()
+
+          if map_size(gen_config) > 0 do
+            Map.put(body, :generationConfig, gen_config)
+          else
+            body
+          end
       end
 
     # Apply safety settings if provided in generate_config
@@ -367,16 +376,11 @@ defmodule ADK.LLM.Gemini do
         ADK.Auth.Credential.api_key(nil)
 
       path ->
-        case File.read(path) do
-          {:ok, json} ->
-            case Jason.decode(json) do
-              {:ok, key_info} ->
-                ADK.Auth.Credential.service_account(key_info, scopes: ["https://www.googleapis.com/auth/cloud-platform"])
-              {:error, _} ->
-                ADK.Auth.Credential.api_key(nil)
-            end
-          {:error, _} ->
-            ADK.Auth.Credential.api_key(nil)
+        with {:ok, json} <- File.read(path),
+             {:ok, key_info} <- Jason.decode(json) do
+          ADK.Auth.Credential.service_account(key_info, scopes: ["https://www.googleapis.com/auth/cloud-platform"])
+        else
+          _ -> ADK.Auth.Credential.api_key(nil)
         end
     end
   end

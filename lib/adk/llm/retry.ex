@@ -46,10 +46,16 @@ defmodule ADK.LLM.Retry do
     retry_after_ms = Keyword.get(opts, :retry_after_ms)
     sleep_fn = Keyword.get(opts, :sleep_fn, &Process.sleep/1)
 
-    do_retry(fun, 0, max_retries, base_delay_ms, max_delay_ms, retry_after_ms, sleep_fn)
+    do_retry(fun, 0, %{
+      max_retries: max_retries,
+      base_delay_ms: base_delay_ms,
+      max_delay_ms: max_delay_ms,
+      retry_after_ms: retry_after_ms,
+      sleep_fn: sleep_fn
+    })
   end
 
-  defp do_retry(fun, attempt, max_retries, base_delay_ms, max_delay_ms, retry_after_ms, sleep_fn) do
+  defp do_retry(fun, attempt, opts) do
     case fun.() do
       {:ok, _} = success ->
         success
@@ -58,29 +64,29 @@ defmodule ADK.LLM.Retry do
         # The function signals a server-suggested retry delay
         error = {:error, reason}
 
-        if attempt < max_retries and transient?(reason) do
+        if attempt < opts.max_retries and transient?(reason) do
           delay =
             if is_integer(ms) and ms > 0,
-              do: min(ms, max_delay_ms),
-              else: compute_delay(attempt, base_delay_ms, max_delay_ms)
+              do: min(ms, opts.max_delay_ms),
+              else: compute_delay(attempt, opts.base_delay_ms, opts.max_delay_ms)
 
-          sleep_fn.(delay)
-          do_retry(fun, attempt + 1, max_retries, base_delay_ms, max_delay_ms, nil, sleep_fn)
+          opts.sleep_fn.(delay)
+          do_retry(fun, attempt + 1, %{opts | retry_after_ms: nil})
         else
           error
         end
 
       {:error, reason} = error ->
-        if attempt < max_retries and transient?(reason) do
+        if attempt < opts.max_retries and transient?(reason) do
           delay =
-            if attempt == 0 and is_integer(retry_after_ms) and retry_after_ms > 0 do
-              min(retry_after_ms, max_delay_ms)
+            if attempt == 0 and is_integer(opts.retry_after_ms) and opts.retry_after_ms > 0 do
+              min(opts.retry_after_ms, opts.max_delay_ms)
             else
-              compute_delay(attempt, base_delay_ms, max_delay_ms)
+              compute_delay(attempt, opts.base_delay_ms, opts.max_delay_ms)
             end
 
-          sleep_fn.(delay)
-          do_retry(fun, attempt + 1, max_retries, base_delay_ms, max_delay_ms, nil, sleep_fn)
+          opts.sleep_fn.(delay)
+          do_retry(fun, attempt + 1, %{opts | retry_after_ms: nil})
         else
           error
         end

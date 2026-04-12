@@ -80,7 +80,7 @@ defmodule ADK.LLM.Gateway do
       end
       |> Enum.sort_by(&Map.get(&1, :priority, 1))
 
-    do_generate(backends, model, request, opts)
+    do_generate(backends, %{model: model, request: request}, opts)
   end
 
   # -- Management API --
@@ -149,11 +149,11 @@ defmodule ADK.LLM.Gateway do
 
   # -- Private --
 
-  defp do_generate([], _model, _request, _opts) do
+  defp do_generate([], _params, _opts) do
     {:error, :all_backends_failed}
   end
 
-  defp do_generate([backend | rest], model, request, opts) do
+  defp do_generate([backend | rest], %{model: model, request: request} = params, opts) do
     pool = pool_name(backend.id)
 
     case KeyPool.next_key(pool) do
@@ -195,7 +195,7 @@ defmodule ADK.LLM.Gateway do
             })
 
             # Try next key in same pool, or fall through to next backend
-            do_generate(rest, model, request, opts)
+            do_generate(rest, params, opts)
 
           {:error, _} ->
             Stats.record_request(backend.id, key_idx, %{
@@ -206,11 +206,11 @@ defmodule ADK.LLM.Gateway do
             })
 
             # Try next backend
-            do_generate(rest, model, request, opts)
+            do_generate(rest, params, opts)
         end
 
       {:error, :all_keys_rate_limited} ->
-        do_generate(rest, model, request, opts)
+        do_generate(rest, params, opts)
     end
   end
 

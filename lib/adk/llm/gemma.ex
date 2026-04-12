@@ -148,22 +148,27 @@ defmodule ADK.LLM.Gemma do
   defp convert_function_turns_to_text(request), do: request
 
   defp convert_parts(parts) when is_list(parts) do
-    Enum.reduce(parts, {[], false, false}, fn part, {acc_parts, has_resp, has_call} ->
-      cond do
-        match?(%{function_response: _}, part) ->
-          fr = part.function_response
-          text = "Invoking tool `#{fr.name}` produced: `#{Jason.encode!(fr.response)}`."
-          {acc_parts ++ [%{text: text}], true, has_call}
+    {acc_parts, has_resp, has_call} =
+      Enum.reduce(parts, {[], false, false}, fn part, {acc_parts, has_resp, has_call} ->
+        {new_part, r, c} = convert_single_part(part)
+        {[new_part | acc_parts], has_resp || r, has_call || c}
+      end)
 
-        match?(%{function_call: _}, part) ->
-          fc = part.function_call
-          text = Jason.encode!(%{name: fc.name, args: fc.args})
-          {acc_parts ++ [%{text: text}], has_resp, true}
+    {Enum.reverse(acc_parts), has_resp, has_call}
+  end
 
-        true ->
-          {acc_parts ++ [part], has_resp, has_call}
-      end
-    end)
+  defp convert_single_part(%{function_response: fr}) do
+    text = "Invoking tool `#{fr.name}` produced: `#{Jason.encode!(fr.response)}`."
+    {%{text: text}, true, false}
+  end
+
+  defp convert_single_part(%{function_call: fc}) do
+    text = Jason.encode!(%{name: fc.name, args: fc.args})
+    {%{text: text}, false, true}
+  end
+
+  defp convert_single_part(part) do
+    {part, false, false}
   end
 
   defp convert_parts(nil), do: {[], false, false}

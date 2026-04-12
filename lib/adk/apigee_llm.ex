@@ -26,7 +26,7 @@ defmodule ADK.ApigeeLlm do
           end
         end
 
-        base_url = build_base_url(proxy_url, is_vertexai, api_version, backend)
+        base_url = build_base_url(proxy_url, %{is_vertexai: is_vertexai, api_version: api_version, backend: backend})
 
         # Inject apigee settings into request
         request = Map.put(request, :base_url, base_url)
@@ -40,35 +40,14 @@ defmodule ADK.ApigeeLlm do
   end
 
   defp validate_model_string(model) do
-    if not String.starts_with?(model, "apigee/") do
-      false
-    else
-      stripped = String.trim_leading(model, "apigee/")
-
-      if stripped == "" do
-        false
-      else
-        components = String.split(stripped, "/")
-
-        cond do
-          length(components) == 1 ->
-            true
-
-          length(components) > 3 ->
-            false
-
-          length(components) == 3 ->
-            Enum.at(components, 0) in ["vertex_ai", "gemini", "openai"] and
-              String.starts_with?(Enum.at(components, 1), "v")
-
-          length(components) == 2 ->
-            Enum.at(components, 0) in ["vertex_ai", "gemini", "openai"] or
-              String.starts_with?(Enum.at(components, 0), "v")
-
-          true ->
-            false
-        end
-      end
+    case String.split(model, "/") do
+      ["apigee", ""] -> false
+      ["apigee", _model] -> true
+      ["apigee", type, version, _model] when type in ["vertex_ai", "gemini", "openai"] ->
+        String.starts_with?(version, "v")
+      ["apigee", type, _model] when type in ["vertex_ai", "gemini", "openai"] -> true
+      ["apigee", version, _model] -> String.starts_with?(version, "v")
+      _ -> false
     end
   end
 
@@ -78,44 +57,7 @@ defmodule ADK.ApigeeLlm do
     else
       parts = String.split(model, "/")
 
-      {model_id, api_version, default_backend, is_vertexai} =
-        cond do
-          # Try matching OpenAI prefix
-          length(parts) >= 3 and Enum.at(parts, 1) == "openai" ->
-            if length(parts) > 3 and Enum.at(parts, 2) == "v1" do
-              {Enum.join(Enum.slice(parts, 3..-1//1), "/"), "v1", ADK.LLM.OpenAI, false}
-            else
-              {Enum.join(Enum.slice(parts, 2..-1//1), "/"), nil, ADK.LLM.OpenAI, false}
-            end
-
-          # Try matching Vertex AI prefix
-          length(parts) >= 3 and Enum.at(parts, 1) == "vertex_ai" ->
-            if length(parts) > 3 and Enum.at(parts, 2) == "v1beta" do
-              {Enum.join(Enum.slice(parts, 3..-1//1), "/"), "v1beta", ADK.LLM.Gemini, true}
-            else
-              {Enum.join(Enum.slice(parts, 2..-1//1), "/"), nil, ADK.LLM.Gemini, true}
-            end
-
-          # Try matching Gemini prefix
-          length(parts) >= 3 and Enum.at(parts, 1) == "gemini" ->
-            if length(parts) > 3 and Enum.at(parts, 2) == "v1" do
-              {Enum.join(Enum.slice(parts, 3..-1//1), "/"), "v1", ADK.LLM.Gemini, false}
-            else
-              {Enum.join(Enum.slice(parts, 2..-1//1), "/"), nil, ADK.LLM.Gemini, false}
-            end
-
-          true ->
-            # Fallback
-            use_vertexai_env = String.downcase(System.get_env("GOOGLE_GENAI_USE_VERTEXAI") || "")
-            is_vertex = use_vertexai_env in ["true", "1"]
-
-            if length(parts) >= 3 and Enum.at(parts, 1) in ["v1", "v1beta"] do
-              {Enum.join(Enum.slice(parts, 2..-1//1), "/"), Enum.at(parts, 1), ADK.LLM.Gemini,
-               is_vertex}
-            else
-              {Enum.join(Enum.slice(parts, 1..-1//1), "/"), nil, ADK.LLM.Gemini, is_vertex}
-            end
-        end
+      {model_id, api_version, default_backend, is_vertexai} = parse_parts(parts)
 
       backend =
         case api_type do
@@ -129,7 +71,37 @@ defmodule ADK.ApigeeLlm do
     end
   end
 
-  defp build_base_url(proxy_url, is_vertexai, api_version, backend) do
+  defp parse_parts(["apigee", "openai", "v1" | rest]) do
+    {Enum.join(rest, "/"), "v1", ADK.LLM.OpenAI, false}
+  end
+  defp parse_parts(["apigee", "openai" | rest]) do
+    {Enum.join(rest, "/"), nil, ADK.LLM.OpenAI, false}
+  end
+  defp parse_parts(["apigee", "vertex_ai", "v1beta" | rest]) do
+    {Enum.join(rest, "/"), "v1beta", ADK.LLM.Gemini, true}
+  end
+  defp parse_parts(["apigee", "vertex_ai" | rest]) do
+    {Enum.join(rest, "/"), nil, ADK.LLM.Gemini, true}
+  end
+  defp parse_parts(["apigee", "gemini", "v1" | rest]) do
+    {Enum.join(rest, "/"), "v1", ADK.LLM.Gemini, false}
+  end
+  defp parse_parts(["apigee", "gemini" | rest]) do
+    {Enum.join(rest, "/"), nil, ADK.LLM.Gemini, false}
+  end
+  defp parse_parts(["apigee", version | rest]) when version in ["v1", "v1beta"] do
+    {Enum.join(rest, "/"), version, ADK.LLM.Gemini, use_vertex_env?()}
+  end
+  defp parse_parts(["apigee" | rest]) do
+    {Enum.join(rest, "/"), nil, ADK.LLM.Gemini, use_vertex_env?()}
+  end
+
+  defp use_vertex_env? do
+    use_vertexai_env = String.downcase(System.get_env("GOOGLE_GENAI_USE_VERTEXAI") || "")
+    use_vertexai_env in ["true", "1"]
+  end
+
+  defp build_base_url(proxy_url, %{is_vertexai: is_vertexai, api_version: api_version, backend: backend}) do
     proxy_url = String.trim_trailing(proxy_url || "", "/")
 
     if backend == ADK.LLM.OpenAI do

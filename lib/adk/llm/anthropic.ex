@@ -149,17 +149,22 @@ defmodule ADK.LLM.Anthropic do
         body
 
       config ->
-        body
-        |> put_if(:temperature, config[:temperature])
-        |> put_if(:top_p, config[:top_p])
-        |> put_if(:top_k, config[:top_k])
-        |> put_if(:stop_sequences, config[:stop_sequences])
-        |> then(fn b ->
-          case config[:max_output_tokens] do
-            nil -> b
-            max -> %{b | max_tokens: max}
-          end
-        end)
+        gen_config =
+          [
+            {:temperature, config[:temperature]},
+            {:top_p, config[:top_p]},
+            {:top_k, config[:top_k]},
+            {:stop_sequences, config[:stop_sequences]}
+          ]
+          |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+          |> Map.new()
+
+        body = Map.merge(body, gen_config)
+
+        case config[:max_output_tokens] do
+          nil -> body
+          max -> %{body | max_tokens: max}
+        end
     end
   end
 
