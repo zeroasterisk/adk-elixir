@@ -66,13 +66,13 @@ if Code.ensure_loaded?(A2A.AgentCard) do
       }
     end
 
-    defp get_tool_name(%{name: name}), do: name
     defp get_tool_name(%ADK.Tool.FunctionTool{name: name}), do: name
+    defp get_tool_name(%{name: name}), do: name
     defp get_tool_name(mod) when is_atom(mod), do: mod.name()
     defp get_tool_name(_), do: "unknown"
 
-    defp get_tool_description(%{description: desc}), do: desc
     defp get_tool_description(%ADK.Tool.FunctionTool{description: desc}), do: desc
+    defp get_tool_description(%{description: desc}), do: desc
     defp get_tool_description(mod) when is_atom(mod), do: mod.description()
     defp get_tool_description(_), do: ""
   end

@@ -6,7 +6,7 @@ defmodule Adk.Agents.McpInstructionProvider do
   @behaviour Adk.Agents.InstructionProvider
 
   alias Adk.Agents.ReadonlyContext
-  alias Adk.Mcp.SessionManagerImpl
+  #alias Adk.Mcp.SessionManagerImpl
 
   defstruct connection_params: nil,
             prompt_name: nil,
