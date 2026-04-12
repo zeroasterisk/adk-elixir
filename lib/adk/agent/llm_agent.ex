@@ -27,6 +27,7 @@ defmodule ADK.Agent.LlmAgent do
     :after_tool_callback,
     :on_tool_error_callback,
     :max_history_turns,
+    callbacks: [],
     description: "",
     tools: [],
     sub_agents: [],
@@ -56,6 +57,7 @@ defmodule ADK.Agent.LlmAgent do
                {:retry, any()} | {:fallback, any()} | {:error, any()})
             | nil,
           max_history_turns: pos_integer() | nil,
+          callbacks: [module()],
           description: String.t(),
           tools: [map()],
           sub_agents: [map()],
@@ -214,7 +216,7 @@ defmodule ADK.Agent.LlmAgent do
       end
     else
       # Run before_model callbacks
-      callbacks = ctx.callbacks || []
+      callbacks = (agent.callbacks || []) ++ (ctx.callbacks || [])
       cb_ctx = %{agent: agent, context: ctx, request: request}
 
       case ADK.Callback.run_before(callbacks, :before_model, cb_ctx) do
@@ -1066,7 +1068,7 @@ defmodule ADK.Agent.LlmAgent do
       case Map.get(tools_map, call.name) do
         nil ->
           err_msg = "Unknown tool: #{call.name}"
-          callbacks = ctx.callbacks || []
+          callbacks = (agent.callbacks || []) ++ (ctx.callbacks || [])
 
           tool_cb_ctx = %{
             agent: agent,
@@ -1117,7 +1119,7 @@ defmodule ADK.Agent.LlmAgent do
 
         tool ->
           tool_ctx = ADK.ToolContext.new(ctx, call[:id] || "call-1", tool)
-          callbacks = ctx.callbacks || []
+          callbacks = (agent.callbacks || []) ++ (ctx.callbacks || [])
           plugins = ctx.plugins || []
           tool_cb_ctx = %{agent: agent, context: ctx, tool: tool, tool_args: call.args || %{}}
 
