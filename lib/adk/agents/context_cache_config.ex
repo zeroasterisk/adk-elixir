@@ -32,8 +32,7 @@ defmodule ADK.Agents.ContextCacheConfig do
   """
   @spec new(keyword()) :: t()
   def new(opts \\ []) do
-    struct(__MODULE__, opts)
-    |> validate()
+    validate(struct(__MODULE__, opts))
   end
 
   defp validate(%{cache_intervals: intervals}) when intervals < 1 do

@@ -60,7 +60,8 @@ defmodule ADK.Agent.ParallelAgent do
     def sub_agents(agent), do: agent.sub_agents
 
     def run(agent, ctx) do
-      agent.sub_agents
+      sub_agents = agent.sub_agents
+      sub_agents
       |> Task.async_stream(
         fn agent_spec ->
           child_ctx = ADK.Context.for_child(ctx, agent_spec)

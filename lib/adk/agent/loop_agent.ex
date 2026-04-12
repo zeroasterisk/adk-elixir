@@ -74,50 +74,53 @@ defmodule ADK.Agent.LoopAgent do
     def sub_agents(agent), do: agent.sub_agents
 
     def run(agent, ctx) do
-      ADK.Agent.LoopAgent.do_loop(ctx, agent, 0, [])
+      ADK.Agent.LoopAgent.do_loop(ctx, agent, {0, []})
     end
   end
 
   @doc false
-  def do_loop(_ctx, %{max_iterations: max}, iteration, acc) when iteration >= max, do: acc
+  def do_loop(_ctx, %{max_iterations: max}, {iteration, acc}) when iteration >= max do
+    finalize_events(acc)
+  end
 
   def do_loop(
         ctx,
         %{sub_agents: sub_agents, exit_condition: exit_condition} = agent,
-        iteration,
-        acc
+        {iteration, acc}
       ) do
-    {events, escalated?, updated_ctx} =
+    {events_acc, escalated?, updated_ctx} =
       Enum.reduce_while(sub_agents, {[], false, ctx}, fn agent_spec, {evts, _, cur_ctx} ->
         child_ctx = ADK.Context.for_child(cur_ctx, agent_spec)
         new_events = ADK.Agent.run(agent_spec, child_ctx)
 
-        # Merge any temp_state updates from child back to parent
         merged_ctx = merge_child_state(cur_ctx, child_ctx)
 
-        if Enum.any?(new_events, &escalated?/1) do
-          {:halt, {evts ++ new_events, true, merged_ctx}}
-        else
-          {:cont, {evts ++ new_events, false, merged_ctx}}
-        end
+        halt? = Enum.any?(new_events, &escalated?/1)
+        action = if halt?, do: :halt, else: :cont
+        {action, {[new_events | evts], halt?, merged_ctx}}
       end)
 
-    new_acc = acc ++ events
+    flat_events = events_acc |> Enum.reverse() |> List.flatten()
+    new_acc = [flat_events | acc]
 
     cond do
       escalated? ->
-        new_acc
+        finalize_events(new_acc)
 
       is_function(exit_condition, 1) and exit_condition.(updated_ctx) ->
-        new_acc
+        finalize_events(new_acc)
 
       true ->
-        do_loop(updated_ctx, agent, iteration + 1, new_acc)
+        do_loop(updated_ctx, agent, {iteration + 1, new_acc})
     end
   end
 
   defp merge_child_state(parent_ctx, child_ctx) do
     %{parent_ctx | temp_state: Map.merge(parent_ctx.temp_state, child_ctx.temp_state)}
+  end
+
+  defp finalize_events(acc) do
+    acc |> Enum.reverse() |> List.flatten()
   end
 
   defp escalated?(%{actions: %{escalate: true}}), do: true

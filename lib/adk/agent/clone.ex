@@ -21,11 +21,11 @@ defmodule ADK.Agent.Clone do
   def clone(agent, update) when update == %{}, do: do_clone(agent, %{})
   def clone(agent, update) when is_map(update), do: do_clone(agent, update)
 
-  defp do_clone(agent, update) do
-    if Map.has_key?(update, :parent_agent) do
-      raise ArgumentError, "Cannot update `parent_agent` field in clone"
-    end
+  defp do_clone(_agent, %{parent_agent: _}) do
+    raise ArgumentError, "Cannot update `parent_agent` field in clone"
+  end
 
+  defp do_clone(agent, update) do
     struct_fields = agent |> Map.from_struct() |> Map.keys()
     invalid_fields = update |> Map.keys() |> Enum.reject(&(&1 in struct_fields))
 
@@ -34,11 +34,9 @@ defmodule ADK.Agent.Clone do
     end
 
     sub_agents =
-      if Map.has_key?(update, :sub_agents) do
-        update[:sub_agents]
-      else
+      Map.get_lazy(update, :sub_agents, fn ->
         Enum.map(agent.sub_agents || [], &clone(&1))
-      end
+      end)
 
     base = Map.from_struct(agent)
     merged = Map.merge(base, update)
@@ -55,19 +53,20 @@ defmodule ADK.Agent.Clone do
 
     cloned = struct(agent.__struct__, merged)
 
-    if sub_agents != [] do
-      updated_subs =
-        Enum.map(cloned.sub_agents, fn sub ->
-          if Map.has_key?(sub, :parent_agent) do
-            %{sub | parent_agent: cloned}
-          else
-            sub
-          end
-        end)
+    maybe_wire_parent(cloned, sub_agents)
+  end
 
-      %{cloned | sub_agents: updated_subs}
-    else
-      cloned
-    end
+  defp maybe_wire_parent(cloned, []) do
+    cloned
+  end
+
+  defp maybe_wire_parent(cloned, _sub_agents) do
+    updated_subs =
+      Enum.map(cloned.sub_agents, fn
+        %{parent_agent: _} = sub -> %{sub | parent_agent: cloned}
+        sub -> sub
+      end)
+
+    %{cloned | sub_agents: updated_subs}
   end
 end

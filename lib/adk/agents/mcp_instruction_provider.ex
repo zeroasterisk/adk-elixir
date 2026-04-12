@@ -32,7 +32,8 @@ defmodule Adk.Agents.McpInstructionProvider do
   @impl true
   def invoke(%__MODULE__{} = provider, %ReadonlyContext{} = context) do
     with {:ok, session} <-
-           provider.mcp_session_manager_mod.new(provider.connection_params)
+           provider.connection_params
+           |> provider.mcp_session_manager_mod.new()
            |> provider.mcp_session_manager_mod.create_session(),
          {:ok, %{prompts: prompts}} <-
            provider.mcp_session_manager_mod.list_prompts(
@@ -66,12 +67,11 @@ defmodule Adk.Agents.McpInstructionProvider do
   defp build_arguments(nil, _context), do: %{}
 
   defp build_arguments(prompt, context) do
-    (prompt.arguments || [])
-    |> Enum.reduce(%{}, fn arg, acc ->
-      case Map.get(context.invocation_context.session.state, arg.name) do
-        nil -> acc
-        value -> Map.put(acc, arg.name, value)
-      end
-    end)
+    state = context.invocation_context.session.state
+    for arg <- prompt.arguments || [],
+        value = Map.get(state, arg.name),
+        not is_nil(value),
+        into: %{},
+        do: {arg.name, value}
   end
 end

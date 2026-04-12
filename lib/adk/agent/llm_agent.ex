@@ -167,7 +167,7 @@ defmodule ADK.Agent.LlmAgent do
         error: error_msg
       })
 
-    if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, error_event)
+    maybe_append_event(ctx.session_pid, error_event)
     ADK.Context.emit_event(ctx, error_event)
     [error_event]
   end
@@ -203,7 +203,7 @@ defmodule ADK.Agent.LlmAgent do
         {:ok, response} ->
           event = event_from_response(response, ctx, agent)
           event = maybe_save_output_to_state(event, agent)
-          if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
+          maybe_append_event(ctx.session_pid, event)
           ADK.Context.emit_event(ctx, event)
           [event]
 
@@ -223,7 +223,7 @@ defmodule ADK.Agent.LlmAgent do
         {:halt, {:ok, response}} ->
           event = event_from_response(response, ctx, agent)
           event = maybe_save_output_to_state(event, agent)
-          if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
+          maybe_append_event(ctx.session_pid, event)
           ADK.Context.emit_event(ctx, event)
           [event]
 
@@ -260,7 +260,7 @@ defmodule ADK.Agent.LlmAgent do
                     }
                   })
 
-                if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, fallback_event)
+                maybe_append_event(ctx.session_pid, fallback_event)
                 ADK.Context.emit_event(ctx, fallback_event)
                 [fallback_event]
               else
@@ -299,7 +299,7 @@ defmodule ADK.Agent.LlmAgent do
                 [] ->
                   # No tool calls — this is the final response
                   event = maybe_save_output_to_state(event, agent)
-                  if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
+                  maybe_append_event(ctx.session_pid, event)
                   ADK.Context.emit_event(ctx, event)
                   [event]
 
@@ -386,10 +386,8 @@ defmodule ADK.Agent.LlmAgent do
 
                       ADK.Context.emit_event(ctx, response_event)
 
-                      if ctx.session_pid do
-                        ADK.Session.append_event(ctx.session_pid, event)
-                        ADK.Session.append_event(ctx.session_pid, response_event)
-                      end
+                      maybe_append_event(ctx.session_pid, event)
+                      maybe_append_event(ctx.session_pid, response_event)
 
                       [event, response_event | do_run(ctx, agent, iteration + 1)]
                   end
@@ -406,7 +404,7 @@ defmodule ADK.Agent.LlmAgent do
                   # Plugin handled the error and provided a fake response, proceed as if LLM returned it
                   event = event_from_response(response, ctx, agent)
                   event = maybe_save_output_to_state(event, agent)
-                  if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
+                  maybe_append_event(ctx.session_pid, event)
                   ADK.Context.emit_event(ctx, event)
                   [event]
 
@@ -421,7 +419,7 @@ defmodule ADK.Agent.LlmAgent do
                     {:fallback, {:ok, response}} ->
                       event = event_from_response(response, ctx, agent)
                       event = maybe_save_output_to_state(event, agent)
-                      if ctx.session_pid, do: ADK.Session.append_event(ctx.session_pid, event)
+                      maybe_append_event(ctx.session_pid, event)
                       ADK.Context.emit_event(ctx, event)
                       [event]
 
@@ -437,8 +435,7 @@ defmodule ADK.Agent.LlmAgent do
                           error: final_reason
                         })
 
-                      if ctx.session_pid,
-                        do: ADK.Session.append_event(ctx.session_pid, error_event)
+                      maybe_append_event(ctx.session_pid, error_event)
 
                       ADK.Context.emit_event(ctx, error_event)
                       [error_event]
@@ -497,65 +494,23 @@ defmodule ADK.Agent.LlmAgent do
 
     request =
       if ctx.run_config do
-        live_connect = %{}
-
         live_connect =
-          if ctx.run_config.output_audio_transcription,
-            do:
-              Map.put(
-                live_connect,
-                :output_audio_transcription,
-                ctx.run_config.output_audio_transcription
-              ),
-            else: live_connect
+          [
+            {:output_audio_transcription, ctx.run_config.output_audio_transcription},
+            {:input_audio_transcription, ctx.run_config.input_audio_transcription},
+            {:enable_affective_dialog, ctx.run_config.enable_affective_dialog},
+            {:proactivity, ctx.run_config.proactivity},
+            {:session_resumption, ctx.run_config.session_resumption},
+            {:realtime_input_config, ctx.run_config.realtime_input_config},
+            {:context_window_compression, ctx.run_config.context_window_compression}
+          ]
+          |> Enum.reject(fn
+            {:enable_affective_dialog, v} -> is_nil(v)
+            {_k, v} -> !v
+          end)
+          |> Map.new()
 
-        live_connect =
-          if ctx.run_config.input_audio_transcription,
-            do:
-              Map.put(
-                live_connect,
-                :input_audio_transcription,
-                ctx.run_config.input_audio_transcription
-              ),
-            else: live_connect
-
-        live_connect =
-          if not is_nil(ctx.run_config.enable_affective_dialog),
-            do:
-              Map.put(
-                live_connect,
-                :enable_affective_dialog,
-                ctx.run_config.enable_affective_dialog
-              ),
-            else: live_connect
-
-        live_connect =
-          if ctx.run_config.proactivity,
-            do: Map.put(live_connect, :proactivity, ctx.run_config.proactivity),
-            else: live_connect
-
-        live_connect =
-          if ctx.run_config.session_resumption,
-            do: Map.put(live_connect, :session_resumption, ctx.run_config.session_resumption),
-            else: live_connect
-
-        live_connect =
-          if ctx.run_config.realtime_input_config,
-            do:
-              Map.put(live_connect, :realtime_input_config, ctx.run_config.realtime_input_config),
-            else: live_connect
-
-        live_connect =
-          if ctx.run_config.context_window_compression,
-            do:
-              Map.put(
-                live_connect,
-                :context_window_compression,
-                ctx.run_config.context_window_compression
-              ),
-            else: live_connect
-
-        if live_connect != %{} do
+        if map_size(live_connect) > 0 do
           Map.put(request, :live_connect_config, live_connect)
         else
           request
@@ -628,40 +583,31 @@ defmodule ADK.Agent.LlmAgent do
   def compile_instruction(ctx, agent) do
     base = resolve_instruction(agent.instruction, ctx)
 
-    base =
-      case agent.global_instruction do
-        nil ->
-          base
+    base
+    |> prepend_global_instruction(agent.global_instruction, ctx)
+    |> append_transfer_instructions(agent.sub_agents)
+    |> substitute_state_variables(ctx)
+  end
 
-        "" ->
-          base
+  defp prepend_global_instruction(base, nil, _ctx), do: base
+  defp prepend_global_instruction(base, "", _ctx), do: base
+  defp prepend_global_instruction(base, global, ctx) do
+    resolved_global = resolve_instruction(global, ctx)
+    resolved_global <> "\n" <> base
+  end
 
-        global ->
-          resolved_global = resolve_instruction(global, ctx)
-          resolved_global <> "\n" <> base
-      end
+  defp append_transfer_instructions(base, []), do: base
+  defp append_transfer_instructions(base, subs) do
+    transfer_info =
+      subs
+      |> Enum.map(fn sa ->
+        name = ADK.Agent.name(sa)
+        desc = ADK.Agent.description(sa)
+        if desc != "", do: "- #{name}: #{desc}", else: "- #{name}"
+      end)
+      |> Enum.join("\n")
 
-    # Add transfer instructions if sub-agents exist
-    base =
-      case agent.sub_agents do
-        [] ->
-          base
-
-        subs ->
-          transfer_info =
-            subs
-            |> Enum.map(fn sa ->
-              name = ADK.Agent.name(sa)
-              desc = ADK.Agent.description(sa)
-              if desc != "", do: "- #{name}: #{desc}", else: "- #{name}"
-            end)
-            |> Enum.join("\n")
-
-          base <> "\n\nYou can transfer to these agents:\n" <> transfer_info
-      end
-
-    # Substitute {key} state variables from session
-    substitute_state_variables(base, ctx)
+    base <> "\n\nYou can transfer to these agents:\n" <> transfer_info
   end
 
   @doc """
@@ -737,7 +683,7 @@ defmodule ADK.Agent.LlmAgent do
   """
   @spec get_available_agent_names(t()) :: [String.t()]
   def get_available_agent_names(%__MODULE__{} = root_agent) do
-    collect_agent_names(root_agent, [])
+    collect_agent_names(root_agent, []) |> Enum.reverse()
   end
 
   @doc """
@@ -812,18 +758,21 @@ defmodule ADK.Agent.LlmAgent do
 
   defp substitute_state_variables(text, _ctx), do: text
 
+  defp maybe_append_event(nil, _event), do: :ok
+  defp maybe_append_event(pid, event), do: ADK.Session.append_event(pid, event)
+
+  defp get_history(nil), do: []
+  defp get_history(pid) do
+    ADK.Session.get_events(pid)
+    |> Enum.map(fn e ->
+      parts = (e.content || %{})[:parts] || []
+      role = infer_message_role(e, parts)
+      %{role: role, parts: parts}
+    end)
+  end
+
   defp build_messages(ctx) do
-    history =
-      if ctx.session_pid do
-        ADK.Session.get_events(ctx.session_pid)
-        |> Enum.map(fn e ->
-          parts = (e.content || %{})[:parts] || []
-          role = infer_message_role(e, parts)
-          %{role: role, parts: parts}
-        end)
-      else
-        []
-      end
+    history = get_history(ctx.session_pid)
 
     max_turns = if ctx.agent, do: ctx.agent.max_history_turns, else: nil
     history = truncate_history(history, max_turns)
@@ -1067,220 +1016,226 @@ defmodule ADK.Agent.LlmAgent do
     Enum.map(calls, fn call ->
       case Map.get(tools_map, call.name) do
         nil ->
-          err_msg = "Unknown tool: #{call.name}"
-          callbacks = (agent.callbacks || []) ++ (ctx.callbacks || [])
-
-          tool_cb_ctx = %{
-            agent: agent,
-            context: ctx,
-            tool: %{name: call.name},
-            tool_args: call.args || %{}
-          }
-
-          # Agent functional callback
-          func_res =
-            if agent.on_tool_error_callback do
-              agent.on_tool_error_callback.(
-                %{name: call.name},
-                call.args || %{},
-                %{},
-                {:error, err_msg}
-              )
-            else
-              {:error, err_msg}
-            end
-
-          case func_res do
-            {:fallback, {:ok, fallback_res}} ->
-              %{name: call.name, result: fallback_res}
-
-            {:fallback, fallback_res} ->
-              %{name: call.name, result: fallback_res}
-
-            {:ok, fallback_res} ->
-              %{name: call.name, result: fallback_res}
-
-            _ ->
-              # Plugins
-              plugins = ctx.plugins || []
-
-              case ADK.Plugin.run_on_tool_error(plugins, ctx, call.name, {:error, err_msg}) do
-                {:ok, recovered} ->
-                  %{name: call.name, result: recovered}
-
-                {:error, reason} ->
-                  # Module callbacks
-                  case ADK.Callback.run_on_tool_error(callbacks, {:error, reason}, tool_cb_ctx) do
-                    {:fallback, fallback_res} -> fallback_res
-                    _ -> %{name: call.name, error: reason}
-                  end
-              end
-          end
+          handle_unknown_tool(call, agent, ctx)
 
         tool ->
-          tool_ctx = ADK.ToolContext.new(ctx, call[:id] || "call-1", tool)
-          callbacks = (agent.callbacks || []) ++ (ctx.callbacks || [])
-          plugins = ctx.plugins || []
-          tool_cb_ctx = %{agent: agent, context: ctx, tool: tool, tool_args: call.args || %{}}
-
-          {plugin_skip, plugin_res, call_args} =
-            case ADK.Plugin.run_before_tool(plugins, ctx, tool.name, call.args || %{}) do
-              {:skip, response} -> {true, response, call.args || %{}}
-              {:ok, modified_args} -> {false, nil, modified_args}
-            end
-
-          result =
-            if plugin_skip do
-              plugin_res
-            else
-              # 1. Agent functional before_tool_callback
-              {skip_func, call_args} =
-                if agent.before_tool_callback do
-                  case agent.before_tool_callback.(tool, call_args, tool_ctx) do
-                    nil -> {false, call_args}
-                    %{} = modified_args -> {false, modified_args}
-                    {:cont, modified_args} -> {false, modified_args}
-                    {:halt, {:ok, _} = res} -> {true, res}
-                    {:halt, res} -> {true, {:ok, res}}
-                    # return dict short-circuits in Python
-                    {:ok, _} = res -> {true, res}
-                    res -> {true, {:ok, res}}
-                  end
-                else
-                  {false, call_args}
-                end
-
-              if skip_func do
-                # call_args actually holds the short-circuited response here
-                call_args
-              else
-                tool_cb_ctx = %{tool_cb_ctx | tool_args: call_args}
-
-                case ADK.Callback.run_before(callbacks, :before_tool, tool_cb_ctx) do
-                  {:halt, halted_result} ->
-                    halted_result
-
-                  {:cont, modified_ctx} ->
-                    call_args = Map.get(modified_ctx, :tool_args, call_args)
-
-                    res =
-                      ADK.Telemetry.Contract.tool_span(
-                        %{tool_name: tool.name, agent_name: agent.name},
-                        fn ->
-                          run_tool(tool, tool_ctx, call_args)
-                        end
-                      )
-
-                    case res do
-                      {:error, reason} ->
-                        # functional on_tool_error
-                        func_err_res =
-                          if agent.on_tool_error_callback do
-                            case agent.on_tool_error_callback.(
-                                   tool,
-                                   call_args,
-                                   tool_ctx,
-                                   {:error, reason}
-                                 ) do
-                              nil -> res
-                              {:fallback, {:ok, _} = fb} -> fb
-                              {:fallback, fb} -> {:ok, fb}
-                              {:ok, _} = fb -> fb
-                              %{} = fb -> {:ok, fb}
-                              _ -> res
-                            end
-                          else
-                            res
-                          end
-
-                        if func_err_res != res do
-                          func_err_res
-                        else
-                          # Plugins
-                          case ADK.Plugin.run_on_tool_error(
-                                 plugins,
-                                 ctx,
-                                 tool.name,
-                                 {:error, reason}
-                               ) do
-                            {:ok, recovered} ->
-                              {:ok, recovered}
-
-                            plugin_err ->
-                              # Module callbacks
-                              case ADK.Callback.run_on_tool_error(
-                                     callbacks,
-                                     plugin_err,
-                                     tool_cb_ctx
-                                   ) do
-                                {:retry, ret_ctx} ->
-                                  ret_args = Map.get(ret_ctx, :tool_args, call_args)
-
-                                  ADK.Telemetry.Contract.tool_span(
-                                    %{tool_name: tool.name, agent_name: agent.name},
-                                    fn ->
-                                      run_tool(tool, tool_ctx, ret_args)
-                                    end
-                                  )
-
-                                {:fallback, fallback_res} ->
-                                  fallback_res
-
-                                err ->
-                                  err
-                              end
-                          end
-                        end
-
-                      other ->
-                        other
-                    end
-                end
-              end
-            end
-
-          # functional after_tool_callback
-          result =
-            if agent.after_tool_callback do
-              # We unwrap result for the callback, then rewrap
-              unwrapped_res =
-                case result do
-                  {:ok, val} -> val
-                  other -> other
-                end
-
-              case agent.after_tool_callback.(tool, call_args, tool_ctx, unwrapped_res) do
-                nil -> result
-                {:ok, _} = new_res -> new_res
-                %{} = new_res -> {:ok, new_res}
-                new_res -> {:ok, new_res}
-              end
-            else
-              result
-            end
-
-          result = ADK.Callback.run_after(callbacks, :after_tool, result, tool_cb_ctx)
-          result = ADK.Plugin.run_after_tool(plugins, ctx, tool.name, result)
-
-          case result do
-            {:transfer_to_agent, target} ->
-              %{name: call.name, result: "Transferring to #{target}", transfer_to_agent: target}
-
-            {:exit_loop, reason} ->
-              %{name: call.name, result: reason, exit_loop: true}
-
-            {:ok, value} ->
-              %{name: call.name, result: ADK.Tool.ResultGuard.maybe_truncate(value)}
-
-            {:error, reason} ->
-              %{name: call.name, error: inspect(reason)}
-          end
+          handle_known_tool(call, tool, agent, ctx)
       end
-      # Preserve tool call ID for backends that need it (e.g. Anthropic tool_use_id)
-      |> then(fn result ->
-        if call[:id], do: Map.put(result, :id, call[:id]), else: result
-      end)
+      |> maybe_add_call_id(call)
     end)
+  end
+
+  defp maybe_add_call_id(result, call) do
+    if call[:id], do: Map.put(result, :id, call[:id]), else: result
+  end
+
+  defp handle_unknown_tool(call, agent, ctx) do
+    err_msg = "Unknown tool: #{call.name}"
+    callbacks = (agent.callbacks || []) ++ (ctx.callbacks || [])
+
+    tool_cb_ctx = %{
+      agent: agent,
+      context: ctx,
+      tool: %{name: call.name},
+      tool_args: call.args || %{}
+    }
+
+    # Agent functional callback
+    func_res =
+      if agent.on_tool_error_callback do
+        agent.on_tool_error_callback.(
+          %{name: call.name},
+          call.args || %{},
+          %{},
+          {:error, err_msg}
+        )
+      else
+        {:error, err_msg}
+      end
+
+    case func_res do
+      {:fallback, {:ok, fallback_res}} ->
+        %{name: call.name, result: fallback_res}
+
+      {:fallback, fallback_res} ->
+        %{name: call.name, result: fallback_res}
+
+      {:ok, fallback_res} ->
+        %{name: call.name, result: fallback_res}
+
+      _ ->
+        # Plugins
+        plugins = ctx.plugins || []
+
+        case ADK.Plugin.run_on_tool_error(plugins, ctx, call.name, {:error, err_msg}) do
+          {:ok, recovered} ->
+            %{name: call.name, result: recovered}
+
+          {:error, reason} ->
+            # Module callbacks
+            case ADK.Callback.run_on_tool_error(callbacks, {:error, reason}, tool_cb_ctx) do
+              {:fallback, fallback_res} -> fallback_res
+              _ -> %{name: call.name, error: reason}
+            end
+        end
+    end
+  end
+
+  defp handle_known_tool(call, tool, agent, ctx) do
+    tool_ctx = ADK.ToolContext.new(ctx, call[:id] || "call-1", tool)
+    callbacks = (agent.callbacks || []) ++ (ctx.callbacks || [])
+    plugins = ctx.plugins || []
+    tool_cb_ctx = %{agent: agent, context: ctx, tool: tool, tool_args: call.args || %{}}
+
+    {plugin_skip, plugin_res, call_args} =
+      case ADK.Plugin.run_before_tool(plugins, ctx, tool.name, call.args || %{}) do
+        {:skip, response} -> {true, response, call.args || %{}}
+        {:ok, modified_args} -> {false, nil, modified_args}
+      end
+
+    result =
+      if plugin_skip do
+        plugin_res
+      else
+        # 1. Agent functional before_tool_callback
+        {skip_func, call_args} =
+          if agent.before_tool_callback do
+            case agent.before_tool_callback.(tool, call_args, tool_ctx) do
+              nil -> {false, call_args}
+              %{} = modified_args -> {false, modified_args}
+              {:cont, modified_args} -> {false, modified_args}
+              {:halt, {:ok, _} = res} -> {true, res}
+              {:halt, res} -> {true, {:ok, res}}
+              {:ok, _} = res -> {true, res}
+              res -> {true, {:ok, res}}
+            end
+          else
+            {false, call_args}
+          end
+
+        if skip_func do
+          call_args
+        else
+          tool_cb_ctx = %{tool_cb_ctx | tool_args: call_args}
+
+          case ADK.Callback.run_before(callbacks, :before_tool, tool_cb_ctx) do
+            {:halt, halted_result} ->
+              halted_result
+
+            {:cont, modified_ctx} ->
+              call_args = Map.get(modified_ctx, :tool_args, call_args)
+
+              res =
+                ADK.Telemetry.Contract.tool_span(
+                  %{tool_name: tool.name, agent_name: agent.name},
+                  fn ->
+                    run_tool(tool, tool_ctx, call_args)
+                  end
+                )
+
+              case res do
+                {:error, reason} ->
+                  # functional on_tool_error
+                  func_err_res =
+                    if agent.on_tool_error_callback do
+                      case agent.on_tool_error_callback.(
+                             tool,
+                             call_args,
+                             tool_ctx,
+                             {:error, reason}
+                           ) do
+                        nil -> res
+                        {:fallback, {:ok, _} = fb} -> fb
+                        {:fallback, fb} -> {:ok, fb}
+                        {:ok, _} = fb -> fb
+                        %{} = fb -> {:ok, fb}
+                        _ -> res
+                      end
+                    else
+                      res
+                    end
+
+                  if func_err_res != res do
+                    func_err_res
+                  else
+                    # Plugins
+                    case ADK.Plugin.run_on_tool_error(
+                           plugins,
+                           ctx,
+                           tool.name,
+                           {:error, reason}
+                         ) do
+                      {:ok, recovered} ->
+                        {:ok, recovered}
+
+                      plugin_err ->
+                        # Module callbacks
+                        case ADK.Callback.run_on_tool_error(
+                               callbacks,
+                               plugin_err,
+                               tool_cb_ctx
+                             ) do
+                          {:retry, ret_ctx} ->
+                            ret_args = Map.get(ret_ctx, :tool_args, call_args)
+
+                            ADK.Telemetry.Contract.tool_span(
+                              %{tool_name: tool.name, agent_name: agent.name},
+                              fn ->
+                                run_tool(tool, tool_ctx, ret_args)
+                              end
+                            )
+
+                          {:fallback, fallback_res} ->
+                            fallback_res
+
+                          err ->
+                            err
+                        end
+                    end
+                  end
+
+                other ->
+                  other
+              end
+          end
+        end
+      end
+
+    # functional after_tool_callback
+    result =
+      if agent.after_tool_callback do
+        unwrapped_res =
+          case result do
+            {:ok, val} -> val
+            other -> other
+          end
+
+        case agent.after_tool_callback.(tool, call_args, tool_ctx, unwrapped_res) do
+          nil -> result
+          {:ok, _} = new_res -> new_res
+          %{} = new_res -> {:ok, new_res}
+          new_res -> {:ok, new_res}
+        end
+      else
+        result
+      end
+
+    result = ADK.Callback.run_after(callbacks, :after_tool, result, tool_cb_ctx)
+    result = ADK.Plugin.run_after_tool(plugins, ctx, tool.name, result)
+
+    case result do
+      {:transfer_to_agent, target} ->
+        %{name: call.name, result: "Transferring to #{target}", transfer_to_agent: target}
+
+      {:exit_loop, reason} ->
+        %{name: call.name, result: reason, exit_loop: true}
+
+      {:ok, value} ->
+        %{name: call.name, result: ADK.Tool.ResultGuard.maybe_truncate(value)}
+
+      {:error, reason} ->
+        %{name: call.name, error: inspect(reason)}
+    end
   end
 
   defp run_tool(%ADK.Tool.ModuleTool{} = tool, ctx, args),
@@ -1301,11 +1256,14 @@ defmodule ADK.Agent.LlmAgent do
   defp wrap_tool_response(response), do: %{"result" => response}
 
   defp collect_agent_names(%{name: name, sub_agents: subs}, acc) when is_list(subs) do
-    children = Enum.flat_map(subs, &collect_agent_names(&1, []))
-    acc ++ [name] ++ children
+    acc = [name | acc]
+
+    Enum.reduce(subs, acc, fn sub, inner_acc ->
+      collect_agent_names(sub, inner_acc)
+    end)
   end
 
-  defp collect_agent_names(%{name: name}, acc), do: acc ++ [name]
+  defp collect_agent_names(%{name: name}, acc), do: [name | acc]
 
   defp find_agent(%{name: name} = agent, name), do: agent
 
