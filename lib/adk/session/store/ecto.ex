@@ -132,7 +132,9 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     defp repo! do
-      Application.get_env(:adk, __MODULE__, [])[:repo] ||
+      repo = ADK.Config.get(__MODULE__, [])[:repo]
+      
+      repo ||
         raise """
         No Ecto repo configured for ADK.Session.Store.Ecto.
 

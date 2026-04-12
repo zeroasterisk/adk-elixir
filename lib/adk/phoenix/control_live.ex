@@ -520,7 +520,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     defp pubsub_server do
-      Application.get_env(:adk, :pubsub, ADK.PubSub)
+      ADK.Config.pubsub()
     end
 
     defp store_running? do

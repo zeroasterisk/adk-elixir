@@ -104,7 +104,7 @@ defmodule ADK.Telemetry.SpanStore do
 
   @impl true
   def handle_info(:prune, state) do
-    ttl_ms = Application.get_env(:adk, :span_store_ttl_ms, @default_ttl_ms)
+    ttl_ms = ADK.Config.span_store_ttl_ms(@default_ttl_ms)
     cutoff = System.monotonic_time(:millisecond) - ttl_ms
 
     prune_table(@event_table, cutoff)

@@ -123,7 +123,7 @@ defmodule ADK.Plugin.BigQueryAgentAnalytics do
   end
 
   defp get_state do
-    Application.get_env(:adk, :bigquery_analytics_plugin_state, %{
+    ADK.Config.get(:bigquery_analytics_plugin_state, %{
       project_id: "default",
       dataset_id: "default",
       table_id: "adk_events",

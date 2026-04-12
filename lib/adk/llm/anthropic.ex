@@ -98,7 +98,7 @@ defmodule ADK.LLM.Anthropic do
   end
 
   defp req_test_options do
-    if Application.get_env(:adk, :anthropic_test_plug) do
+    if ADK.Config.anthropic_test_plug() do
       [plug: {Req.Test, ADK.LLM.Anthropic}]
     else
       []
@@ -457,7 +457,7 @@ defmodule ADK.LLM.Anthropic do
   end
 
   defp check_oauth_config do
-    case Application.get_env(:adk, :anthropic_oauth_token) do
+    case ADK.Config.anthropic_oauth_token() do
       nil -> :skip
       "" -> :skip
       token -> {:ok, {:oauth, token}}
@@ -475,7 +475,7 @@ defmodule ADK.LLM.Anthropic do
   defp check_claude_code_session do
     # Check CLAUDE_AI_SESSION_KEY env var (set by Claude Code CLI)
     # Only when auto-discovery is enabled (default: false — opt-in)
-    if Application.get_env(:adk, :anthropic_auto_discover, false) do
+    if ADK.Config.anthropic_auto_discover() do
       case System.get_env("CLAUDE_AI_SESSION_KEY") do
         nil -> :skip
         "" -> :skip
@@ -487,7 +487,7 @@ defmodule ADK.LLM.Anthropic do
   end
 
   defp check_api_key_config do
-    case Application.get_env(:adk, :anthropic_api_key) do
+    case ADK.Config.anthropic_api_key() do
       nil -> :skip
       "" -> :skip
       key -> {:ok, {:api_key, key}}

@@ -42,7 +42,7 @@ defmodule ADK.Auth.Refresher.Registry do
   """
   @spec register(Credential.credential_type(), module() | nil) :: :ok
   def register(credential_type, refresher_module) when is_atom(credential_type) do
-    refreshers = Application.get_env(:adk, @app_key, %{})
+    refreshers = ADK.Config.auth_refreshers()
 
     Application.put_env(
       :adk,
@@ -58,7 +58,7 @@ defmodule ADK.Auth.Refresher.Registry do
   """
   @spec get_refresher(Credential.credential_type()) :: module() | nil
   def get_refresher(credential_type) when is_atom(credential_type) do
-    refreshers = Application.get_env(:adk, @app_key, %{})
+    refreshers = ADK.Config.auth_refreshers()
     Map.get(refreshers, credential_type)
   end
 

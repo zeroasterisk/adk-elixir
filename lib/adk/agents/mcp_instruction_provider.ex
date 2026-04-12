@@ -25,7 +25,7 @@ defmodule Adk.Agents.McpInstructionProvider do
       connection_params: connection_params,
       prompt_name: prompt_name,
       mcp_session_manager_mod:
-        Application.get_env(:adk, :mcp_session_manager_mod, SessionManagerImpl)
+        ADK.Config.mcp_session_manager_mod()
     }
   end
 

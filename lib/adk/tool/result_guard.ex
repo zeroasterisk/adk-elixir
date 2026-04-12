@@ -58,11 +58,11 @@ defmodule ADK.Tool.ResultGuard do
   @doc """
   Returns the configured maximum tool result size in bytes.
 
-  Reads from `Application.get_env(:adk, :max_tool_result_bytes)`, defaulting to #{@default_max_bytes}.
+  Reads from `ADK.Config.max_tool_result_bytes/1`, defaulting to #{@default_max_bytes}.
   """
   @spec max_bytes() :: pos_integer()
   def max_bytes do
-    Application.get_env(:adk, :max_tool_result_bytes, @default_max_bytes)
+    ADK.Config.max_tool_result_bytes(@default_max_bytes)
   end
 
   # Returns {serialized_string, is_original_string?}

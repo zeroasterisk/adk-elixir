@@ -92,7 +92,7 @@ defmodule ADK.LLM do
   def gemini_backend, do: ADK.LLM.Gemini
 
   defp backend do
-    Application.get_env(:adk, :llm_backend, ADK.LLM.Mock)
+    ADK.Config.llm_backend()
   end
 end
 

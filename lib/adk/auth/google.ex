@@ -17,7 +17,7 @@ defmodule ADK.Auth.Google do
               {:ok, %{token: String.t()}} | {:error, term()}
 
   def client do
-    Application.get_env(:adk, :google_auth_client, ADK.Auth.Google.DefaultClient)
+    ADK.Config.google_auth_client()
   end
 
   def default_credentials(scopes) do

@@ -74,7 +74,7 @@ defmodule ADK.LLM.OpenAI do
   end
 
   defp req_test_options do
-    if Application.get_env(:adk, :openai_test_plug) do
+    if ADK.Config.openai_test_plug() do
       [plug: {Req.Test, ADK.LLM.OpenAI}]
     else
       []
@@ -270,7 +270,7 @@ defmodule ADK.LLM.OpenAI do
   defp parse_arguments(_), do: %{}
 
   defp api_key do
-    case Application.get_env(:adk, :openai_api_key) do
+    case ADK.Config.openai_api_key() do
       nil ->
         case System.get_env("OPENAI_API_KEY") do
           nil -> {:error, :missing_api_key}
@@ -283,7 +283,7 @@ defmodule ADK.LLM.OpenAI do
   end
 
   defp base_url do
-    Application.get_env(:adk, :openai_base_url) ||
+    ADK.Config.openai_base_url() ||
       System.get_env("OPENAI_BASE_URL") ||
       @default_base_url
   end

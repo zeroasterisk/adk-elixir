@@ -41,7 +41,7 @@ defmodule ADK.Auth.Exchanger.Registry do
   """
   @spec register(Credential.credential_type(), module() | nil) :: :ok
   def register(credential_type, exchanger_module) when is_atom(credential_type) do
-    exchangers = Application.get_env(:adk, @app_key, %{})
+    exchangers = ADK.Config.auth_exchangers()
 
     Application.put_env(
       :adk,
@@ -57,7 +57,7 @@ defmodule ADK.Auth.Exchanger.Registry do
   """
   @spec get_exchanger(Credential.credential_type()) :: module() | nil
   def get_exchanger(credential_type) when is_atom(credential_type) do
-    exchangers = Application.get_env(:adk, @app_key, %{})
+    exchangers = ADK.Config.auth_exchangers()
     Map.get(exchangers, credential_type)
   end
 

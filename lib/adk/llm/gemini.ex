@@ -87,7 +87,7 @@ defmodule ADK.LLM.Gemini do
   end
 
   defp req_test_options do
-    if Application.get_env(:adk, :gemini_test_plug) do
+    if ADK.Config.gemini_test_plug() do
       [plug: {Req.Test, ADK.LLM.Gemini}]
     else
       []
@@ -338,11 +338,11 @@ defmodule ADK.LLM.Gemini do
   defp parse_response_part(other), do: other
 
   defp auth do
-    case Application.get_env(:adk, :gemini_api_key) do
+    case ADK.Config.gemini_api_key() do
       nil ->
         case System.get_env("GEMINI_API_KEY") do
           nil ->
-            case Application.get_env(:adk, :gemini_bearer_token) do
+            case ADK.Config.gemini_bearer_token() do
               nil ->
                 case System.get_env("GEMINI_BEARER_TOKEN") do
                   nil -> {:error, :missing_api_key}

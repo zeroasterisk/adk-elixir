@@ -17,7 +17,7 @@ defmodule ADK.Auth.ProviderRegistry do
   @spec register(Credential.credential_type(), module()) :: :ok
   def register(credential_type, provider_module)
       when is_atom(credential_type) and is_atom(provider_module) do
-    providers = Application.get_env(:adk, :auth_providers, %{})
+    providers = ADK.Config.auth_providers()
 
     Application.put_env(
       :adk,
@@ -33,7 +33,7 @@ defmodule ADK.Auth.ProviderRegistry do
   """
   @spec get_provider(Credential.credential_type()) :: module() | nil
   def get_provider(credential_type) when is_atom(credential_type) do
-    providers = Application.get_env(:adk, :auth_providers, %{})
+    providers = ADK.Config.auth_providers()
     Map.get(providers, credential_type)
   end
 

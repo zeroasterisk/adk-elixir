@@ -402,7 +402,7 @@ defmodule ADK.LLM.Router do
   end
 
   defp router_config(key, default) do
-    Application.get_env(:adk, :llm_router, [])
+    ADK.Config.llm_router()
     |> Keyword.get(key, default)
   end
 

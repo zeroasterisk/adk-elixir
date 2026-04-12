@@ -55,17 +55,17 @@ defmodule ADK.Application do
         ADK.Plugin.Registry,
 
         # Credential store (optional, for dev/test)
-        if(start_child?(:start_credential_store, true),
+        if(ADK.Config.start_credential_store?(),
           do: {ADK.Auth.InMemoryStore, name: ADK.Auth.InMemoryStore}
         ),
 
         # Artifact store (optional, for dev/test)
-        if(start_child?(:start_artifact_store, true),
+        if(ADK.Config.start_artifact_store?(),
           do: {ADK.Artifact.InMemory, name: ADK.Artifact.InMemory}
         ),
 
         # ETS-backed memory store (optional, for dev/test)
-        if(start_child?(:start_memory_store, true),
+        if(ADK.Config.start_memory_store?(),
           do: {ADK.Memory.InMemory, name: ADK.Memory.InMemory}
         ),
 
@@ -86,22 +86,22 @@ defmodule ADK.Application do
         ADK.Workflow.Checkpoint.EtsStore,
 
         # Approval server for HITL tool confirmation (optional)
-        if(start_child?(:start_approval_server, false),
+        if(ADK.Config.start_approval_server?(),
           do: {ADK.Tool.Approval, name: ADK.Tool.Approval}
         ),
 
         # Circuit breaker for LLM calls (optional)
-        if(start_child?(:start_circuit_breaker, true),
+        if(ADK.Config.start_circuit_breaker?(),
           do:
             {ADK.LLM.CircuitBreaker,
              Keyword.merge(
                [name: ADK.LLM.CircuitBreaker],
-               Application.get_env(:adk, :circuit_breaker, [])
+               ADK.Config.circuit_breaker()
              )}
         ),
 
         # Smart LLM router with failover (optional)
-        if(start_child?(:start_llm_router, true),
+        if(ADK.Config.start_llm_router?(),
           do: {ADK.LLM.Router, name: ADK.LLM.Router}
         )
       ]
@@ -114,9 +114,5 @@ defmodule ADK.Application do
     ADK.Telemetry.DebugHandler.attach()
 
     result
-  end
-
-  defp start_child?(key, default) do
-    Application.get_env(:adk, key, default)
   end
 end

@@ -201,7 +201,7 @@ defmodule ADK.Feature do
   # -- Private ---------------------------------------------------------------
 
   defp get_overrides do
-    Application.get_env(:adk, :feature_overrides, %{})
+    ADK.Config.feature_overrides()
   end
 
   defp validate_known!(name) do

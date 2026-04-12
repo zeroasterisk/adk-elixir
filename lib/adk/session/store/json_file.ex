@@ -118,7 +118,7 @@ defmodule ADK.Session.Store.JsonFile do
   # --- Helpers ---
 
   defp base_path do
-    Application.get_env(:adk, :json_store_path, "priv/sessions")
+    ADK.Config.json_store_path()
   end
 
   defp session_dir(app_name, user_id) do

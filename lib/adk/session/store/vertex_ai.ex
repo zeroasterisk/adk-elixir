@@ -295,23 +295,23 @@ defmodule ADK.Session.Store.VertexAI do
     %{
       project_id:
         Keyword.get(opts, :project_id) ||
-          Application.get_env(:adk, :vertex_project_id) ||
+          ADK.Config.vertex_project_id() ||
           System.get_env("GOOGLE_CLOUD_PROJECT") ||
           System.get_env("GCLOUD_PROJECT"),
       location:
         Keyword.get(opts, :location) ||
-          Application.get_env(:adk, :vertex_location) ||
+          ADK.Config.vertex_location() ||
           @default_location,
       reasoning_engine_id:
         Keyword.get(opts, :reasoning_engine_id) ||
-          Application.get_env(:adk, :vertex_reasoning_engine_id),
+          ADK.Config.vertex_reasoning_engine_id(),
       credentials_file:
         Keyword.get(opts, :credentials_file) ||
-          Application.get_env(:adk, :vertex_credentials_file) ||
+          ADK.Config.vertex_credentials_file() ||
           System.get_env("GOOGLE_APPLICATION_CREDENTIALS"),
       api_key:
         Keyword.get(opts, :api_key) ||
-          Application.get_env(:adk, :vertex_api_key)
+          ADK.Config.vertex_api_key()
     }
   end
 
@@ -348,7 +348,7 @@ defmodule ADK.Session.Store.VertexAI do
   end
 
   defp req_test_options do
-    if Application.get_env(:adk, :vertex_session_test_plug) do
+    if ADK.Config.vertex_session_test_plug() do
       [plug: {Req.Test, __MODULE__}]
     else
       []
