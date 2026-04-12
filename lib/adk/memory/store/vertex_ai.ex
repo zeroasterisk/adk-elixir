@@ -365,45 +365,9 @@ defmodule ADK.Memory.Store.VertexAI do
 
   defp get_sa_token(creds_file) do
     with {:ok, json} <- File.read(creds_file),
-         {:ok, creds} <- Jason.decode(json) do
-      now = System.system_time(:second)
-
-      header =
-        Base.url_encode64(Jason.encode!(%{"alg" => "RS256", "typ" => "JWT"}), padding: false)
-
-      claims =
-        Base.url_encode64(
-          Jason.encode!(%{
-            "iss" => creds["client_email"],
-            "scope" => Enum.join(@scopes, " "),
-            "aud" => "https://oauth2.googleapis.com/token",
-            "iat" => now,
-            "exp" => now + 3600
-          }),
-          padding: false
-        )
-
-      signing_input = "#{header}.#{claims}"
-
-      [entry] = :public_key.pem_decode(creds["private_key"])
-      key = :public_key.pem_entry_decode(entry)
-      signature = :public_key.sign(signing_input, :sha256, key)
-      sig_b64 = Base.url_encode64(signature, padding: false)
-
-      jwt = "#{signing_input}.#{sig_b64}"
-
-      resp =
-        Req.post!("https://oauth2.googleapis.com/token",
-          form: [
-            grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-            assertion: jwt
-          ]
-        )
-
-      case resp.status do
-        200 -> {:ok, resp.body["access_token"]}
-        s -> {:error, {:token_error, s, resp.body}}
-      end
+         {:ok, creds} <- Jason.decode(json),
+         {:ok, %{token: token}} <- ADK.Auth.Google.from_service_account_info(creds, @scopes) do
+      {:ok, token}
     end
   end
 

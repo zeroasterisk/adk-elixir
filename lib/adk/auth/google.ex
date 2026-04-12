@@ -41,9 +41,7 @@ defmodule ADK.Auth.Google.DefaultClient do
   @moduledoc false
   @behaviour ADK.Auth.Google
 
-  # A real implementation would integrate with Goth or google_api_auth.
-  # For parity, we leave these returning not_implemented in production,
-  # or you can implement them properly using Req if desired.
+  # Default implementation using Req and :public_key.
 
   @impl true
   def default_credentials(_scopes), do: {:error, :not_implemented}
@@ -52,7 +50,54 @@ defmodule ADK.Auth.Google.DefaultClient do
   def fetch_id_token(_audience), do: {:error, :not_implemented}
 
   @impl true
-  def from_service_account_info(_key_info, _scopes), do: {:error, :not_implemented}
+  def from_service_account_info(key_info, scopes) do
+    now = System.system_time(:second)
+
+    header = Base.url_encode64(Jason.encode!(%{"alg" => "RS256", "typ" => "JWT"}), padding: false)
+
+    claims = Base.url_encode64(
+      Jason.encode!(%{
+        "iss" => key_info["client_email"],
+        "scope" => Enum.join(scopes, " "),
+        "aud" => key_info["token_uri"] || "https://oauth2.googleapis.com/token",
+        "iat" => now,
+        "exp" => now + 3600
+      }),
+      padding: false
+    )
+
+    signing_input = "#{header}.#{claims}"
+
+    case :public_key.pem_decode(key_info["private_key"]) do
+      [entry] ->
+        key = :public_key.pem_entry_decode(entry)
+        signature = :public_key.sign(signing_input, :sha256, key)
+        sig_b64 = Base.url_encode64(signature, padding: false)
+
+        jwt = "#{signing_input}.#{sig_b64}"
+
+        case Req.post(key_info["token_uri"] || "https://oauth2.googleapis.com/token",
+               form: [
+                 grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                 assertion: jwt
+               ]
+             ) do
+          {:ok, %{status: 200, body: body}} ->
+            {:ok, %{token: body["access_token"]}}
+
+          {:ok, %{status: status, body: body}} ->
+            {:error, {:token_error, status, body}}
+
+          {:error, reason} ->
+            {:error, {:http_error, reason}}
+        end
+
+      _ ->
+        {:error, :invalid_private_key}
+    end
+  rescue
+    e -> {:error, e}
+  end
 
   @impl true
   def from_service_account_info_id_token(_key_info, _audience), do: {:error, :not_implemented}
