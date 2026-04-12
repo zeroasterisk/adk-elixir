@@ -43,4 +43,38 @@ defmodule ADK.Tool do
   def declaration(%{name: name, description: desc}) do
     %{name: name, description: desc, parameters: %{}}
   end
+
+  @doc """
+  Auto-wraps a function or MFA tuple into a `FunctionTool`.
+  """
+  @spec wrap(function() | {module(), atom()} | {module(), atom(), list()}) :: ADK.Tool.FunctionTool.t()
+  def wrap(func) when is_function(func) do
+    info = Function.info(func)
+    name = info[:name] |> to_string()
+    
+    # Handle anonymous function names like "-do_run/3-fun-0-"
+    name = if String.starts_with?(name, "-"), do: "anonymous_tool", else: name
+
+    ADK.Tool.FunctionTool.new(name,
+      description: "Auto-wrapped function",
+      func: func,
+      parameters: %{}
+    )
+  end
+
+  def wrap({mod, fun} = mfa) when is_atom(mod) and is_atom(fun) do
+    ADK.Tool.FunctionTool.new(to_string(fun),
+      description: "Auto-wrapped function",
+      func: mfa,
+      parameters: %{}
+    )
+  end
+
+  def wrap({mod, fun, extra} = mfa) when is_atom(mod) and is_atom(fun) and is_list(extra) do
+    ADK.Tool.FunctionTool.new(to_string(fun),
+      description: "Auto-wrapped function",
+      func: mfa,
+      parameters: %{}
+    )
+  end
 end
