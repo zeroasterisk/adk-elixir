@@ -4,6 +4,17 @@ defmodule ADK.LLM.Gateway.StatsTest do
   alias ADK.LLM.Gateway.Stats
 
   setup do
+    # Clean up any existing gateway to avoid race conditions with Stats
+    pid = Process.whereis(ADK.LLM.Gateway)
+    if pid && Process.alive?(pid) do
+      try do
+        Supervisor.stop(pid, :normal)
+      catch
+        :exit, _ -> :ok
+      end
+      :timer.sleep(50)
+    end
+
     # Stats uses a named ETS table, so we need to ensure it's started
     case Process.whereis(Stats) do
       nil -> {:ok, _} = Stats.start_link()
