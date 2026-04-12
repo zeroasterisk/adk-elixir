@@ -14,9 +14,9 @@ defmodule ADK.Auth.CredentialManager do
 
       # Initial credential (has auth_code, awaiting exchange)
       cred = Credential.oauth2_with_code(
-        "client-id",
-        "client-secret",
-        "auth-code-from-callback",
+        client_id: "client-id",
+        client_secret: "client-secret",
+        auth_code: "auth-code-from-callback",
         token_endpoint: "https://oauth.example.com/token"
       )
 
@@ -92,39 +92,25 @@ defmodule ADK.Auth.CredentialManager do
 
   defp resolve_credential(name, raw_cred, opts) do
     {store_mod, store_opts} = store_config(opts)
-    refresh_buffer = Keyword.get(opts, :refresh_buffer, @default_refresh_buffer)
 
     case store_mod.get(name, store_opts) do
       {:ok, stored_cred} ->
         # Have a stored credential — refresh if near-expiry
-        handle_stored_credential(
-          name,
-          stored_cred,
-          raw_cred,
-          opts,
-          store_mod,
-          store_opts,
-          refresh_buffer
-        )
+        handle_stored_credential(name, stored_cred, opts)
 
       :not_found ->
         # No stored credential — try to obtain one
-        handle_missing_credential(name, raw_cred, opts, store_mod, store_opts)
+        handle_missing_credential(name, raw_cred, opts)
 
       {:error, reason} ->
         {:error, {:store_error, reason}}
     end
   end
 
-  defp handle_stored_credential(
-         name,
-         stored_cred,
-         _raw_cred,
-         opts,
-         store_mod,
-         store_opts,
-         refresh_buffer
-       ) do
+  defp handle_stored_credential(name, stored_cred, opts) do
+    {store_mod, store_opts} = store_config(opts)
+    refresh_buffer = Keyword.get(opts, :refresh_buffer, @default_refresh_buffer)
+
     if OAuth2.expires_soon?(stored_cred, refresh_buffer) and OAuth2.refreshable?(stored_cred) do
       http_opts = Keyword.get(opts, :http_opts, [])
 
@@ -146,30 +132,34 @@ defmodule ADK.Auth.CredentialManager do
     end
   end
 
-  defp handle_missing_credential(name, raw_cred, opts, store_mod, store_opts) do
+  defp handle_missing_credential(name, %Credential{type: :service_account} = raw_cred, opts) do
+    {store_mod, store_opts} = store_config(opts)
+    
+    case ADK.Auth.Google.from_service_account_info(raw_cred.service_account_key, raw_cred.scopes) do
+      {:ok, %{token: token}} ->
+        now = System.system_time(:second)
+        exchanged = %{raw_cred | 
+          access_token: token,
+          metadata: Map.merge(raw_cred.metadata, %{
+            "expires_at" => now + 3600,
+            "token_type" => "Bearer",
+            "refreshed_at" => now
+          })
+        }
+        store_mod.put(name, exchanged, store_opts)
+        {:ok, exchanged}
+
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  defp handle_missing_credential(name, raw_cred, opts) do
+    {store_mod, store_opts} = store_config(opts)
     http_opts = Keyword.get(opts, :http_opts, [])
     redirect_uri = Keyword.get(opts, :redirect_uri, "")
 
     cond do
-      raw_cred.type == :service_account ->
-        case ADK.Auth.Google.from_service_account_info(raw_cred.service_account_key, raw_cred.scopes) do
-          {:ok, %{token: token}} ->
-            now = System.system_time(:second)
-            exchanged = %{raw_cred | 
-              access_token: token,
-              metadata: Map.merge(raw_cred.metadata, %{
-                "expires_at" => now + 3600,
-                "token_type" => "Bearer",
-                "refreshed_at" => now
-              })
-            }
-            store_mod.put(name, exchanged, store_opts)
-            {:ok, exchanged}
-
-          {:error, _} = err ->
-            err
-        end
-
       OAuth2.needs_exchange?(raw_cred) ->
         # Has auth_code → exchange for tokens
         case OAuth2.exchange_code(raw_cred, redirect_uri: redirect_uri, http_opts: http_opts) do

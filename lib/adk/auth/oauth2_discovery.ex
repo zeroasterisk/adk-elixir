@@ -29,13 +29,17 @@ defmodule ADK.Auth.OAuth2Discovery do
     try_candidates(
       candidate_urls,
       issuer,
-      AuthorizationServerMetadata,
-      :mismatched_issuer,
-      :issuer
+      struct_mod: AuthorizationServerMetadata,
+      error_tag: :mismatched_issuer,
+      match_key: :issuer
     )
   end
 
-  defp try_candidates([url], match_val, struct_mod, error_tag, match_key) do
+  defp try_candidates([url], match_val, opts) do
+    struct_mod = Keyword.fetch!(opts, :struct_mod)
+    error_tag = Keyword.fetch!(opts, :error_tag)
+    match_key = Keyword.fetch!(opts, :match_key)
+
     case fetch_and_decode(url) do
       {:ok, metadata} ->
         if metadata[match_key] == match_val do
@@ -49,24 +53,28 @@ defmodule ADK.Auth.OAuth2Discovery do
     end
   end
 
-  defp try_candidates([url | rest], match_val, struct_mod, error_tag, match_key) do
+  defp try_candidates([url | rest], match_val, opts) do
+    struct_mod = Keyword.fetch!(opts, :struct_mod)
+
+    match_key = Keyword.fetch!(opts, :match_key)
+
     case fetch_and_decode(url) do
       {:ok, metadata} ->
         if metadata[match_key] == match_val do
           {:ok, struct(struct_mod, metadata)}
         else
-          try_candidates(rest, match_val, struct_mod, error_tag, match_key)
+          try_candidates(rest, match_val, opts)
         end
 
       _error ->
-        try_candidates(rest, match_val, struct_mod, error_tag, match_key)
+        try_candidates(rest, match_val, opts)
     end
   end
 
   def discover_resource_metadata(resource) do
     parsed = URI.parse(resource)
     url = Map.put(parsed, :path, "/.well-known/oauth-protected-resource") |> URI.to_string()
-    try_candidates([url], resource, ProtectedResourceMetadata, :mismatched_resource, :resource)
+    try_candidates([url], resource, struct_mod: ProtectedResourceMetadata, error_tag: :mismatched_resource, match_key: :resource)
   end
 
   defp fetch_and_decode(url) do

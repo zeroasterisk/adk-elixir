@@ -292,26 +292,18 @@ defmodule ADK.Auth.OAuth2 do
   # ---------------------------------------------------------------------------
 
   @spec validate_for_exchange(Credential.t()) :: {:ok, :valid} | {:error, atom()}
-  defp validate_for_exchange(%Credential{} = cred) do
-    cond do
-      is_nil(cred.auth_code) -> {:error, :missing_auth_code}
-      is_nil(cred.client_id) -> {:error, :missing_client_id}
-      is_nil(cred.client_secret) -> {:error, :missing_client_secret}
-      is_nil(cred.token_endpoint) -> {:error, :missing_token_endpoint}
-      true -> {:ok, :valid}
-    end
-  end
+  defp validate_for_exchange(%Credential{auth_code: nil}), do: {:error, :missing_auth_code}
+  defp validate_for_exchange(%Credential{client_id: nil}), do: {:error, :missing_client_id}
+  defp validate_for_exchange(%Credential{client_secret: nil}), do: {:error, :missing_client_secret}
+  defp validate_for_exchange(%Credential{token_endpoint: nil}), do: {:error, :missing_token_endpoint}
+  defp validate_for_exchange(%Credential{}), do: {:ok, :valid}
 
   @spec validate_for_refresh(Credential.t()) :: {:ok, :valid} | {:error, atom()}
-  defp validate_for_refresh(%Credential{} = cred) do
-    cond do
-      is_nil(cred.refresh_token) -> {:error, :missing_refresh_token}
-      is_nil(cred.client_id) -> {:error, :missing_client_id}
-      is_nil(cred.client_secret) -> {:error, :missing_client_secret}
-      is_nil(cred.token_endpoint) -> {:error, :missing_token_endpoint}
-      true -> {:ok, :valid}
-    end
-  end
+  defp validate_for_refresh(%Credential{refresh_token: nil}), do: {:error, :missing_refresh_token}
+  defp validate_for_refresh(%Credential{client_id: nil}), do: {:error, :missing_client_id}
+  defp validate_for_refresh(%Credential{client_secret: nil}), do: {:error, :missing_client_secret}
+  defp validate_for_refresh(%Credential{token_endpoint: nil}), do: {:error, :missing_token_endpoint}
+  defp validate_for_refresh(%Credential{}), do: {:ok, :valid}
 
   @spec post_token_request(String.t(), map(), keyword()) ::
           {:ok, token_response()} | {:error, term()}

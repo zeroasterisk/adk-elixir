@@ -80,14 +80,14 @@ defmodule ADK.Auth.Credential do
 
   Convenience constructor for the auth-code flow before tokens are obtained.
   """
-  @spec oauth2_with_code(String.t(), String.t(), String.t(), keyword()) :: t()
-  def oauth2_with_code(client_id, client_secret, auth_code, opts \\ []) do
+  @spec oauth2_with_code(keyword()) :: t()
+  def oauth2_with_code(opts) when is_list(opts) do
     %__MODULE__{
       type: :oauth2,
       access_token: nil,
-      client_id: client_id,
-      client_secret: client_secret,
-      auth_code: auth_code,
+      client_id: Keyword.fetch!(opts, :client_id),
+      client_secret: Keyword.fetch!(opts, :client_secret),
+      auth_code: Keyword.fetch!(opts, :auth_code),
       token_endpoint: Keyword.get(opts, :token_endpoint),
       scopes: Keyword.get(opts, :scopes, []),
       metadata: Keyword.get(opts, :metadata, %{})

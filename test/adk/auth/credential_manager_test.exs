@@ -79,10 +79,13 @@ defmodule ADK.Auth.CredentialManagerTest do
     end
   end
 
-  describe "Credential.oauth2_with_code/4" do
+  describe "Credential.oauth2_with_code/1" do
     test "creates credential with auth_code set and no access_token" do
       cred =
-        Credential.oauth2_with_code("c1", "s1", "auth-code-xyz",
+        Credential.oauth2_with_code(
+          client_id: "c1",
+          client_secret: "s1",
+          auth_code: "auth-code-xyz",
           token_endpoint: "https://auth.example.com/token",
           scopes: ["read"]
         )

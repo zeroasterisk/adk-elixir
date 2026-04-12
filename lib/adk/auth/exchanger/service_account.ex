@@ -21,7 +21,13 @@ defmodule ADK.Auth.Exchanger.ServiceAccount do
     use_id_token? = Map.get(cred.metadata, :use_id_token, false)
     audience = Map.get(cred.metadata, :audience)
 
-    # Validation mimicking Pydantic model validators
+    scopes =
+      case cred.scopes do
+        nil -> @default_scopes
+        [] -> @default_scopes
+        other -> other
+      end
+
     cond do
       use_id_token? and (audience == nil or audience == "") ->
         {:error, "audience is required when use_id_token is True"}
@@ -29,29 +35,17 @@ defmodule ADK.Auth.Exchanger.ServiceAccount do
       not use_adc? and (cred.service_account_key == nil or cred.service_account_key == %{}) ->
         {:error, "service_account_credential is required"}
 
+      use_adc? ->
+        fetch_adc_token(scopes, use_id_token: use_id_token?, audience: audience)
+
+      cred.service_account_key != nil and scopes == @default_scopes and cred.scopes == [] and not use_id_token? ->
+        {:error, "scopes are required"}
+
+      cred.service_account_key != nil ->
+        fetch_explicit_token(cred.service_account_key, scopes, use_id_token: use_id_token?, audience: audience)
+
       true ->
-        scopes =
-          case cred.scopes do
-            nil -> @default_scopes
-            [] -> @default_scopes
-            other -> other
-          end
-
-        # Do exchange based on config
-        cond do
-          use_adc? ->
-            fetch_adc_token(scopes, use_id_token?, audience)
-
-          cred.service_account_key != nil ->
-            if scopes == @default_scopes and cred.scopes == [] and not use_id_token? do
-              {:error, "scopes are required"}
-            else
-              fetch_explicit_token(cred.service_account_key, scopes, use_id_token?, audience)
-            end
-
-          true ->
-            {:error, "Service account credentials are missing"}
-        end
+        {:error, "Service account credentials are missing"}
     end
   end
 
@@ -61,48 +55,60 @@ defmodule ADK.Auth.Exchanger.ServiceAccount do
 
   # --- Fetch Tokens ---
 
-  defp fetch_adc_token(scopes, use_id_token?, audience) do
-    if use_id_token? do
-      case Google.fetch_id_token(audience) do
-        {:ok, id_token} ->
-          {:ok, Credential.http_bearer(id_token)}
+  defp fetch_adc_token(scopes, opts) do
+    use_id_token? = Keyword.get(opts, :use_id_token, false)
+    audience = Keyword.get(opts, :audience)
+    do_fetch_adc_token(scopes, use_id_token?, audience)
+  end
 
-        {:error, error} ->
-          {:error, "Failed to exchange service account for ID token: #{inspect(error)}"}
-      end
-    else
-      case Google.default_credentials(scopes) do
-        {:ok, %{token: token, quota_project_id: quota_project_id}} ->
-          metadata =
-            if quota_project_id,
-              do: %{"additional_headers" => %{"x-goog-user-project" => quota_project_id}},
-              else: %{}
+  defp do_fetch_adc_token(_scopes, true, audience) do
+    case Google.fetch_id_token(audience) do
+      {:ok, id_token} ->
+        {:ok, Credential.http_bearer(id_token)}
 
-          {:ok, Credential.http_bearer(token, metadata: metadata)}
-
-        {:error, error} ->
-          {:error, "Failed to exchange service account token: #{inspect(error)}"}
-      end
+      {:error, error} ->
+        {:error, "Failed to exchange service account for ID token: #{inspect(error)}"}
     end
   end
 
-  defp fetch_explicit_token(key_info, scopes, use_id_token?, audience) do
-    if use_id_token? do
-      case Google.from_service_account_info_id_token(key_info, audience) do
-        {:ok, %{token: id_token}} ->
-          {:ok, Credential.http_bearer(id_token)}
+  defp do_fetch_adc_token(scopes, false, _audience) do
+    case Google.default_credentials(scopes) do
+      {:ok, %{token: token, quota_project_id: quota_project_id}} ->
+        metadata =
+          if quota_project_id,
+            do: %{"additional_headers" => %{"x-goog-user-project" => quota_project_id}},
+            else: %{}
 
-        {:error, error} ->
-          {:error, "Failed to exchange service account for ID token: #{inspect(error)}"}
-      end
-    else
-      case Google.from_service_account_info(key_info, scopes) do
-        {:ok, %{token: token}} ->
-          {:ok, Credential.http_bearer(token)}
+        {:ok, Credential.http_bearer(token, metadata: metadata)}
 
-        {:error, error} ->
-          {:error, "Failed to exchange service account token: #{inspect(error)}"}
-      end
+      {:error, error} ->
+        {:error, "Failed to exchange service account token: #{inspect(error)}"}
+    end
+  end
+
+  defp fetch_explicit_token(key_info, scopes, opts) do
+    use_id_token? = Keyword.get(opts, :use_id_token, false)
+    audience = Keyword.get(opts, :audience)
+    do_fetch_explicit_token(key_info, scopes, use_id_token?, audience)
+  end
+
+  defp do_fetch_explicit_token(key_info, _scopes, true, audience) do
+    case Google.from_service_account_info_id_token(key_info, audience) do
+      {:ok, %{token: id_token}} ->
+        {:ok, Credential.http_bearer(id_token)}
+
+      {:error, error} ->
+        {:error, "Failed to exchange service account for ID token: #{inspect(error)}"}
+    end
+  end
+
+  defp do_fetch_explicit_token(key_info, scopes, false, _audience) do
+    case Google.from_service_account_info(key_info, scopes) do
+      {:ok, %{token: token}} ->
+        {:ok, Credential.http_bearer(token)}
+
+      {:error, error} ->
+        {:error, "Failed to exchange service account token: #{inspect(error)}"}
     end
   end
 end

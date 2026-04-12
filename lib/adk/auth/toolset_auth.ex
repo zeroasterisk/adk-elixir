@@ -174,11 +174,19 @@ defmodule ADK.Auth.ToolsetAuth do
 
   defp toolset_auth_config(_), do: nil
 
-  defp toolset_name(tool) when is_atom(tool),
-    do: Atom.to_string(tool) |> String.split(".") |> List.last()
+  defp toolset_name(tool) when is_atom(tool) do
+    tool
+    |> Atom.to_string()
+    |> String.split(".")
+    |> List.last()
+  end
 
-  defp toolset_name(%{__struct__: mod}),
-    do: Atom.to_string(mod) |> String.split(".") |> List.last()
+  defp toolset_name(%{__struct__: mod}) do
+    mod
+    |> Atom.to_string()
+    |> String.split(".")
+    |> List.last()
+  end
 
   defp toolset_name(_), do: "UnknownToolset"
 

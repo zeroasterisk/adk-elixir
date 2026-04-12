@@ -115,46 +115,30 @@ defmodule ADK.Auth.Handler do
   - Otherwise → generates a new auth URI via `generate_auth_uri/1`
   """
   @spec generate_auth_request(t()) :: Config.t()
+  def generate_auth_request(%__MODULE__{auth_config: %Config{credential_type: type} = config}) when type not in [:oauth2, :open_id_connect] do
+    config
+  end
+
   def generate_auth_request(%__MODULE__{auth_config: config} = handler) do
-    # Non-OAuth scheme → passthrough
-    unless config.credential_type in @oauth_types do
-      return_config_copy(config)
-    else
-      # auth_uri already in exchanged credential
-      if has_auth_uri?(config.exchanged_credential) do
-        return_config_copy(config)
-      else
-        # Validate raw_credential exists
-        unless config.raw_credential do
-          raise ArgumentError,
-                "Auth scheme #{config.credential_type} requires auth_credential."
-        end
+    cond do
+      has_auth_uri?(config.exchanged_credential) ->
+        config
 
-        # Validate raw_credential is OAuth type with required fields
-        unless oauth_capable?(config.raw_credential) do
-          raise ArgumentError,
-                "Auth scheme #{config.credential_type} requires oauth2 in auth_credential."
-        end
+      is_nil(config.raw_credential) ->
+        raise ArgumentError, "Auth scheme #{config.credential_type} requires auth_credential."
 
-        # auth_uri already in raw credential
-        if has_auth_uri?(config.raw_credential) do
-          %Config{
-            config
-            | exchanged_credential: deep_copy_credential(config.raw_credential)
-          }
-        else
-          # Validate client credentials
-          unless config.raw_credential.client_id && config.raw_credential.client_secret do
-            raise ArgumentError,
-                  "Auth scheme #{config.credential_type} requires both client_id and client_secret in auth_credential."
-          end
+      not oauth_capable?(config.raw_credential) ->
+        raise ArgumentError, "Auth scheme #{config.credential_type} requires oauth2 in auth_credential."
 
-          # Generate new auth URI
-          exchanged = generate_auth_uri(handler)
+      has_auth_uri?(config.raw_credential) ->
+        %Config{config | exchanged_credential: deep_copy_credential(config.raw_credential)}
 
-          %Config{config | exchanged_credential: exchanged}
-        end
-      end
+      !(config.raw_credential.client_id && config.raw_credential.client_secret) ->
+        raise ArgumentError, "Auth scheme #{config.credential_type} requires both client_id and client_secret in auth_credential."
+
+      true ->
+        exchanged = generate_auth_uri(handler)
+        %Config{config | exchanged_credential: exchanged}
     end
   end
 
@@ -270,10 +254,7 @@ defmodule ADK.Auth.Handler do
   defp oauth_capable?(%Credential{client_id: id}) when is_binary(id), do: true
   defp oauth_capable?(_), do: false
 
-  defp return_config_copy(config) do
-    # Return a copy — Elixir structs are immutable, so this is already safe
-    config
-  end
+
 
   defp deep_copy_credential(%Credential{} = cred) do
     %{cred | metadata: Map.new(cred.metadata || %{})}

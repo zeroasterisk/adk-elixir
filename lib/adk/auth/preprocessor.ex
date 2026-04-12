@@ -89,13 +89,10 @@ defmodule ADK.Auth.Preprocessor do
 
   defp process_user_event(user_event, events, opts) do
     responses = Event.function_responses(user_event)
-
-    if responses == [] do
-      :noop
-    else
-      process_auth_responses(responses, events, opts)
-    end
+    process_auth_responses(responses, events, opts)
   end
+
+  defp process_auth_responses([], _events, _opts), do: :noop
 
   defp process_auth_responses(responses, events, opts) do
     # Collect auth function response IDs and their response data
@@ -115,7 +112,7 @@ defmodule ADK.Auth.Preprocessor do
     if MapSet.size(auth_fc_ids) == 0 do
       :noop
     else
-      store_and_collect_resume_targets(events, auth_fc_ids, auth_responses, opts)
+      store_and_collect_resume_targets(events, {auth_fc_ids, auth_responses}, opts)
     end
   end
 
@@ -134,11 +131,10 @@ defmodule ADK.Auth.Preprocessor do
   """
   @spec store_and_collect_resume_targets(
           list(Event.t()),
-          MapSet.t(String.t()),
-          map(),
+          {MapSet.t(String.t()), map()},
           keyword()
         ) :: process_result()
-  def store_and_collect_resume_targets(events, auth_fc_ids, auth_responses, opts) do
+  def store_and_collect_resume_targets(events, {auth_fc_ids, auth_responses}, opts) do
     credential_service = Keyword.get(opts, :credential_service)
 
     # Step 1: Find matching adk_request_credential function calls

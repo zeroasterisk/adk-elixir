@@ -74,16 +74,12 @@ defmodule ADK.Auth.Config do
     key
   end
 
-  def credential_key(%__MODULE__{} = config) do
-    type_part = to_string(config.credential_type)
+  def credential_key(%__MODULE__{raw_credential: nil} = config) do
+    "adk_#{config.credential_type}"
+  end
 
-    cred_digest =
-      case config.raw_credential do
-        nil -> ""
-        cred -> "_" <> stable_credential_digest(cred)
-      end
-
-    "adk_#{type_part}#{cred_digest}"
+  def credential_key(%__MODULE__{raw_credential: cred} = config) do
+    "adk_#{config.credential_type}_#{stable_credential_digest(cred)}"
   end
 
   # ---------------------------------------------------------------------------

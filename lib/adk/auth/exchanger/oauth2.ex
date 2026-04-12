@@ -19,16 +19,8 @@ defmodule ADK.Auth.Exchanger.OAuth2 do
   end
 
   def exchange(%Credential{} = cred, scheme) do
-    case check_scheme_credential_type(scheme, cred) do
-      :ok ->
-        if cred.type == :http_bearer do
-          {:ok, cred}
-        else
-          do_exchange(cred, scheme)
-        end
-
-      {:error, _} = error ->
-        error
+    with :ok <- check_scheme_credential_type(scheme, cred) do
+      do_exchange(cred, scheme)
     end
   end
 
@@ -66,6 +58,8 @@ defmodule ADK.Auth.Exchanger.OAuth2 do
   end
 
   def generate_auth_token(cred), do: cred
+
+  defp do_exchange(%Credential{type: :http_bearer} = cred, _scheme), do: {:ok, cred}
 
   defp do_exchange(%Credential{access_token: token} = cred, _scheme)
        when is_binary(token) and token != "" do

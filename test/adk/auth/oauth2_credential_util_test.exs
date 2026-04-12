@@ -57,9 +57,12 @@ defmodule ADK.Auth.OAuth2CredentialUtilTest do
       assert cred.client_id == "cid"
     end
 
-    test "oauth2_with_code/4 sets auth_code and clears access_token" do
+    test "oauth2_with_code/1 sets auth_code and clears access_token" do
       cred =
-        Credential.oauth2_with_code("cid", "csec", "auth_code_123",
+        Credential.oauth2_with_code(
+          client_id: "cid",
+          client_secret: "csec",
+          auth_code: "auth_code_123",
           token_endpoint: "https://example.com/token",
           scopes: ["read"]
         )
