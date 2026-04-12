@@ -168,8 +168,16 @@ defmodule ADK.Runner do
                       events
 
                     {:cont, cb_ctx} ->
-                      events = ADK.Agent.run(cb_ctx.context.agent, cb_ctx.context)
-                      ADK.Callback.run_after(callbacks, :after_agent, events, cb_ctx)
+                      # Run before_agent plugins
+                      case ADK.Plugin.run_before_agent(updated_plugins, cb_ctx.context, cb_ctx.context.agent) do
+                        {:halt, plugin_events} ->
+                          plugin_events
+
+                        {:cont, plugin_ctx} ->
+                          events = ADK.Agent.run(plugin_ctx.agent, plugin_ctx)
+                          events = ADK.Plugin.run_after_agent(updated_plugins, plugin_ctx, plugin_ctx.agent, events)
+                          ADK.Callback.run_after(callbacks, :after_agent, events, cb_ctx)
+                      end
                   end
 
                 # Run output policy filters

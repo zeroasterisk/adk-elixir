@@ -104,6 +104,23 @@ defmodule ADK.Plugin do
               {[ADK.Event.t()], state()}
 
   @doc """
+  Called before each agent executes.
+
+  Return `{:cont, context}` to continue (possibly with a modified context), or
+  `{:halt, result}` to skip the agent execution and return the given result.
+  """
+  @callback before_agent(ADK.Context.t(), ADK.Agent.t()) ::
+              {:cont, ADK.Context.t()} | {:halt, [ADK.Event.t()]}
+
+  @doc """
+  Called after each agent executes.
+
+  Receives the result (list of events) and may return a transformed result.
+  """
+  @callback after_agent(ADK.Context.t(), ADK.Agent.t(), [ADK.Event.t()]) ::
+              [ADK.Event.t()]
+
+  @doc """
   Called before each LLM model call.
 
   Return `{:ok, request}` to continue (possibly with a modified request), or
@@ -168,6 +185,8 @@ defmodule ADK.Plugin do
     init: 1,
     before_run: 2,
     after_run: 3,
+    before_agent: 2,
+    after_agent: 3,
     before_model: 2,
     after_model: 2,
     on_model_error: 2,
@@ -222,6 +241,42 @@ defmodule ADK.Plugin do
   end
 
   @doc """
+  Run before_agent hooks for all registered plugins.
+
+  Returns `{:cont, context}` if all plugins continue, or
+  `{:halt, result}` if any plugin short-circuits the agent execution.
+  """
+  @spec run_before_agent([{module(), state()}], ADK.Context.t(), ADK.Agent.t()) ::
+          {:cont, ADK.Context.t()} | {:halt, [ADK.Event.t()]}
+  def run_before_agent(plugins, ctx, agent) do
+    Enum.reduce_while(plugins, {:cont, ctx}, fn {mod, _st}, {:cont, current_ctx} ->
+      if function_exported?(mod, :before_agent, 2) do
+        case mod.before_agent(current_ctx, agent) do
+          {:cont, new_ctx} -> {:cont, {:cont, new_ctx}}
+          {:halt, result} -> {:halt, {:halt, result}}
+        end
+      else
+        {:cont, {:cont, current_ctx}}
+      end
+    end)
+  end
+
+  @doc """
+  Run after_agent hooks for all registered plugins, threading the result through each.
+  """
+  @spec run_after_agent([{module(), state()}], ADK.Context.t(), ADK.Agent.t(), [ADK.Event.t()]) ::
+          [ADK.Event.t()]
+  def run_after_agent(plugins, ctx, agent, result) do
+    Enum.reduce(plugins, result, fn {mod, _st}, res ->
+      if function_exported?(mod, :after_agent, 3) do
+        mod.after_agent(ctx, agent, res)
+      else
+        res
+      end
+    end)
+  end
+
+  @doc """
   Run before_model hooks for all registered plugins.
 
   Returns `{:ok, final_request}` if all plugins continue, or
@@ -229,6 +284,7 @@ defmodule ADK.Plugin do
 
   Plugins that don't implement `before_model/2` are skipped.
   """
+
   @spec run_before_model([{module(), state()}], ADK.Context.t(), map()) ::
           {:ok, map()} | {:skip, {:ok, map()} | {:error, term()}}
   def run_before_model(plugins, ctx, request) do
