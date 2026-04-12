@@ -1,6 +1,9 @@
 defmodule ADK.Tool.BigQuery.DataInsightsTool do
   @moduledoc """
   Answers questions about structured data in BigQuery tables using natural language.
+
+  ## Status
+  ⚠️ **Stub Implementation**: This module currently relies on injected stream functions and does not make real network calls to Gemini Data Analytics API. Fully functional implementation is targeted for v0.0.2.
   """
 
   @gda_client_id "GOOGLE_ADK"

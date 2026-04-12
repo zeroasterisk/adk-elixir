@@ -41,7 +41,7 @@ defmodule ADK.LLM.Gemini do
   end
 
   defp do_generate(model, auth, request) do
-    base = Map.get(request, :base_url, @base_url)
+    base = Map.get(request, :base_url, System.get_env("GEMINI_BASE_URL") || @base_url)
     url = "#{base}/#{model}:generateContent"
     body = build_request_body(request)
 

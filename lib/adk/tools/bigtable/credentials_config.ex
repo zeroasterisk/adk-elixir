@@ -1,8 +1,9 @@
 defmodule ADK.Tool.Bigtable.CredentialsConfig do
   @moduledoc """
-  Bigtable Credentials Configuration for Google API tools (Experimental).
+  Bigtable Credentials Configuration for Google API tools.
 
-  Please do not use this in production, as it may be deprecated later.
+  ## Status
+  ⚠️ **Stub/Experimental**: This module is part of the Bigtable tools which are not fully implemented in v0.0.1. Full support is targeted for v0.0.2.
   """
 
   @enforce_keys []

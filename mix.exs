@@ -1,7 +1,7 @@
 defmodule ADK.MixProject do
   use Mix.Project
 
-  @version "0.0.1-alpha.2"
+  @version "0.0.1"
   @source_url "https://github.com/zeroasterisk/adk-elixir"
   @description "Agent Development Kit for Elixir — OTP-native AI agent framework inspired by Google ADK"
 

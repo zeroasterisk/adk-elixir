@@ -1,6 +1,9 @@
 defmodule ADK.Tool.BigQuery.SearchTool do
   @moduledoc """
   Finds BigQuery datasets and tables using natural language semantic search via Dataplex.
+
+  ## Status
+  ⚠️ **Stub Implementation**: This module currently relies on mock returns and does not make real network calls to Dataplex. Fully functional implementation is targeted for v0.0.2.
   """
 
   alias ADK.Tool.BigQuery.Client

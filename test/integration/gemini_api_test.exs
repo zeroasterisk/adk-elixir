@@ -13,7 +13,7 @@ defmodule ADK.Integration.GeminiApiTest do
 
   @moduletag :integration
 
-  @model "gemini-flash-latest"
+  @model "gemini-3.1-flash-lite-preview"
 
   setup do
     # Use real Gemini backend for integration tests
