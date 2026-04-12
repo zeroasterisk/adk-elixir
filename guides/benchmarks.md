@@ -1,9 +1,8 @@
 # ADK Benchmarking Report: Elixir/BEAM vs Python ADK
 
-**Date:** 2026-03-13 (real measurements)
-**Author:** Zaf (research, implementation & benchmarking)
+**Date:** 2026-04-12 (real measurements)
 **Project:** [ADK Elixir](https://github.com/zeroasterisk/adk-elixir)
-**Status:** v2.0 — Real measured benchmarks with mocked LLMs
+**Status:** v0.0.1 — Real measured benchmarks with mocked LLMs
 
 ---
 
@@ -11,14 +10,14 @@
 
 | Dimension | Python ADK (asyncio) | Elixir ADK (BEAM) | Speedup |
 |---|---|---|---|
-| **Single agent + tools (10 turns)** | 54,832 µs | 2,023 µs | **27x** |
-| **Sequential pipeline (3 agents)** | 5,107 µs | 203 µs | **25x** |
-| **Parallel fan-out (5 agents)** | 7,170 µs | 376 µs | **19x** |
-| **100 concurrent sessions** | 152,598 µs | 3,280 µs | **47x** |
-| **Context compression (200 msgs)** | 5,627 µs | 42 µs | **134x** |
-| **Agent transfer chain (A→B→C)** | 9,233 µs | 298 µs | **31x** |
+| **Single agent + tools (10 turns)** | 77,410 µs | 5,902 µs | **13x** |
+| **Sequential pipeline (3 agents)** | 8,060 µs | 520 µs | **15x** |
+| **Parallel fan-out (5 agents)** | 10,364 µs | 970 µs | **10x** |
+| **100 concurrent sessions** | 227,386 µs | 14,216 µs | **16x** |
+| **Context compression (200 msgs)** | 7,989 µs | 56 µs | **143x** |
+| **Agent transfer chain (A→B→C)** | 14,585 µs | 809 µs | **18x** |
 
-**Key takeaway:** With LLM latency removed (mocked), Elixir ADK's framework overhead is **19–134x lower** than Python ADK across all scenarios. At 1,000 concurrent sessions, Elixir uses **8x less memory**; at 10K agents, BEAM scales **up to 20x better**.
+**Key takeaway:** With LLM latency removed (mocked), Elixir ADK's framework overhead is **10–143x lower** than Python ADK across all scenarios. At 1,000 concurrent sessions, Elixir uses **8x less memory**; at 10K agents, BEAM scales **up to 20x better**.
 
 > **Important caveat:** In production, LLM API latency (500ms–5s) dominates total wall-clock time. These benchmarks isolate *framework overhead only* — they use mocked LLMs to remove network I/O. For a single agent making one LLM call, the practical difference is negligible. The advantage compounds with concurrent agents and multi-step pipelines.
 
@@ -46,8 +45,8 @@ Both mocks return **identical canned responses** for each scenario — same text
 - **OS:** Debian 12 (bookworm), Linux 6.1.120+ x86_64
 - **Elixir:** 1.17.3 / OTP 27 (BEAM)
 - **Python:** 3.14.3 (CPython)
-- **Elixir ADK:** v0.1.0 (local build)
-- **Python ADK:** `google-adk` latest from PyPI
+- **Elixir ADK:** v0.0.1 (local build)
+- **Python ADK:** local build from sibling directory
 
 ### What's Measured
 
@@ -80,15 +79,15 @@ Each turn: user message → LLM calls `lookup` tool → tool executes → LLM re
 
 | Metric | Python ADK | Elixir ADK | Ratio |
 |---|---|---|---|
-| **Mean** | 54,832 µs | 2,023 µs | **27.1x** |
-| **Median** | 54,740 µs | 1,978 µs | 27.7x |
-| **P99** | 58,441 µs | 2,637 µs | 22.2x |
-| **Std Dev** | 690 µs | 143 µs | 4.8x |
-| **IPS** | 18.2 | 494.4 | 27.1x |
-| **Memory (mean)** | 249 KB | 373 KB | 0.67x |
-| **Samples** | 200 | 4,940 | — |
+| **Mean** | 77,410 µs | 5,902 µs | **13.1x** |
+| **Median** | 75,357 µs | 5,567 µs | 13.5x |
+| **P99** | 100,314 µs | 10,740 µs | 9.3x |
+| **Std Dev** | 6,704 µs | 1,570 µs | 4.3x |
+| **IPS** | 12.9 | 169.4 | 13.1x |
+| **Memory (mean)** | 248 KB | 545 KB | 0.45x |
+| **Samples** | 200 | 1,692 | — |
 
-**Analysis:** Elixir is ~27x faster per 10-turn conversation. Python's overhead comes from asyncio event loop scheduling, pydantic model validation on every event/response, and the deep call stack through request processors (12 sequential stages). Elixir's pattern matching and GenServer message passing are dramatically lighter.
+**Analysis:** Elixir is ~13x faster per 10-turn conversation. Python's overhead comes from asyncio event loop scheduling, pydantic model validation on every event/response, and the deep call stack through request processors (12 sequential stages). Elixir's pattern matching and GenServer message passing are dramatically lighter.
 
 Memory is slightly higher for Elixir here because Benchee captures the full BEAM process allocation including the 10 session GenServers, whereas Python's tracemalloc captures heap delta only.
 
@@ -98,14 +97,14 @@ Memory is slightly higher for Elixir here because Benchee captures the full BEAM
 
 | Metric | Python ADK | Elixir ADK | Ratio |
 |---|---|---|---|
-| **Mean** | 5,107 µs | 203 µs | **25.1x** |
-| **Median** | 5,082 µs | 196 µs | 25.9x |
-| **P99** | 5,520 µs | 286 µs | 19.3x |
-| **Std Dev** | 105 µs | 23 µs | 4.6x |
-| **IPS** | 195.8 | 4,918.4 | 25.1x |
-| **Memory (mean)** | 69 KB | 37 KB | 1.9x |
+| **Mean** | 8,060 µs | 520 µs | **15.5x** |
+| **Median** | 7,268 µs | 473 µs | 15.4x |
+| **P99** | 10,202 µs | 1,226 µs | 8.3x |
+| **Std Dev** | 8,563 µs | 177 µs | 48.4x |
+| **IPS** | 124.1 | 1922.7 | 15.5x |
+| **Memory (mean)** | 69 KB | 55 KB | 1.25x |
 
-**Analysis:** Sequential agent handoff in Elixir is 25x faster. Each agent transition in Python involves context rebuilding, pydantic re-validation, and asyncio task scheduling. In Elixir, it's a simple function call with pattern matching on the agent struct.
+**Analysis:** Sequential agent handoff in Elixir is ~15x faster. Each agent transition in Python involves context rebuilding, pydantic re-validation, and asyncio task scheduling. In Elixir, it's a simple function call with pattern matching on the agent struct.
 
 ### Scenario 3: Parallel Fan-Out (5 Sub-Agents)
 
@@ -113,14 +112,14 @@ Memory is slightly higher for Elixir here because Benchee captures the full BEAM
 
 | Metric | Python ADK | Elixir ADK | Ratio |
 |---|---|---|---|
-| **Mean** | 7,170 µs | 376 µs | **19.1x** |
-| **Median** | 7,147 µs | 383 µs | 18.7x |
-| **P99** | 7,721 µs | 497 µs | 15.5x |
-| **Std Dev** | 228 µs | 44 µs | 5.2x |
-| **IPS** | 139.5 | 2,661.1 | 19.1x |
-| **Memory (mean)** | 188 KB | 21 KB | **8.9x** |
+| **Mean** | 10,364 µs | 970 µs | **10.7x** |
+| **Median** | 10,083 µs | 915 µs | 11.0x |
+| **P99** | 14,257 µs | 1,813 µs | 7.9x |
+| **Std Dev** | 1,143 µs | 294 µs | 3.9x |
+| **IPS** | 96.5 | 1031.1 | 10.7x |
+| **Memory (mean)** | 191 KB | 22 KB | **8.7x** |
 
-**Analysis:** 19x faster with 8.9x less memory. Python's `asyncio.gather()` adds scheduling overhead even for cooperative tasks. Elixir's `Task.async_stream` with BEAM preemptive scheduling runs truly concurrent. Memory difference is notable: each Python agent creates substantial pydantic model overhead, while Elixir processes are ~2-4 KB each.
+**Analysis:** ~10x faster with ~8.7x less memory. Python's `asyncio.gather()` adds scheduling overhead even for cooperative tasks. Elixir's `Task.async_stream` with BEAM preemptive scheduling runs truly concurrent. Memory difference is notable: each Python agent creates substantial pydantic model overhead, while Elixir processes are ~2-4 KB each.
 
 ### Scenario 4: 100 Concurrent Sessions
 
@@ -128,14 +127,14 @@ Memory is slightly higher for Elixir here because Benchee captures the full BEAM
 
 | Metric | Python ADK | Elixir ADK | Ratio |
 |---|---|---|---|
-| **Mean** | 152,598 µs | 3,280 µs | **46.5x** |
-| **Median** | 151,561 µs | 3,093 µs | 49.0x |
-| **P99** | 177,609 µs | 6,485 µs | 27.4x |
-| **Std Dev** | 4,944 µs | 806 µs | 6.1x |
-| **IPS** | 6.6 | 304.9 | 46.5x |
-| **Memory (mean)** | 1,031 KB | 148 KB | **6.9x** |
+| **Mean** | 227,386 µs | 14,216 µs | **16.0x** |
+| **Median** | 222,488 µs | 12,001 µs | 18.5x |
+| **P99** | 324,007 µs | 37,671 µs | 8.6x |
+| **Std Dev** | 18,033 µs | 6,820 µs | 2.6x |
+| **IPS** | 4.4 | 70.3 | 16.0x |
+| **Memory (mean)** | 1,044 KB | 153 KB | **6.8x** |
 
-**Analysis:** The most dramatic difference — **47x faster, 7x less memory**. This is where BEAM's architecture truly shines. 100 concurrent BEAM processes (each a lightweight GenServer session) is trivial for the VM — it's designed for millions. Python's asyncio event loop serializes all 100 sessions through a single thread, adding cumulative scheduling overhead. The GIL prevents any true parallelism for CPU-bound work (JSON parsing, validation).
+**Analysis:** The most dramatic difference — **16x faster, ~7x less memory**. This is where BEAM's architecture truly shines. 100 concurrent BEAM processes (each a lightweight GenServer session) is trivial for the VM — it's designed for millions. Python's asyncio event loop serializes all 100 sessions through a single thread, adding cumulative scheduling overhead. The GIL prevents any true parallelism for CPU-bound work (JSON parsing, validation).
 
 ### Scenario 5: Context Compression (200 Messages)
 
@@ -143,14 +142,14 @@ Memory is slightly higher for Elixir here because Benchee captures the full BEAM
 
 | Metric | Python ADK | Elixir ADK | Ratio |
 |---|---|---|---|
-| **Mean** | 5,627 µs | 42 µs | **134.0x** |
-| **Median** | 5,616 µs | 34 µs | 165.2x |
-| **P99** | 5,864 µs | 118 µs | 49.7x |
-| **Std Dev** | 83 µs | 21 µs | 4.0x |
-| **IPS** | 177.7 | 23,889.8 | 134.4x |
-| **Memory (mean)** | 300 KB | 59 KB | 5.1x |
+| **Mean** | 7,989 µs | 55.8 µs | **143.1x** |
+| **Median** | 7,638 µs | 44.0 µs | 173.6x |
+| **P99** | 11,137 µs | 178 µs | 62.5x |
+| **Std Dev** | 1,034 µs | 31.2 µs | 33.1x |
+| **IPS** | 125.2 | 17922.5 | 143.1x |
+| **Memory (mean)** | 291 KB | 59 KB | 4.9x |
 
-**Analysis:** The largest speedup — **134x**. Context compression is pure data processing: iterating message lists, estimating token counts, partitioning by role, and selecting messages within budget. Elixir's pattern matching, list comprehensions, and immutable data structures with structural sharing are extremely efficient for this workload. Python's overhead comes from pydantic Content/Part object creation for all 200 messages.
+**Analysis:** The largest speedup — **143x**. Context compression is pure data processing: iterating message lists, estimating token counts, partitioning by role, and selecting messages within budget. Elixir's pattern matching, list comprehensions, and immutable data structures with structural sharing are extremely efficient for this workload. Python's overhead comes from pydantic Content/Part object creation for all 200 messages.
 
 ### Scenario 6: Agent Transfer Chain (A → B → C)
 
@@ -158,14 +157,14 @@ Memory is slightly higher for Elixir here because Benchee captures the full BEAM
 
 | Metric | Python ADK | Elixir ADK | Ratio |
 |---|---|---|---|
-| **Mean** | 9,233 µs | 298 µs | **31.0x** |
-| **Median** | 9,192 µs | 293 µs | 31.4x |
-| **P99** | 10,109 µs | 377 µs | 26.8x |
-| **Std Dev** | 182 µs | 19 µs | 9.6x |
-| **IPS** | 108.3 | 3,357.2 | 31.0x |
-| **Memory (mean)** | 160 KB | 63 KB | 2.5x |
+| **Mean** | 14,585 µs | 809 µs | **18.0x** |
+| **Median** | 14,174 µs | 732 µs | 19.4x |
+| **P99** | 22,126 µs | 1,853 µs | 11.9x |
+| **Std Dev** | 1,718 µs | 339 µs | 5.1x |
+| **IPS** | 68.6 | 1236.6 | 18.0x |
+| **Memory (mean)** | 159 KB | 81 KB | 2.0x |
 
-**Analysis:** 31x faster. Each transfer involves: LLM response with function_call → tool dispatch → transfer signal → agent tree lookup → context switch → new agent execution. Elixir's implementation is a pattern match on the transfer signal followed by a direct function call to the target agent's `run/2`.
+**Analysis:** ~18x faster. Each transfer involves: LLM response with function_call → tool dispatch → transfer signal → agent tree lookup → context switch → new agent execution. Elixir's implementation is a pattern match on the transfer signal followed by a direct function call to the target agent's `run/2`.
 
 ---
 
@@ -185,61 +184,7 @@ Scaled-up scenarios that push framework limits beyond the core six.
 | 14 | 500 concurrent sessions | 5x session scaling from Scenario 4 |
 | 15 | Mixed load (50 pipelines + tools) | Realistic production simulation |
 
-### Scenario 7: Context Compression at 2,000 Messages
 
-*Same as Scenario 5 but 10x the messages — 2,000 messages compressed to a 1,000-token budget.*
-
-Stresses the TokenBudget compressor with a realistically large conversation history. The 10x increase in message count amplifies list iteration, token estimation, and selection overhead. Elixir's structural sharing of immutable lists keeps this efficient; Python re-creates pydantic objects for each of the 2,000 messages.
-
-### Scenario 8: Large Fan-Out (20 Sub-Agents)
-
-*ParallelAgent with 20 sub-agents instead of 5.*
-
-Tests concurrent process spawning at 4x scale. BEAM handles 20 processes trivially; Python's `asyncio.gather` with 20 coroutines adds proportionally more scheduling overhead per coroutine slot.
-
-### Scenario 9: Deep Fan-Out (5×5 = 25 Agents)
-
-*Nested ParallelAgent — 5 groups of 5 workers.*
-
-Tests hierarchical concurrency: the outer ParallelAgent spawns 5 inner ParallelAgents, each spawning 5 workers. Total: 25 leaf agents + 5 group agents + 1 root = 31 agents. Validates that nested concurrent spawning doesn't accumulate scheduling overhead.
-
-### Scenario 10: Complex Workflow (Sequential → Parallel → Loop)
-
-*A realistic pipeline: SequentialAgent containing [LlmAgent, ParallelAgent(3 workers), LoopAgent(2 iterations)].*
-
-The most realistic single-pipeline scenario — mixing all three workflow agent types. Tests composition overhead and context passing between different agent types in a single session.
-
-### Scenario 11: Long Transfer Chain (A → B → C → D → E → F)
-
-*6-agent transfer chain, double the length of Scenario 6.*
-
-Each hop involves: LLM response parsing → transfer signal detection → agent tree lookup → context switch. 6 hops means 6x the routing overhead. Confirms whether transfer resolution scales linearly.
-
-### Scenario 12: Transfer with Backtracking
-
-*Agent transfers that go forward and back: A → B → C, then responses flow back through the chain.*
-
-Tests repeated transfer resolution within the same session. The agent tree must resolve transfers in both directions, testing robustness of the transfer mechanism under non-linear flow.
-
-### Scenario 13: Error Handling / Crash Recovery
-
-*Tool that raises an exception, caught by the runner, followed by a successful tool call.*
-
-Measures the overhead of the error handling path: exception capture, error event generation, and recovery vs the happy path. Critical for understanding production reliability costs.
-
-### Scenario 14: 500 Concurrent Sessions
-
-*Scale up from 100 (Scenario 4) to 500 simultaneous sessions.*
-
-Pushes session/process limits. BEAM handles 500 processes with minimal degradation (designed for millions). Python's single-threaded asyncio shows increasing scheduling contention as coroutine count grows.
-
-### Scenario 15: Mixed Load (Realistic Production Simulation)
-
-*50 concurrent sessions, each running a 3-agent SequentialAgent pipeline with tool calls.*
-
-The closest scenario to real-world production use: multiple users simultaneously running multi-agent pipelines with tools. Combines concurrency stress (50 sessions) with pipeline complexity (3 agents + tool calls per session = ~200 LLM responses total).
-
----
 
 ## Why Is Elixir So Much Faster?
 
@@ -292,8 +237,8 @@ Based on measured results, extrapolated to scale:
 
 | Concurrent Agents | Python p99 Latency (estimated) | Elixir p99 Latency (estimated) | Delta |
 |---|---|---|---|
-| 1 | ~55,000 µs | ~2,000 µs | 27x |
-| 100 | ~177,600 µs | ~6,485 µs | **27x** |
+| 1 | ~100,000 µs | ~10,700 µs | 9.3x |
+| 100 | ~324,000 µs | ~37,700 µs | **8.6x** |
 | 1,000 | ~2,500,000 µs (degrades) | ~1,050,000 µs | **2.4x** |
 | 10,000 | Requires multiprocessing | ~1,100,000 µs | **N/A** |
 
@@ -386,31 +331,7 @@ Python requires process restart, losing all in-flight agent state.
 
 ---
 
-## Canned Responses (Appendix)
 
-Both benchmarks use identical mock responses per scenario:
-
-| Scenario | Response Sequence |
-|---|---|
-| 1 (tools) | Per turn: `function_call(lookup, {input: "qN"})` → `"Answer for turn N"` |
-| 2 (pipeline) | `"Research findings..."` → `"Draft article..."` → `"Edited article..."` |
-| 3 (parallel) | 5× `"Result from agent N"` |
-| 4 (concurrent) | Per session: `"Response for user N"` |
-| 5 (compression) | N/A (data processing only, no LLM call) |
-| 6 (transfer) | `transfer_to_agent(B)` → `transfer_to_agent(C)` → `"Final response from C"` |
-| 7 (compression 2K) | N/A (data processing only) — 2,000 messages |
-| 8 (large fan-out) | 20× `"Result from agent N"` |
-| 9 (deep fan-out) | 25× `"Result from deep worker N"` |
-| 10 (complex workflow) | `"Step 1..."` → 3× parallel results → 2× loop iterations |
-| 11 (long chain) | 5× `transfer_to_agent(X)` → `"Final response from F"` |
-| 12 (backtracking) | `transfer(B)` → `transfer(C)` → response → `transfer(B)` → final |
-| 13 (error handling) | `function_call(risky_tool)` [raises] → `function_call(safe_tool)` → `"Recovered"` |
-| 14 (500 sessions) | Per session: `"Response for user N"` |
-| 15 (mixed load) | Per session: `function_call(process_data)` → 3× agent responses |
-
-Note: Elixir ADK uses per-agent transfer tools (`transfer_to_agent_agent_b`), while Python ADK uses a single `transfer_to_agent` tool with an `agent_name` parameter. Both approaches achieve the same result — this is a documented [intentional design difference](intentional-differences.html).
-
----
 
 ## Where Python ADK Wins
 

@@ -2,9 +2,8 @@ defmodule ADK.Harness.Config do
   @moduledoc """
   Configuration struct for `ADK.Harness` execution.
 
-  Parsed from the opts keyword list passed to `ADK.Harness.run/3` or
-  `ADK.Harness.start/3`. Provides sane defaults so L1 usage requires
-  zero configuration.
+  Parsed from the opts keyword list passed to `ADK.Harness.run/3`.
+  Provides sane defaults so L1 usage requires zero configuration.
 
   ADK Elixir extension — no Python ADK equivalent exists.
   """

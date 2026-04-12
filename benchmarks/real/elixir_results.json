@@ -1,62 +1,152 @@
 [
   {
     "name": "scenario1_single_agent_3tools_10turn",
-    "mean_us": 2022.67,
-    "median_us": 1978.4,
-    "p99_us": 2636.69,
-    "std_dev_us": 142.99,
-    "ips": 494.4,
-    "sample_size": 4940,
-    "memory_mean_bytes": 381907.3829201102
+    "mean_us": 5902.27,
+    "median_us": 5567.33,
+    "p99_us": 10740.48,
+    "std_dev_us": 1570.48,
+    "ips": 169.43,
+    "sample_size": 1692,
+    "memory_mean_bytes": 558006.7445255475
   },
   {
     "name": "scenario2_sequential_pipeline",
-    "mean_us": 203.32,
-    "median_us": 195.9,
-    "p99_us": 285.65,
-    "std_dev_us": 22.93,
-    "ips": 4918.37,
-    "sample_size": 48875,
-    "memory_mean_bytes": 37621.567842493845
+    "mean_us": 520.1,
+    "median_us": 473.02,
+    "p99_us": 1226.15,
+    "std_dev_us": 177.47,
+    "ips": 1922.71,
+    "sample_size": 19110,
+    "memory_mean_bytes": 56637.63644251627
   },
   {
     "name": "scenario3_parallel_fanout",
-    "mean_us": 375.78,
-    "median_us": 382.9,
-    "p99_us": 497.12,
-    "std_dev_us": 43.52,
-    "ips": 2661.11,
-    "sample_size": 26495,
-    "memory_mean_bytes": 21923.977683552777
+    "mean_us": 969.85,
+    "median_us": 915.24,
+    "p99_us": 1813.12,
+    "std_dev_us": 293.61,
+    "ips": 1031.09,
+    "sample_size": 10258,
+    "memory_mean_bytes": 22395.921066666666
   },
   {
     "name": "scenario4_100_concurrent_sessions",
-    "mean_us": 3280.0,
-    "median_us": 3093.22,
-    "p99_us": 6485.12,
-    "std_dev_us": 806.27,
-    "ips": 304.88,
-    "sample_size": 3044,
-    "memory_mean_bytes": 152034.81455805892
+    "mean_us": 14215.83,
+    "median_us": 12001.02,
+    "p99_us": 37671.15,
+    "std_dev_us": 6819.56,
+    "ips": 70.34,
+    "sample_size": 703,
+    "memory_mean_bytes": 156178.9037037037
   },
   {
     "name": "scenario5_context_compression",
-    "mean_us": 41.86,
-    "median_us": 34.2,
-    "p99_us": 118.44,
-    "std_dev_us": 20.89,
-    "ips": 23889.83,
-    "sample_size": 235886,
-    "memory_mean_bytes": 60712.0
+    "mean_us": 55.8,
+    "median_us": 44.0,
+    "p99_us": 177.81,
+    "std_dev_us": 31.21,
+    "ips": 17922.5,
+    "sample_size": 177320,
+    "memory_mean_bytes": 60696.0
   },
   {
     "name": "scenario6_transfer_chain",
-    "mean_us": 297.86,
-    "median_us": 292.64,
-    "p99_us": 376.96,
-    "std_dev_us": 19.18,
-    "ips": 3357.24,
-    "sample_size": 33418,
-    "memory_mean_bytes": 64600.469158878506
+    "mean_us": 808.68,
+    "median_us": 731.88,
+    "p99_us": 1852.91,
+    "std_dev_us": 339.37,
+    "ips": 1236.58,
+    "sample_size": 12302,
+    "memory_mean_bytes": 82508.68775158137
+  },
+  {
+    "name": "scenario7_compression_2000msg",
+    "mean_us": 618.31,
+    "median_us": 568.34,
+    "p99_us": 1174.56,
+    "std_dev_us": 142.5,
+    "ips": 1617.31,
+    "sample_size": 16131,
+    "memory_mean_bytes": 593496.0
+  },
+  {
+    "name": "scenario8_large_fanout_20",
+    "mean_us": 2565.27,
+    "median_us": 2511.32,
+    "p99_us": 3874.43,
+    "std_dev_us": 503.12,
+    "ips": 389.82,
+    "sample_size": 3891,
+    "memory_mean_bytes": 66461.3216374269
+  },
+  {
+    "name": "scenario9_deep_fanout_5x5",
+    "mean_us": 3360.08,
+    "median_us": 3133.13,
+    "p99_us": 6673.22,
+    "std_dev_us": 1919.88,
+    "ips": 297.61,
+    "sample_size": 2971,
+    "memory_mean_bytes": 58112.74131274131
+  },
+  {
+    "name": "scenario10_complex_workflow",
+    "mean_us": 910.96,
+    "median_us": 843.49,
+    "p99_us": 1858.98,
+    "std_dev_us": 224.92,
+    "ips": 1097.75,
+    "sample_size": 10941,
+    "memory_mean_bytes": 73300.14556637622
+  },
+  {
+    "name": "scenario11_long_transfer_chain",
+    "mean_us": 1483.46,
+    "median_us": 1319.96,
+    "p99_us": 3375.54,
+    "std_dev_us": 551.59,
+    "ips": 674.1,
+    "sample_size": 6719,
+    "memory_mean_bytes": 181360.54332552693
+  },
+  {
+    "name": "scenario12_transfer_backtracking",
+    "mean_us": 700.81,
+    "median_us": 635.56,
+    "p99_us": 1749.02,
+    "std_dev_us": 267.47,
+    "ips": 1426.93,
+    "sample_size": 14199,
+    "memory_mean_bytes": 82592.3519245876
+  },
+  {
+    "name": "scenario13_error_handling",
+    "mean_us": 647.37,
+    "median_us": 588.86,
+    "p99_us": 1024.4,
+    "std_dev_us": 612.09,
+    "ips": 1544.71,
+    "sample_size": 15384,
+    "memory_mean_bytes": 87893.97402597402
+  },
+  {
+    "name": "scenario14_500_concurrent_sessions",
+    "mean_us": 129185.26,
+    "median_us": 127535.17,
+    "p99_us": 185320.93,
+    "std_dev_us": 13153.87,
+    "ips": 7.74,
+    "sample_size": 78,
+    "memory_mean_bytes": 869921.0
+  },
+  {
+    "name": "scenario15_mixed_load",
+    "mean_us": 34958.5,
+    "median_us": 32677.77,
+    "p99_us": 70113.83,
+    "std_dev_us": 7204.93,
+    "ips": 28.61,
+    "sample_size": 286,
+    "memory_mean_bytes": 179623.8596491228
   }
 ]

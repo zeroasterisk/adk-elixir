@@ -704,6 +704,11 @@ async def scenario13():
         instruction="You handle errors gracefully.",
         tools=[FunctionTool(func=risky_tool), FunctionTool(func=safe_tool)],
     )
+    
+    def on_tool_error(tool, args, tool_context, error):
+        return {"error": str(error)}
+        
+    agent.on_tool_error_callback = on_tool_error
 
     runner = Runner(
         app_name="bench13", agent=agent, session_service=session_service
