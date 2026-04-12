@@ -111,4 +111,29 @@ defmodule ADK.Auth.CredentialManagerTest do
       assert cred.access_token == nil
     end
   end
+
+  describe "get_credential/3 — service account" do
+    import Mox
+
+    setup :verify_on_exit!
+
+    test "exchanges service account key for token and stores it", %{store: store} do
+      raw = Credential.service_account(%{"client_email" => "test@example.com"}, scopes: ["scope1"])
+
+      expect(ADK.Auth.GoogleMock, :from_service_account_info, fn _key, _scopes ->
+        {:ok, %{token: "mock-token"}}
+      end)
+
+      Application.put_env(:adk, :google_auth_client, ADK.Auth.GoogleMock)
+      on_exit(fn -> Application.delete_env(:adk, :google_auth_client) end)
+
+      assert {:ok, cred} = CredentialManager.get_credential("google_sa", raw, server: store)
+      assert cred.access_token == "mock-token"
+      assert cred.metadata["expires_at"] > System.system_time(:second)
+      
+      # Verify it was stored
+      assert {:ok, stored} = InMemoryStore.get("google_sa", server: store)
+      assert stored.access_token == "mock-token"
+    end
+  end
 end

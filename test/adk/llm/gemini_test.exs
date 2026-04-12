@@ -809,4 +809,51 @@ defmodule ADK.LLM.GeminiTest do
                })
     end
   end
+
+  describe "auth/0 with GOOGLE_APPLICATION_CREDENTIALS" do
+    import Mox
+
+    setup :verify_on_exit!
+
+    test "uses CredentialManager to get token from service account" do
+      # Clear global store to avoid pollution from other tests
+      if Process.whereis(ADK.Auth.InMemoryStore) do
+        Agent.update(ADK.Auth.InMemoryStore, fn _ -> %{} end)
+      end
+
+      # Unset API key to force fallback to service account
+      Application.delete_env(:adk, :gemini_api_key)
+
+      expect(ADK.Auth.GoogleMock, :from_service_account_info, fn _key, _scopes ->
+        {:ok, %{token: "mock-token-from-sa"}}
+      end)
+
+      Application.put_env(:adk, :google_auth_client, ADK.Auth.GoogleMock)
+      
+      tmp_file = "tmp_sa_key.json"
+      File.write!(tmp_file, Jason.encode!(%{"type" => "service_account"}))
+      
+      System.put_env("GOOGLE_APPLICATION_CREDENTIALS", tmp_file)
+      System.put_env("GOOGLE_GENAI_USE_VERTEXAI", "true")
+      
+      on_exit(fn ->
+        Application.put_env(:adk, :gemini_api_key, "test-key")
+        Application.delete_env(:adk, :google_auth_client)
+        System.delete_env("GOOGLE_APPLICATION_CREDENTIALS")
+        System.delete_env("GOOGLE_GENAI_USE_VERTEXAI")
+        File.rm!(tmp_file)
+      end)
+
+      Req.Test.stub(Gemini, fn conn ->
+        auth_header = Plug.Conn.get_req_header(conn, "authorization")
+        assert auth_header == ["Bearer mock-token-from-sa"]
+        
+        Req.Test.json(conn, %{
+          "candidates" => [%{"content" => %{"role" => "model", "parts" => [%{"text" => "ok"}]}}]
+        })
+      end)
+
+      assert {:ok, _} = Gemini.generate("gemini-flash-latest", %{messages: []})
+    end
+  end
 end

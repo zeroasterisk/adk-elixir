@@ -338,27 +338,68 @@ defmodule ADK.LLM.Gemini do
   defp parse_response_part(other), do: other
 
   defp auth do
-    case ADK.Config.gemini_api_key() do
+    cred = get_raw_credential()
+
+    case ADK.Auth.CredentialManager.get_credential("gemini", cred) do
+      {:ok, %{type: :api_key, api_key: nil}} -> {:error, :missing_api_key}
+      {:ok, %{type: :api_key, api_key: key}} -> {:api_key, key}
+      {:ok, %{access_token: token}} when is_binary(token) -> {:bearer, token}
+      {:error, _} = err -> err
+      :needs_auth -> {:error, :missing_api_key}
+    end
+  end
+
+  defp get_raw_credential do
+    use_vertex = System.get_env("GOOGLE_GENAI_USE_VERTEXAI") in ["true", "1"]
+
+    cond do
+      use_vertex ->
+        load_vertex_credential()
+
+      true ->
+        load_api_key_credential()
+    end
+  end
+
+  defp load_vertex_credential do
+    case System.get_env("GOOGLE_APPLICATION_CREDENTIALS") do
       nil ->
-        case System.get_env("GEMINI_API_KEY") do
-          nil ->
-            case ADK.Config.gemini_bearer_token() do
-              nil ->
-                case System.get_env("GEMINI_BEARER_TOKEN") do
-                  nil -> {:error, :missing_api_key}
-                  token -> {:bearer, token}
-                end
+        ADK.Auth.Credential.api_key(nil)
 
-              token ->
-                {:bearer, token}
+      path ->
+        case File.read(path) do
+          {:ok, json} ->
+            case Jason.decode(json) do
+              {:ok, key_info} ->
+                ADK.Auth.Credential.service_account(key_info, scopes: ["https://www.googleapis.com/auth/cloud-platform"])
+              {:error, _} ->
+                ADK.Auth.Credential.api_key(nil)
             end
-
-          key ->
-            {:api_key, key}
+          {:error, _} ->
+            ADK.Auth.Credential.api_key(nil)
         end
+    end
+  end
 
-      key ->
-        {:api_key, key}
+  defp load_api_key_credential do
+    cond do
+      key = ADK.Config.gemini_api_key() ->
+        ADK.Auth.Credential.api_key(key)
+
+      key = System.get_env("GOOGLE_API_KEY") ->
+        ADK.Auth.Credential.api_key(key)
+
+      key = System.get_env("GEMINI_API_KEY") ->
+        ADK.Auth.Credential.api_key(key)
+
+      token = ADK.Config.gemini_bearer_token() ->
+        ADK.Auth.Credential.http_bearer(token)
+
+      token = System.get_env("GEMINI_BEARER_TOKEN") ->
+        ADK.Auth.Credential.http_bearer(token)
+
+      true ->
+        ADK.Auth.Credential.api_key(nil)
     end
   end
 

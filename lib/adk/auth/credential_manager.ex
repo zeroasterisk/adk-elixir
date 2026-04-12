@@ -151,6 +151,25 @@ defmodule ADK.Auth.CredentialManager do
     redirect_uri = Keyword.get(opts, :redirect_uri, "")
 
     cond do
+      raw_cred.type == :service_account ->
+        case ADK.Auth.Google.from_service_account_info(raw_cred.service_account_key, raw_cred.scopes) do
+          {:ok, %{token: token}} ->
+            now = System.system_time(:second)
+            exchanged = %{raw_cred | 
+              access_token: token,
+              metadata: Map.merge(raw_cred.metadata, %{
+                "expires_at" => now + 3600,
+                "token_type" => "Bearer",
+                "refreshed_at" => now
+              })
+            }
+            store_mod.put(name, exchanged, store_opts)
+            {:ok, exchanged}
+
+          {:error, _} = err ->
+            err
+        end
+
       OAuth2.needs_exchange?(raw_cred) ->
         # Has auth_code → exchange for tokens
         case OAuth2.exchange_code(raw_cred, redirect_uri: redirect_uri, http_opts: http_opts) do
