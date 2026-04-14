@@ -149,7 +149,11 @@ defmodule ADK.Agent.LlmAgent do
 
   # ---------- Real Execution Pipeline ----------
 
-  @doc false
+  @doc """
+  Run the agent's execution pipeline.
+
+  This handles the iterative loop of generation and tool execution.
+  """
   @spec do_run(ADK.Context.t(), t(), non_neg_integer()) :: [ADK.Event.t()]
   def do_run(ctx, agent, iteration) when iteration >= agent.max_iterations do
     Logger.warning(
@@ -626,7 +630,9 @@ defmodule ADK.Agent.LlmAgent do
     agent.tools ++ transfer_tools
   end
 
-  @doc false
+  @doc """
+  Find a transfer target agent by name.
+  """
   @spec find_transfer_target(t(), String.t()) :: t() | nil
   def find_transfer_target(agent, target_name) do
     # Check sub-agents
@@ -923,7 +929,9 @@ defmodule ADK.Agent.LlmAgent do
     end
   end
 
-  @doc false
+  @doc """
+  Conditionally save the agent's output to the session state.
+  """
   @spec maybe_save_output_to_state(ADK.Event.t(), t()) :: ADK.Event.t()
   def maybe_save_output_to_state(event, agent) do
     output_key = agent.output_key
