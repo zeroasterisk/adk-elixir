@@ -168,9 +168,6 @@ defmodule ADK.LLM.Anthropic do
     end
   end
 
-  defp put_if(map, _key, nil), do: map
-  defp put_if(map, key, value), do: Map.put(map, key, value)
-
   defp build_messages(request) do
     request
     |> Map.get(:messages, [])
