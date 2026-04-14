@@ -117,7 +117,7 @@ defmodule ADK.LLM.OpenAI do
     end
   end
 
-  defp put_if(map, _key, nil), do: map
+  # defp put_if(map, _key, nil), do: map
   defp put_if(map, key, value), do: Map.put(map, key, value)
 
   defp translate_response_format(config) do

@@ -147,6 +147,8 @@ defmodule ADK.LLM.Gemma do
 
   defp convert_function_turns_to_text(request), do: request
 
+  defp convert_parts(nil), do: {[], false, false}
+
   defp convert_parts(parts) when is_list(parts) do
     {acc_parts, has_resp, has_call} =
       Enum.reduce(parts, {[], false, false}, fn part, {acc_parts, has_resp, has_call} ->
@@ -170,8 +172,6 @@ defmodule ADK.LLM.Gemma do
   defp convert_single_part(part) do
     {part, false, false}
   end
-
-  defp convert_parts(nil), do: {[], false, false}
 
   # Convert tool function declarations to a system instruction string.
   defp move_tools_to_instruction(%{tools: tools} = request)
