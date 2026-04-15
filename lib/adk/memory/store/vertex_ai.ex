@@ -281,14 +281,16 @@ defmodule ADK.Memory.Store.VertexAI do
   end
 
   defp build_config(opts) do
+    location =
+      Keyword.get(opts, :location) ||
+        ADK.Config.get(:vertex_location) ||
+        @default_location
+
     %{
       project_id:
         Keyword.get(opts, :project_id) ||
           ADK.Config.vertex_project_id(),
-      location:
-        Keyword.get(opts, :location) ||
-          ADK.Config.vertex_location() ||
-          @default_location,
+      location: location,
       reasoning_engine_id:
         Keyword.get(opts, :reasoning_engine_id) ||
           ADK.Config.vertex_reasoning_engine_id(),

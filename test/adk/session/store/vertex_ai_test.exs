@@ -239,6 +239,28 @@ defmodule ADK.Session.Store.VertexAITest do
     end)
   end
 
+  test "sessions_url uses us-central1 by default" do
+    # build_config([]) uses @default_location "us-central1"
+    # We use a private helper via apply or just trust the logic?
+    # Better: check the actual URL requested in the stub.
+    
+    Application.put_env(:adk, :vertex_project_id, "test-project")
+    Application.delete_env(:adk, :vertex_location) # Force default
+    
+    parent = self()
+    Req.Test.stub(VertexAI, fn conn ->
+      send(parent, {:requested_url, conn.request_path, conn.host})
+      Req.Test.json(conn, %{"sessions" => []})
+    end)
+    
+    VertexAI.list("123", nil)
+    
+    assert_receive {:requested_url, _path, host}
+    assert host == "us-central1-aiplatform.googleapis.com"
+    
+    Application.delete_env(:adk, :vertex_project_id)
+  end
+
   test "save appends only new events to existing session" do
     with_config(fn ->
       session = %ADK.Session{
