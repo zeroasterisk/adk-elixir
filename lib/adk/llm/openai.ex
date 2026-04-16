@@ -117,8 +117,6 @@ defmodule ADK.LLM.OpenAI do
     end
   end
 
-  # defp put_if(map, _key, nil), do: map
-  defp put_if(map, key, value), do: Map.put(map, key, value)
 
   defp translate_response_format(config) do
     case config[:response_mime_type] do
@@ -144,58 +142,71 @@ defmodule ADK.LLM.OpenAI do
     msgs =
       request
       |> Map.get(:messages, [])
-      |> Enum.map(&format_message/1)
+      |> Enum.flat_map(&format_message/1)
 
     system ++ msgs
   end
 
   defp format_message(%{role: role, parts: parts}) do
     role_str = map_role(role)
-
-    # Check for tool call results (function_response parts)
-    case classify_parts(parts) do
-      {:function_response, %{name: name, response: resp}} ->
-        %{
-          role: "tool",
-          tool_call_id: Map.get(resp, :tool_call_id, name),
-          content: Jason.encode!(Map.delete(resp, :tool_call_id))
-        }
-
-      {:function_calls, calls} ->
-        %{
-          role: role_str,
-          content: nil,
-          tool_calls:
-            Enum.map(calls, fn %{name: name, args: args} ->
-              %{
-                id: Map.get(args, :tool_call_id, name),
-                type: "function",
-                function: %{name: name, arguments: Jason.encode!(Map.delete(args, :tool_call_id))}
-              }
-            end)
-        }
-
-      {:text, text} ->
-        %{role: role_str, content: text}
-    end
-  end
-
-  defp classify_parts([%{function_response: fr} | _]), do: {:function_response, fr}
-
-  defp classify_parts(parts) do
+    text = Enum.map_join(parts, "", fn %{text: t} -> t; _ -> "" end)
     calls = for %{function_call: fc} <- parts, do: fc
+    responses = for %{function_response: fr} <- parts, do: fr
 
-    if calls != [] do
-      {:function_calls, calls}
-    else
-      text =
-        parts
-        |> Enum.map_join("", fn
-          %{text: t} -> t
-          _ -> ""
-        end)
+    cond do
+      responses != [] ->
+        # OpenAI expects tool results as separate messages.
+        # If there's text, it becomes a preceding message.
+        text_msg = if text != "", do: [%{role: "user", content: text}], else: []
 
-      {:text, text}
+        tool_msgs =
+          Enum.map(responses, fn fr ->
+            resp = fr.response
+
+            # tool_call_id resolution
+            id =
+              Map.get(fr, :id) ||
+                Map.get(resp, :tool_call_id, Map.get(resp, "tool_call_id", fr.name))
+
+            %{
+              role: "tool",
+              tool_call_id: id,
+              content: Jason.encode!(Map.drop(resp, [:tool_call_id, "tool_call_id"]))
+            }
+          end)
+
+        text_msg ++ tool_msgs
+
+      calls != [] ->
+        # Mixed text + tool calls (Assistant turn)
+        [
+          %{
+            role: role_str,
+            content: if(text == "", do: nil, else: text),
+            tool_calls:
+              Enum.map(calls, fn fc ->
+                args = fc.args
+
+                # tool_call_id resolution
+                id =
+                  Map.get(fc, :id) ||
+                    Map.get(args, :tool_call_id, Map.get(args, "tool_call_id", fc.name))
+
+                %{
+                  id: id,
+                  type: "function",
+                  function: %{
+                    name: fc.name,
+                    arguments: Jason.encode!(Map.drop(args, [:tool_call_id, "tool_call_id"]))
+                  }
+                }
+              end)
+          }
+        ]
+
+      true ->
+        # Simple text message
+        [%{role: role_str, content: text}]
     end
   end
 
