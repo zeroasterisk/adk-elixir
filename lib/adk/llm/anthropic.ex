@@ -175,46 +175,23 @@ defmodule ADK.LLM.Anthropic do
   end
 
   defp format_message(%{role: role, parts: parts}) do
-    responses = for %{function_response: fr} <- parts, do: fr
-    calls = for %{function_call: fc} <- parts, do: fc
+    role_str = map_role(role)
+    has_responses = Enum.any?(parts, fn p -> Map.has_key?(p, :function_response) end)
 
-    cond do
-      responses != [] ->
-        %{
-          role: "user",
-          content: Enum.map(responses, &format_function_response/1)
-        }
+    # If the message contains tool results, Anthropic requires role: "user"
+    role_str = if has_responses, do: "user", else: role_str
 
-      calls != [] ->
-        content =
-          parts
-          |> Enum.map(fn
-            %{text: t} -> %{type: "text", text: t}
-            %{function_call: fc} -> format_function_call(fc)
-            _ -> nil
-          end)
-          |> Enum.reject(&is_nil/1)
+    content =
+      parts
+      |> Enum.map(fn
+        %{text: t} -> %{type: "text", text: t}
+        %{function_call: fc} -> format_function_call(fc)
+        %{function_response: fr} -> format_function_response(fr)
+        p -> format_part(p, role_str)
+      end)
+      |> Enum.reject(&is_nil/1)
 
-        %{role: "assistant", content: content}
-
-      true ->
-        role_str = map_role(role)
-
-        content =
-          parts
-          |> Enum.map(&format_part(&1, role_str))
-          |> Enum.reject(&is_nil/1)
-
-        # To maintain exact previous behavior for simple text where possible,
-        # if it's just one text block, we can leave it as a string, but Anthropic
-        # prefers arrays or strings. Let's just use the array.
-        # Wait, Python sends array of blocks. We will too.
-        if Enum.all?(content, &is_binary/1) do
-          %{role: role_str, content: Enum.join(content, "\n")}
-        else
-          %{role: role_str, content: content}
-        end
-    end
+    %{role: role_str, content: content}
   end
 
   defp format_function_response(%{name: name, response: resp} = fr) do
