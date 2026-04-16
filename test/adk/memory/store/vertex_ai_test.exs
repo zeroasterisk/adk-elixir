@@ -486,15 +486,22 @@ defmodule ADK.Memory.Store.VertexAITest do
 
     test "uses default location us-central1 when not configured" do
       Application.delete_env(:adk, :vertex_location)
+      # Also clear environment variable to ensure fallback to @default_location
+      old_env = System.get_env("GOOGLE_CLOUD_LOCATION")
 
-      stub_fn(fn conn ->
-        assert conn.host =~ "us-central1"
-        Req.Test.json(conn, %{"memories" => []})
-      end)
+      try do
+        System.delete_env("GOOGLE_CLOUD_LOCATION")
 
-      VertexAI.search("myapp", "user1", "query")
-    after
-      Application.put_env(:adk, :vertex_location, "us-central1")
+        stub_fn(fn conn ->
+          assert conn.host =~ "us-central1"
+          Req.Test.json(conn, %{"memories" => []})
+        end)
+
+        VertexAI.search("myapp", "user1", "query")
+      after
+        if old_env, do: System.put_env("GOOGLE_CLOUD_LOCATION", old_env)
+        Application.put_env(:adk, :vertex_location, "us-central1")
+      end
     end
   end
 
