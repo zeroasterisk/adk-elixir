@@ -174,6 +174,8 @@ defmodule ADK.LLM.Anthropic do
     |> Enum.map(&format_message/1)
   end
 
+  @spec format_message(map()) :: map()
+
   defp format_message(%{role: role, parts: parts}) do
     role_str = map_role(role)
     has_responses = Enum.any?(parts, fn p -> Map.has_key?(p, :function_response) end)
@@ -193,6 +195,8 @@ defmodule ADK.LLM.Anthropic do
 
     %{role: role_str, content: content}
   end
+
+  @spec format_function_response(map()) :: map()
 
   defp format_function_response(%{name: name, response: resp} = fr) do
     # tool_use_id resolution order:
@@ -219,6 +223,8 @@ defmodule ADK.LLM.Anthropic do
       _ -> result
     end
   end
+
+  @spec extract_tool_result_content(any()) :: [map()]
 
   defp extract_tool_result_content(resp) do
     resp_clean = Map.drop(resp, [:tool_call_id, "tool_call_id"])
@@ -260,6 +266,7 @@ defmodule ADK.LLM.Anthropic do
 
   defp serialize_tool_result(val) when is_binary(val), do: val
   defp serialize_tool_result(val), do: Jason.encode!(val)
+  @spec format_function_call(map()) :: map()
 
   defp format_function_call(%{name: name, args: args} = fc) do
     id =
@@ -280,6 +287,8 @@ defmodule ADK.LLM.Anthropic do
     suffix = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
     "toolu_#{name}_#{suffix}"
   end
+
+  @spec format_part(map(), String.t()) :: map() | nil
 
   defp format_part(%{text: t}, _role), do: %{type: "text", text: t}
 
@@ -334,6 +343,7 @@ defmodule ADK.LLM.Anthropic do
   defp map_role(:assistant), do: "assistant"
   defp map_role(role) when is_binary(role), do: role
   defp map_role(role), do: to_string(role)
+  @spec format_tools([ADK.Tool.t()]) :: [map()]
 
   defp format_tools(tools) do
     Enum.map(tools, fn tool ->
@@ -345,6 +355,8 @@ defmodule ADK.LLM.Anthropic do
       end
     end)
   end
+
+  @spec format_tool_choice(term()) :: map()
 
   defp format_tool_choice(:auto), do: %{type: "auto"}
   defp format_tool_choice("auto"), do: %{type: "auto"}
