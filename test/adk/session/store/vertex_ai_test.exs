@@ -244,21 +244,27 @@ defmodule ADK.Session.Store.VertexAITest do
     # We use a private helper via apply or just trust the logic?
     # Better: check the actual URL requested in the stub.
     
-    Application.put_env(:adk, :vertex_project_id, "test-project")
-    Application.delete_env(:adk, :vertex_location) # Force default
+    orig_project_id = ADK.Config.get(:vertex_project_id)
+    orig_location = ADK.Config.get(:vertex_location)
     
-    parent = self()
-    Req.Test.stub(VertexAI, fn conn ->
-      send(parent, {:requested_url, conn.request_path, conn.host})
-      Req.Test.json(conn, %{"sessions" => []})
-    end)
-    
-    VertexAI.list("123", nil)
-    
-    assert_receive {:requested_url, _path, host}
-    assert host == "us-central1-aiplatform.googleapis.com"
-    
-    Application.delete_env(:adk, :vertex_project_id)
+    try do
+      Application.put_env(:adk, :vertex_project_id, "test-project")
+      Application.delete_env(:adk, :vertex_location) # Force default
+      
+      parent = self()
+      Req.Test.stub(VertexAI, fn conn ->
+        send(parent, {:requested_url, conn.request_path, conn.host})
+        Req.Test.json(conn, %{"sessions" => []})
+      end)
+      
+      VertexAI.list("123", nil)
+      
+      assert_receive {:requested_url, _path, host}
+      assert host == "us-central1-aiplatform.googleapis.com"
+    after
+      if orig_project_id, do: Application.put_env(:adk, :vertex_project_id, orig_project_id), else: Application.delete_env(:adk, :vertex_project_id)
+      if orig_location, do: Application.put_env(:adk, :vertex_location, orig_location), else: Application.delete_env(:adk, :vertex_location)
+    end
   end
 
   test "save appends only new events to existing session" do
