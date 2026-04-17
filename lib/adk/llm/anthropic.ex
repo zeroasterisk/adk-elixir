@@ -201,7 +201,8 @@ defmodule ADK.LLM.Anthropic do
     # 3. tool name as fallback (generates a new id)
     id_from_resp =
       Map.get(fr, :id) ||
-        Map.get(resp, :tool_call_id, Map.get(resp, "tool_call_id", nil)) ||
+        (is_map(resp) && Map.get(resp, :tool_call_id)) ||
+        (is_map(resp) && Map.get(resp, "tool_call_id")) ||
         generate_tool_use_id(name)
 
     content = extract_tool_result_content(resp)
@@ -263,15 +264,15 @@ defmodule ADK.LLM.Anthropic do
   defp format_function_call(%{name: name, args: args} = fc) do
     id =
       Map.get(fc, :id) ||
-        Map.get(args, :tool_call_id) ||
-        Map.get(args, "tool_call_id") ||
+        (is_map(args) && Map.get(args, :tool_call_id)) ||
+        (is_map(args) && Map.get(args, "tool_call_id")) ||
         generate_tool_use_id(name)
 
     %{
       type: "tool_use",
       id: id,
       name: name,
-      input: Map.drop(args, [:tool_call_id, "tool_call_id"])
+      input: if(is_map(args), do: Map.drop(args, [:tool_call_id, "tool_call_id"]), else: args)
     }
   end
 
