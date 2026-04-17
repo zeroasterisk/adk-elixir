@@ -213,6 +213,7 @@ defmodule ADK.LLM.Gemini do
 
   defp put_if(map, _key, nil), do: map
   defp put_if(map, key, value), do: Map.put(map, key, value)
+  @spec format_content(map()) :: map()
 
   defp format_content(%{role: role, parts: parts}) do
     %{
@@ -220,6 +221,8 @@ defmodule ADK.LLM.Gemini do
       parts: Enum.map(parts, &format_part/1)
     }
   end
+
+  @spec format_part(map()) :: map()
 
   defp format_part(%{text: text} = part) do
     base = %{text: text}
@@ -261,12 +264,15 @@ defmodule ADK.LLM.Gemini do
 
   # Gemini 2.5+/3 models return thoughtSignature in function_call and text parts.
   # These MUST be passed back in subsequent turns for function calling to work.
+  @spec maybe_add_thought_signature(map(), map()) :: map()
   defp maybe_add_thought_signature(base, part) do
     case Map.get(part, :thought_signature) do
       nil -> base
       sig -> Map.put(base, :thoughtSignature, sig)
     end
   end
+
+  @spec format_tools([ADK.Tool.t()]) :: [map()]
 
   defp format_tools(tools) do
     Enum.map(tools, fn tool ->
@@ -396,7 +402,9 @@ defmodule ADK.LLM.Gemini do
       path ->
         with {:ok, json} <- File.read(path),
              {:ok, key_info} <- Jason.decode(json) do
-          ADK.Auth.Credential.service_account(key_info, scopes: ["https://www.googleapis.com/auth/cloud-platform"])
+          ADK.Auth.Credential.service_account(key_info,
+            scopes: ["https://www.googleapis.com/auth/cloud-platform"]
+          )
         else
           _ -> ADK.Auth.Credential.api_key(nil)
         end

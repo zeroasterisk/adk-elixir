@@ -117,7 +117,6 @@ defmodule ADK.LLM.OpenAI do
     end
   end
 
-
   defp translate_response_format(config) do
     case config[:response_mime_type] do
       "application/json" ->
@@ -147,9 +146,17 @@ defmodule ADK.LLM.OpenAI do
     system ++ msgs
   end
 
+  @spec format_message(map()) :: map() | [map()]
+
   defp format_message(%{role: role, parts: parts}) do
     role_str = map_role(role)
-    text = Enum.map_join(parts, "", fn %{text: t} -> t; _ -> "" end)
+
+    text =
+      Enum.map_join(parts, "", fn
+        %{text: t} -> t
+        _ -> ""
+      end)
+
     calls = for %{function_call: fc} <- parts, do: fc
     responses = for %{function_response: fr} <- parts, do: fr
 
@@ -173,7 +180,10 @@ defmodule ADK.LLM.OpenAI do
             %{
               role: "tool",
               tool_call_id: id,
-              content: Jason.encode!(if is_map(resp), do: Map.drop(resp, [:tool_call_id, "tool_call_id"]), else: resp)
+              content:
+                Jason.encode!(
+                  if is_map(resp), do: Map.drop(resp, [:tool_call_id, "tool_call_id"]), else: resp
+                )
             }
           end)
 
@@ -201,7 +211,12 @@ defmodule ADK.LLM.OpenAI do
                   type: "function",
                   function: %{
                     name: fc.name,
-                    arguments: Jason.encode!(if is_map(args), do: Map.drop(args, [:tool_call_id, "tool_call_id"]), else: args)
+                    arguments:
+                      Jason.encode!(
+                        if is_map(args),
+                          do: Map.drop(args, [:tool_call_id, "tool_call_id"]),
+                          else: args
+                      )
                   }
                 }
               end)
@@ -220,6 +235,7 @@ defmodule ADK.LLM.OpenAI do
   defp map_role(:tool), do: "tool"
   defp map_role(role) when is_binary(role), do: role
   defp map_role(role), do: to_string(role)
+  @spec format_tools([ADK.Tool.t()]) :: [map()]
 
   defp format_tools(tools) do
     Enum.map(tools, fn tool ->
