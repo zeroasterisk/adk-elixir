@@ -166,12 +166,14 @@ defmodule ADK.LLM.OpenAI do
             # tool_call_id resolution
             id =
               Map.get(fr, :id) ||
-                Map.get(resp, :tool_call_id, Map.get(resp, "tool_call_id", fr.name))
+                (is_map(resp) && Map.get(resp, :tool_call_id)) ||
+                (is_map(resp) && Map.get(resp, "tool_call_id")) ||
+                fr.name
 
             %{
               role: "tool",
               tool_call_id: id,
-              content: Jason.encode!(Map.drop(resp, [:tool_call_id, "tool_call_id"]))
+              content: Jason.encode!(if is_map(resp), do: Map.drop(resp, [:tool_call_id, "tool_call_id"]), else: resp)
             }
           end)
 
@@ -190,14 +192,16 @@ defmodule ADK.LLM.OpenAI do
                 # tool_call_id resolution
                 id =
                   Map.get(fc, :id) ||
-                    Map.get(args, :tool_call_id, Map.get(args, "tool_call_id", fc.name))
+                    (is_map(args) && Map.get(args, :tool_call_id)) ||
+                    (is_map(args) && Map.get(args, "tool_call_id")) ||
+                    fc.name
 
                 %{
                   id: id,
                   type: "function",
                   function: %{
                     name: fc.name,
-                    arguments: Jason.encode!(Map.drop(args, [:tool_call_id, "tool_call_id"]))
+                    arguments: Jason.encode!(if is_map(args), do: Map.drop(args, [:tool_call_id, "tool_call_id"]), else: args)
                   }
                 }
               end)

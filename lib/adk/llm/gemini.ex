@@ -227,14 +227,34 @@ defmodule ADK.LLM.Gemini do
   end
 
   defp format_part(%{function_call: %{name: name, args: args} = fc} = part) do
-    fc_map = %{name: name, args: args}
-    fc_map = if Map.has_key?(fc, :id), do: Map.put(fc_map, :id, fc.id), else: fc_map
+    # tool_call_id resolution
+    id =
+      Map.get(fc, :id) ||
+        (is_map(args) && Map.get(args, :tool_call_id)) ||
+        (is_map(args) && Map.get(args, "tool_call_id"))
+
+    clean_args = if is_map(args), do: Map.drop(args, [:tool_call_id, "tool_call_id"]), else: args
+
+    fc_map = %{name: name, args: clean_args}
+    fc_map = if id, do: Map.put(fc_map, :id, id), else: fc_map
+
     base = %{functionCall: fc_map}
     maybe_add_thought_signature(base, part)
   end
 
-  defp format_part(%{function_response: %{name: name, response: resp}}) do
-    %{functionResponse: %{name: name, response: resp}}
+  defp format_part(%{function_response: %{name: name, response: resp} = fr}) do
+    # tool_call_id resolution
+    id =
+      Map.get(fr, :id) ||
+        (is_map(resp) && Map.get(resp, :tool_call_id)) ||
+        (is_map(resp) && Map.get(resp, "tool_call_id"))
+
+    clean_resp = if is_map(resp), do: Map.drop(resp, [:tool_call_id, "tool_call_id"]), else: resp
+
+    fr_map = %{name: name, response: clean_resp}
+    fr_map = if id, do: Map.put(fr_map, :id, id), else: fr_map
+
+    %{functionResponse: fr_map}
   end
 
   defp format_part(other), do: other
