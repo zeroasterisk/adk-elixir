@@ -6,17 +6,15 @@ defmodule ADK.Auth.Metadata do
   @metadata_url "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
 
   def get_token do
-    resp =
-      Req.get!(
-        @metadata_url,
-        headers: [{"metadata-flavor", "Google"}]
-      )
+    case Req.get(@metadata_url, headers: [{"metadata-flavor", "Google"}]) do
+      {:ok, %{status: 200, body: body}} ->
+        {:ok, body["access_token"]}
 
-    case resp.status do
-      200 -> {:ok, resp.body["access_token"]}
-      s -> {:error, {:metadata_token_error, s}}
+      {:ok, %{status: s}} ->
+        {:error, {:metadata_token_error, s}}
+
+      {:error, _} ->
+        {:error, :no_credentials}
     end
-  rescue
-    _ -> {:error, :no_credentials}
   end
 end
