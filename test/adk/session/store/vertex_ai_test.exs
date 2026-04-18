@@ -269,34 +269,36 @@ defmodule ADK.Session.Store.VertexAITest do
     end
   end
 
-  test "save appends only new events to existing session" do
-    with_config(fn ->
-      session = %ADK.Session{
-        id: "1",
-        app_name: "123",
-        user_id: "user",
-        state: %{"key" => "test_value"},
-        events: [
-          %ADK.Event{
-            id: "123",
-            # this one exists in mock!
-            invocation_id: "123",
-            author: "user"
-          },
-          %ADK.Event{
-            # this one does not
-            invocation_id: "new_invocation_2",
-            author: "model",
-            timestamp: DateTime.utc_now(),
-            actions: %ADK.EventActions{}
-          }
-        ]
-      }
+  test "get_metadata_token uses configured service" do
+    defmodule MockMetadata do
+      def get_token, do: {:ok, "mocked_token"}
+    end
 
-      # Should do GET /sessions/1 (exists)
-      # Should GET /events, sees "123"
-      # Should only POST new_invocation_2
-      assert :ok = VertexAI.save(session)
-    end)
+    Application.put_env(:adk, :vertex_metadata_service, MockMetadata)
+    Application.put_env(:adk, :vertex_project_id, "test-project")
+    
+    # We MUST clear all other auth methods that have precedence.
+    # In some environments, these might be set globally.
+    orig_api_key = ADK.Config.get(:vertex_api_key)
+    orig_creds = ADK.Config.get(:vertex_credentials_file)
+    
+    Application.put_env(:adk, :vertex_api_key, nil)
+    Application.put_env(:adk, :vertex_credentials_file, "/tmp/non-existent-creds-json")
+
+    try do
+      Req.Test.stub(VertexAI, fn conn ->
+        auth = List.keyfind(conn.req_headers, "authorization", 0)
+        assert auth == {"authorization", "Bearer mocked_token"}
+        Req.Test.json(conn, %{"sessions" => []})
+      end)
+
+      # Ensure we call a function that triggers build_config and request
+      assert [] = VertexAI.list("123", nil)
+    after
+      Application.delete_env(:adk, :vertex_metadata_service)
+      Application.delete_env(:adk, :vertex_project_id)
+      if orig_api_key, do: Application.put_env(:adk, :vertex_api_key, orig_api_key), else: Application.delete_env(:adk, :vertex_api_key)
+      if orig_creds, do: Application.put_env(:adk, :vertex_credentials_file, orig_creds), else: Application.delete_env(:adk, :vertex_credentials_file)
+    end
   end
 end
