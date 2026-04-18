@@ -249,6 +249,7 @@ defmodule ADK.Session.Store.VertexAITest do
     
     try do
       Application.put_env(:adk, :vertex_project_id, "test-project")
+      Application.put_env(:adk, :vertex_api_key, "test-api-key")
       Application.delete_env(:adk, :vertex_location) # Force default
       
       parent = self()
@@ -264,6 +265,7 @@ defmodule ADK.Session.Store.VertexAITest do
     after
       if orig_project_id, do: Application.put_env(:adk, :vertex_project_id, orig_project_id), else: Application.delete_env(:adk, :vertex_project_id)
       if orig_location, do: Application.put_env(:adk, :vertex_location, orig_location), else: Application.delete_env(:adk, :vertex_location)
+      Application.delete_env(:adk, :vertex_api_key)
     end
   end
 
