@@ -301,4 +301,35 @@ defmodule ADK.Session.Store.VertexAITest do
       if orig_creds, do: Application.put_env(:adk, :vertex_credentials_file, orig_creds), else: Application.delete_env(:adk, :vertex_credentials_file)
     end
   end
+
+  test "save appends only new events to existing session" do
+    with_config(fn ->
+      session = %ADK.Session{
+        id: "1",
+        app_name: "123",
+        user_id: "user",
+        state: %{"key" => "test_value"},
+        events: [
+          %ADK.Event{
+            id: "123",
+            # this one exists in mock!
+            invocation_id: "123",
+            author: "user"
+          },
+          %ADK.Event{
+            # this one does not
+            invocation_id: "new_invocation_2",
+            author: "model",
+            timestamp: DateTime.utc_now(),
+            actions: %ADK.EventActions{}
+          }
+        ]
+      }
+
+      # Should do GET /sessions/1 (exists)
+      # Should GET /events, sees "123"
+      # Should only POST new_invocation_2
+      assert :ok = VertexAI.save(session)
+    end)
+  end
 end
