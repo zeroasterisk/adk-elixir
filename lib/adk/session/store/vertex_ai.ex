@@ -354,17 +354,20 @@ defmodule ADK.Session.Store.VertexAI do
     end
   end
 
-  defp get_access_token(%{api_key: api_key}) when is_binary(api_key) and api_key != "" do
-    {:ok, api_key}
-  end
+  defp get_access_token(config) do
+    # IO.inspect(config, label: "DEBUG: get_access_token config")
+    case config do
+      %{api_key: api_key} when is_binary(api_key) and api_key != "" ->
+        {:ok, api_key}
 
-  defp get_access_token(%{credentials_file: creds_file} = _config) do
-    cond do
-      creds_file && File.exists?(creds_file) ->
-        get_sa_token(creds_file)
+      %{credentials_file: creds_file} ->
+        cond do
+          creds_file && File.exists?(creds_file) ->
+            get_sa_token(creds_file)
 
-      true ->
-        get_metadata_token()
+          true ->
+            get_metadata_token()
+        end
     end
   end
 
@@ -377,17 +380,10 @@ defmodule ADK.Session.Store.VertexAI do
   end
 
   defp get_metadata_token do
-    resp =
-      Req.get!(
-        "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
-        headers: [{"metadata-flavor", "Google"}]
-      )
+    metadata_service().get_token()
+  end
 
-    case resp.status do
-      200 -> {:ok, resp.body["access_token"]}
-      s -> {:error, {:metadata_token_error, s}}
-    end
-  rescue
-    _ -> {:error, :no_credentials}
+  defp metadata_service do
+    ADK.Config.get(:vertex_metadata_service, ADK.Auth.Metadata)
   end
 end
