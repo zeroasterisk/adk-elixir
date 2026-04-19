@@ -27,7 +27,7 @@ defmodule ADK.Agent.LoopAgent do
     :parent_agent,
     description: "Runs agents in a loop",
     sub_agents: [],
-    max_iterations: 10
+    max_iterations: 15
   ]
 
   @type exit_condition :: (ADK.Context.t() -> boolean()) | nil
