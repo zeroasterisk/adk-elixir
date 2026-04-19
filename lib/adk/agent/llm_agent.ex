@@ -135,7 +135,9 @@ defmodule ADK.Agent.LlmAgent do
 
   defp wire_parent(agent), do: agent
 
-  defp format_error_for_llm({:api_error, 403, msg}), do: "API key not valid or insufficient permissions (HTTP 403): #{msg}"
+  defp format_error_for_llm({:api_error, 403, msg}),
+    do: "API key not valid or insufficient permissions (HTTP 403): #{msg}"
+
   defp format_error_for_llm({:api_error, status, msg}), do: "API error (HTTP #{status}): #{msg}"
   defp format_error_for_llm({:request_failed, reason}), do: "Request failed: #{inspect(reason)}"
   defp format_error_for_llm(other), do: inspect(other)
@@ -314,11 +316,34 @@ defmodule ADK.Agent.LlmAgent do
 
               case extract_function_calls(response) do
                 [] ->
-                  # No tool calls — this is the final response
-                  event = maybe_save_output_to_state(event, agent)
-                  maybe_append_event(ctx.session_pid, event)
-                  ADK.Context.emit_event(ctx, event)
-                  [event]
+                  if response[:finish_reason] == "MALFORMED_FUNCTION_CALL" do
+                    Logger.warning(
+                      "[LlmAgent] #{agent.name} encountered MALFORMED_FUNCTION_CALL, forcing retry."
+                    )
+
+                    error_msg =
+                      "System Error: Your function call was malformed. #{response[:finish_message]}. Please output a valid structured tool call using JSON."
+
+                    error_event =
+                      ADK.Event.new(%{
+                        invocation_id: ctx.invocation_id,
+                        author: "system",
+                        content: %{role: :user, parts: [%{text: error_msg}]}
+                      })
+
+                    maybe_append_event(ctx.session_pid, event)
+                    maybe_append_event(ctx.session_pid, error_event)
+                    ADK.Context.emit_event(ctx, event)
+                    ADK.Context.emit_event(ctx, error_event)
+
+                    [event, error_event | do_run(ctx, agent, iteration + 1, tool_call_history)]
+                  else
+                    # No tool calls — this is the final response
+                    event = maybe_save_output_to_state(event, agent)
+                    maybe_append_event(ctx.session_pid, event)
+                    ADK.Context.emit_event(ctx, event)
+                    [event]
+                  end
 
                 calls ->
                   # Tool calls — execute them and loop
@@ -458,7 +483,10 @@ defmodule ADK.Agent.LlmAgent do
                           maybe_append_event(ctx.session_pid, event)
                           maybe_append_event(ctx.session_pid, response_event)
 
-                          [event, response_event | do_run(ctx, agent, iteration + 1, updated_history)]
+                          [
+                            event,
+                            response_event | do_run(ctx, agent, iteration + 1, updated_history)
+                          ]
                       end
 
                       # cond
@@ -663,12 +691,14 @@ defmodule ADK.Agent.LlmAgent do
 
   defp prepend_global_instruction(base, nil, _ctx), do: base
   defp prepend_global_instruction(base, "", _ctx), do: base
+
   defp prepend_global_instruction(base, global, ctx) do
     resolved_global = resolve_instruction(global, ctx)
     resolved_global <> "\n" <> base
   end
 
   defp append_transfer_instructions(base, []), do: base
+
   defp append_transfer_instructions(base, subs) do
     transfer_info =
       subs
@@ -836,6 +866,7 @@ defmodule ADK.Agent.LlmAgent do
   defp maybe_append_event(pid, event), do: ADK.Session.append_event(pid, event)
 
   defp get_history(nil), do: []
+
   defp get_history(pid) do
     ADK.Session.get_events(pid)
     |> Enum.map(fn e ->
@@ -1124,6 +1155,7 @@ defmodule ADK.Agent.LlmAgent do
           # Hard exception in tool execution pipeline (callbacks, plugins, or tool itself)
           # Return a properly structured error with tool_call_id preserved
           tool_name = get_call_name(call)
+
           error_msg =
             "Tool '#{tool_name}' execution failed with exception: #{Exception.message(e)}"
 
@@ -1261,8 +1293,13 @@ defmodule ADK.Agent.LlmAgent do
                   )
                 rescue
                   e ->
-                    error_msg = "Tool '#{tool.name}' execution failed with exception: #{Exception.message(e)}"
-                    Logger.error("[LlmAgent] #{error_msg}\n#{Exception.format_stacktrace(__STACKTRACE__)}")
+                    error_msg =
+                      "Tool '#{tool.name}' execution failed with exception: #{Exception.message(e)}"
+
+                    Logger.error(
+                      "[LlmAgent] #{error_msg}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+                    )
+
                     {:error, error_msg}
                 catch
                   kind, reason ->
@@ -1325,12 +1362,19 @@ defmodule ADK.Agent.LlmAgent do
                               )
                             rescue
                               e ->
-                                error_msg = "Tool '#{tool.name}' execution failed with exception on retry: #{Exception.message(e)}"
-                                Logger.error("[LlmAgent] #{error_msg}\n#{Exception.format_stacktrace(__STACKTRACE__)}")
+                                error_msg =
+                                  "Tool '#{tool.name}' execution failed with exception on retry: #{Exception.message(e)}"
+
+                                Logger.error(
+                                  "[LlmAgent] #{error_msg}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+                                )
+
                                 {:error, error_msg}
                             catch
                               kind, reason ->
-                                error_msg = "Tool '#{tool.name}' crashed on retry: #{inspect({kind, reason})}"
+                                error_msg =
+                                  "Tool '#{tool.name}' crashed on retry: #{inspect({kind, reason})}"
+
                                 Logger.error("[LlmAgent] #{error_msg}")
                                 {:error, error_msg}
                             end
