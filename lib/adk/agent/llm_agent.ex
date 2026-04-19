@@ -814,12 +814,12 @@ defmodule ADK.Agent.LlmAgent do
   defp last_user_message_matches?(history, [%{role: :user, parts: [%{text: text}]}]) do
     history
     |> Enum.reverse()
-    |> Enum.find(fn
-      %{role: :user} -> true
-      _ -> false
+    |> Enum.filter(fn msg ->
+      msg.role == :user and not has_function_response?(msg.parts)
     end)
+    |> List.first()
     |> case do
-      %{role: :user, parts: parts} ->
+      %{parts: parts} ->
         Enum.any?(parts, fn
           %{text: ^text} -> true
           _ -> false
