@@ -94,11 +94,6 @@ defmodule ADK.Agent.LlmAgent do
 
   defp wire_parent(%__MODULE__{sub_agents: []} = agent), do: agent
 
-  defp format_error_for_llm({:api_error, 403, msg}), do: "API key not valid or insufficient permissions (HTTP 403): #{msg}"
-  defp format_error_for_llm({:api_error, status, msg}), do: "API error (HTTP #{status}): #{msg}"
-  defp format_error_for_llm({:request_failed, reason}), do: "Request failed: #{inspect(reason)}"
-  defp format_error_for_llm(other), do: inspect(other)
-
   defp wire_parent(%__MODULE__{sub_agents: subs} = agent) when is_list(subs) do
     # Create a minimal parent reference (no sub_agents to avoid circularity)
     parent_ref = %__MODULE__{
@@ -139,6 +134,11 @@ defmodule ADK.Agent.LlmAgent do
   end
 
   defp wire_parent(agent), do: agent
+
+  defp format_error_for_llm({:api_error, 403, msg}), do: "API key not valid or insufficient permissions (HTTP 403): #{msg}"
+  defp format_error_for_llm({:api_error, status, msg}), do: "API error (HTTP #{status}): #{msg}"
+  defp format_error_for_llm({:request_failed, reason}), do: "Request failed: #{inspect(reason)}"
+  defp format_error_for_llm(other), do: inspect(other)
 
   # ---------- Protocol Implementation ----------
 
