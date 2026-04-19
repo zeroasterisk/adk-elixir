@@ -1150,17 +1150,14 @@ defmodule ADK.Agent.LlmAgent do
           end
 
         maybe_add_call_id(result, call)
-      rescue
-        e ->
-          # Hard exception in tool execution pipeline (callbacks, plugins, or tool itself)
-          # Return a properly structured error with tool_call_id preserved
+      catch
+        kind, reason ->
+          # Catch ALL exceptions including Erlang errors, throws, and exits
           tool_name = get_call_name(call)
-
-          error_msg =
-            "Tool '#{tool_name}' execution failed with exception: #{Exception.message(e)}"
-
+          error_msg = "Tool '#{tool_name}' execution failed with #{kind}: #{inspect(reason)}"
+          
           Logger.error(
-            "[LlmAgent] Tool execution exception: #{tool_name} - #{Exception.message(e)}\n" <>
+            "[LlmAgent] Tool execution exception: #{tool_name} - #{error_msg}\n" <>
               Exception.format_stacktrace(__STACKTRACE__)
           )
 
