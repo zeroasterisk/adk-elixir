@@ -161,7 +161,8 @@ defmodule ADK.Config do
   Returns whether to use Vertex AI for Gemini.
   """
   def google_genai_use_vertexai do
-    case get(:google_genai_use_vertexai, System.get_env("GOOGLE_GENAI_USE_VERTEXAI")) do
+    val = get(:google_genai_use_vertexai) || System.get_env("GOOGLE_GENAI_USE_VERTEXAI")
+    case val do
       val when is_binary(val) -> String.downcase(val) == "true"
       val -> !!val
     end
