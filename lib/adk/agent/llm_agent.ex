@@ -256,24 +256,28 @@ defmodule ADK.Agent.LlmAgent do
                   "(finish_reason=#{inspect(finish_reason)})"
               )
 
-              if iteration > 0 do
-                # After tool calls, return a fallback event so the user gets something
-                fallback_event =
-                  ADK.Event.new(%{
-                    invocation_id: ctx.invocation_id,
-                    author: agent.name,
-                    content: %{
-                      role: :model,
-                      parts: [%{text: "(The model returned an empty response after tool execution)"}]
-                    }
-                  })
+              # Always return a fallback event so the user gets feedback
+              error_msg =
+                if iteration > 0 do
+                  "(The model returned an empty response after tool execution)"
+                else
+                  "The model returned an empty response. This may indicate a configuration issue or unsupported request."
+                end
 
-                maybe_append_event(ctx.session_pid, fallback_event)
-                ADK.Context.emit_event(ctx, fallback_event)
-                [fallback_event]
-              else
-                []
-              end
+              fallback_event =
+                ADK.Event.new(%{
+                  invocation_id: ctx.invocation_id,
+                  author: agent.name,
+                  content: %{
+                    role: :model,
+                    parts: [%{text: error_msg}]
+                  },
+                  error: :nil_content
+                })
+
+              maybe_append_event(ctx.session_pid, fallback_event)
+              ADK.Context.emit_event(ctx, fallback_event)
+              [fallback_event]
 
             {:ok, %{partial: true} = response} ->
               # Partial (streaming chunk) response — emit and break the loop
