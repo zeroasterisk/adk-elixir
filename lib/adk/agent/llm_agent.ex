@@ -417,9 +417,22 @@ defmodule ADK.Agent.LlmAgent do
                           # Build tool response and loop
                           response_parts =
                             Enum.map(tool_results, fn tr ->
+                              # Format errors as %{'error' => error_string} instead of wrapping
+                              response =
+                                cond do
+                                  tr[:error] ->
+                                    %{"error" => inspect(tr[:error])}
+
+                                  tr[:result] ->
+                                    wrap_tool_response(tr[:result])
+
+                                  true ->
+                                    wrap_tool_response("")
+                                end
+
                               fr = %{
                                 name: tr.name,
-                                response: wrap_tool_response(tr[:result] || tr[:error] || "")
+                                response: response
                               }
 
                               # Preserve tool_call_id for backends that need it (e.g. Anthropic)
@@ -821,7 +834,9 @@ defmodule ADK.Agent.LlmAgent do
   defp get_history(pid) do
     ADK.Session.get_events(pid)
     |> Enum.map(fn e ->
-      parts = (e.content || %{})[:parts] || []
+      content = e.content || %{}
+      # Handle both atom and string keys for parts
+      parts = Map.get(content, :parts) || Map.get(content, "parts") || []
       role = infer_message_role(e, parts)
       %{role: role, parts: parts}
     end)
@@ -898,12 +913,18 @@ defmodule ADK.Agent.LlmAgent do
         :user
 
       # Respect explicit content role if set (e.g. tool response events)
-      match?(%{role: :user}, event.content) and not has_text_only?(parts) ->
+      # Handle both atom and string keys for role
+      content_role_is_user?(event.content) and not has_text_only?(parts) ->
         :user
 
       true ->
         :model
     end
+  end
+
+  defp content_role_is_user?(content) do
+    role = Map.get(content, :role) || Map.get(content, "role")
+    role in [:user, "user"]
   end
 
   defp has_function_response?(parts) do
@@ -1295,7 +1316,7 @@ defmodule ADK.Agent.LlmAgent do
         %{name: call.name, result: ADK.Tool.ResultGuard.maybe_truncate(value)}
 
       {:error, reason} ->
-        %{name: call.name, error: inspect(reason)}
+        %{name: call.name, error: reason}
     end
   end
 
