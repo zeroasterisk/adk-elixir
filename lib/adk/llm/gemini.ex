@@ -60,7 +60,7 @@ defmodule ADK.LLM.Gemini do
 
     req_options =
       req_options ++
-        [receive_timeout: 30_000, connect_options: [timeout: 10_000]] ++
+        [receive_timeout: 120_000, connect_options: [timeout: 10_000]] ++
         req_test_options()
 
     # NOTE: Do NOT wrap in ADK.LLM.Retry here — ADK.LLM.generate/3 already
