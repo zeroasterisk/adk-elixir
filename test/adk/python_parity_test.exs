@@ -87,7 +87,7 @@ defmodule ADK.PythonParityTest do
     # Python ADK: default max_iterations prevents infinite loops
     test "default max_iterations is reasonable" do
       agent = ADK.Agent.LlmAgent.new(name: "bot", model: "test", instruction: "Help")
-      assert agent.max_iterations == 10
+      assert agent.max_iterations == 25
     end
   end
 

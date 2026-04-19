@@ -286,8 +286,8 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
   # Mirrors test_events_with_empty_content_are_skipped and test_other_agent_empty_content
 
   describe "empty content handling" do
-    test "nil content LLM response produces no events" do
-      # Mirrors the LLM returning content: nil — agent must not emit anything
+    test "nil content LLM response produces error event" do
+      # Mirrors the LLM returning content: nil — agent must emit error event
       ADK.LLM.Mock.set_responses([
         %{content: nil, usage_metadata: nil}
       ])
@@ -296,7 +296,8 @@ defmodule ADK.Flows.LlmFlows.ContentsParityTest do
       runner = Runner.new(app_name: "contents_test", agent: agent)
 
       events = Runner.run(runner, "u1", unique_session(), "Hello")
-      assert events == []
+      assert length(events) == 1
+      assert List.first(events).error == :nil_content
     end
 
     test "empty text response is still emitted as event" do

@@ -110,7 +110,7 @@ defmodule ADK.Flows.FunctionsErrorMessagesTest do
 
   defp response_text(fr) do
     resp = fr[:response] || fr["response"] || %{}
-    result = resp["result"] || resp[:result] || ""
+    result = resp["result"] || resp[:result] || resp["error"] || resp[:error] || ""
     to_string(result)
   end
 

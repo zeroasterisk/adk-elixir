@@ -142,6 +142,11 @@ defmodule ADK.LLM.Mock do
     %{content: %{role: :model, parts: [%{function_call: fc}]}, usage_metadata: nil}
   end
 
+  defp to_response(%{function_calls: fcs}) do
+    parts = Enum.map(fcs, fn fc -> %{function_call: fc} end)
+    %{content: %{role: :model, parts: parts}, usage_metadata: nil}
+  end
+
   defp to_response(%{partial: partial} = resp) when not is_nil(partial) do
     # Preserve partial flag alongside any other response fields
     base = %{content: resp[:content], usage_metadata: nil, partial: partial}

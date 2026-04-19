@@ -53,9 +53,9 @@ defmodule ADK.Agent.LoopAgentTest do
     assert ADK.Agent.run(agent, make_ctx(agent)) == []
   end
 
-  test "default max_iterations is 10" do
+  test "default max_iterations is 25" do
     agent = LoopAgent.new(name: "default", sub_agents: [])
-    assert agent.max_iterations == 10
+    assert agent.max_iterations == 25
   end
 
   test "multiple sub-agents run in sequence each iteration" do

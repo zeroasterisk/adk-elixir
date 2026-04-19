@@ -88,13 +88,13 @@ defmodule ADK.LLM.Gemini do
 
   defp default_base_url do
     cond do
-      ADK.Config.gemini_api_key() != nil ->
-        ADK.Config.gemini_base_url() || @base_url
-
       ADK.Config.google_genai_use_vertexai() ->
         project = ADK.Config.google_cloud_project() || "unknown-project"
         location = ADK.Config.google_cloud_location() || "us-central1"
         "https://#{location}-aiplatform.googleapis.com/v1/projects/#{project}/locations/#{location}/publishers/google/models"
+
+      ADK.Config.gemini_api_key() != nil ->
+        ADK.Config.gemini_base_url() || @base_url
 
       true ->
         ADK.Config.gemini_base_url() || @base_url
@@ -401,11 +401,11 @@ defmodule ADK.LLM.Gemini do
 
   defp get_raw_credential do
     cond do
-      ADK.Config.gemini_api_key() != nil ->
-        load_api_key_credential()
-
       ADK.Config.google_genai_use_vertexai() ->
         load_vertex_credential()
+
+      ADK.Config.gemini_api_key() != nil ->
+        load_api_key_credential()
 
       true ->
         load_api_key_credential()

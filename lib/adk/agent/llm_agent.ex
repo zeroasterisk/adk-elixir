@@ -417,7 +417,7 @@ defmodule ADK.Agent.LlmAgent do
                           # Build tool response and loop
                           response_parts =
                             Enum.map(tool_results, fn tr ->
-                              # Format errors as %{'error' => error_string} instead of wrapping
+                              # Format results/errors into the response map
                               response =
                                 cond do
                                   tr[:error] ->
@@ -1256,7 +1256,7 @@ defmodule ADK.Agent.LlmAgent do
                   )
                 rescue
                   e ->
-                    error_msg = "Tool '#{tool.name}' raised exception: #{Exception.message(e)}"
+                    error_msg = "Tool '#{tool.name}' execution failed with exception: #{Exception.message(e)}"
                     Logger.error("[LlmAgent] #{error_msg}\n#{Exception.format_stacktrace(__STACKTRACE__)}")
                     {:error, error_msg}
                 catch
@@ -1320,7 +1320,7 @@ defmodule ADK.Agent.LlmAgent do
                               )
                             rescue
                               e ->
-                                error_msg = "Tool '#{tool.name}' raised exception on retry: #{Exception.message(e)}"
+                                error_msg = "Tool '#{tool.name}' execution failed with exception on retry: #{Exception.message(e)}"
                                 Logger.error("[LlmAgent] #{error_msg}\n#{Exception.format_stacktrace(__STACKTRACE__)}")
                                 {:error, error_msg}
                             catch

@@ -126,13 +126,14 @@ defmodule ADK.Flows.BaseLlmFlowPartialHandlingParityTest do
   @doc """
   Python: test_run_async_breaks_on_no_last_event
 
-  When the LLM returns an empty response (content: nil), no events should be
-  emitted because empty responses are filtered out.
+  When the LLM returns an empty response (content: nil), an error event should be
+  emitted to notify the user.
   """
-  test "empty content response produces no events" do
+  test "empty content response produces error event" do
     events = run_agent([%{partial: false, content: nil}])
 
-    assert events == []
+    assert length(events) == 1
+    assert hd(events).error == :nil_content
   end
 
   @doc """

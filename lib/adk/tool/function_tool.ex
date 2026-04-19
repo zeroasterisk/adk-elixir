@@ -70,7 +70,7 @@ defmodule ADK.Tool.FunctionTool do
     end
   rescue
     e ->
-      {:error, "Tool #{name} raised: #{Exception.message(e)}"}
+      {:error, "Tool #{name} execution failed with exception: #{Exception.message(e)}"}
   end
 
   defp apply_func(func, ctx, args) when is_function(func, 2), do: func.(ctx, args)
