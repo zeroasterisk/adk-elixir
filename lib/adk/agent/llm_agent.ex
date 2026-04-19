@@ -1096,38 +1096,76 @@ defmodule ADK.Agent.LlmAgent do
       |> Map.new()
 
     Enum.map(calls, fn call ->
-      case Map.get(tools_map, call.name) do
-        nil ->
-          handle_unknown_tool(call, agent, ctx)
+      # Wrap entire tool execution in try-rescue to ensure tool_call_id is ALWAYS
+      # preserved, even if callbacks, plugins, or the tool itself raises an exception.
+      # This prevents state corruption where the LLM receives error responses without
+      # being able to map them back to the specific tool_call_id.
+      try do
+        # Extract tool name safely (handles both atom and string keys from different LLM backends)
+        tool_name = get_call_name(call)
 
-        tool ->
-          handle_known_tool(call, tool, agent, ctx)
+        result =
+          case Map.get(tools_map, tool_name) do
+            nil ->
+              handle_unknown_tool(call, tool_name, agent, ctx)
+
+            tool ->
+              handle_known_tool(call, tool_name, tool, agent, ctx)
+          end
+
+        maybe_add_call_id(result, call)
+      rescue
+        e ->
+          # Hard exception in tool execution pipeline (callbacks, plugins, or tool itself)
+          # Return a properly structured error with tool_call_id preserved
+          tool_name = get_call_name(call)
+          error_msg =
+            "Tool '#{tool_name}' execution failed with exception: #{Exception.message(e)}"
+
+          Logger.error(
+            "[LlmAgent] Tool execution exception: #{tool_name} - #{Exception.message(e)}\n" <>
+              Exception.format_stacktrace(__STACKTRACE__)
+          )
+
+          %{name: tool_name, error: error_msg}
+          |> maybe_add_call_id(call)
       end
-      |> maybe_add_call_id(call)
     end)
+  end
+
+  # Safely extract tool name from a call, handling both string and atom keys
+  # Different LLM backends may use different key formats
+  defp get_call_name(call) do
+    call[:name] || call["name"] || Map.get(call, :name) || Map.get(call, "name") || "unknown"
+  end
+
+  # Safely extract tool args from a call, handling both string and atom keys
+  defp get_call_args(call) do
+    call[:args] || call["args"] || Map.get(call, :args) || Map.get(call, "args") || %{}
   end
 
   defp maybe_add_call_id(result, call) do
     if call[:id], do: Map.put(result, :id, call[:id]), else: result
   end
 
-  defp handle_unknown_tool(call, agent, ctx) do
-    err_msg = "Unknown tool: #{call.name}"
+  defp handle_unknown_tool(call, tool_name, agent, ctx) do
+    err_msg = "Unknown tool: #{tool_name}"
     callbacks = (agent.callbacks || []) ++ (ctx.callbacks || [])
+    tool_args = get_call_args(call)
 
     tool_cb_ctx = %{
       agent: agent,
       context: ctx,
-      tool: %{name: call.name},
-      tool_args: call.args || %{}
+      tool: %{name: tool_name},
+      tool_args: tool_args
     }
 
     # Agent functional callback
     func_res =
       if agent.on_tool_error_callback do
         agent.on_tool_error_callback.(
-          %{name: call.name},
-          call.args || %{},
+          %{name: tool_name},
+          tool_args,
           %{},
           {:error, err_msg}
         )
@@ -1137,41 +1175,42 @@ defmodule ADK.Agent.LlmAgent do
 
     case func_res do
       {:fallback, {:ok, fallback_res}} ->
-        %{name: call.name, result: fallback_res}
+        %{name: tool_name, result: fallback_res}
 
       {:fallback, fallback_res} ->
-        %{name: call.name, result: fallback_res}
+        %{name: tool_name, result: fallback_res}
 
       {:ok, fallback_res} ->
-        %{name: call.name, result: fallback_res}
+        %{name: tool_name, result: fallback_res}
 
       _ ->
         # Plugins
         plugins = ctx.plugins || []
 
-        case ADK.Plugin.run_on_tool_error(plugins, ctx, call.name, {:error, err_msg}) do
+        case ADK.Plugin.run_on_tool_error(plugins, ctx, tool_name, {:error, err_msg}) do
           {:ok, recovered} ->
-            %{name: call.name, result: recovered}
+            %{name: tool_name, result: recovered}
 
           {:error, reason} ->
             # Module callbacks
             case ADK.Callback.run_on_tool_error(callbacks, {:error, reason}, tool_cb_ctx) do
               {:fallback, fallback_res} -> fallback_res
-              _ -> %{name: call.name, error: reason}
+              _ -> %{name: tool_name, error: reason}
             end
         end
     end
   end
 
-  defp handle_known_tool(call, tool, agent, ctx) do
+  defp handle_known_tool(call, tool_name, tool, agent, ctx) do
     tool_ctx = ADK.ToolContext.new(ctx, call[:id] || "call-1", tool)
     callbacks = (agent.callbacks || []) ++ (ctx.callbacks || [])
     plugins = ctx.plugins || []
-    tool_cb_ctx = %{agent: agent, context: ctx, tool: tool, tool_args: call.args || %{}}
+    call_args = get_call_args(call)
+    tool_cb_ctx = %{agent: agent, context: ctx, tool: tool, tool_args: call_args}
 
     {plugin_skip, plugin_res, call_args} =
-      case ADK.Plugin.run_before_tool(plugins, ctx, tool.name, call.args || %{}) do
-        {:skip, response} -> {true, response, call.args || %{}}
+      case ADK.Plugin.run_before_tool(plugins, ctx, tool.name, call_args) do
+        {:skip, response} -> {true, response, call_args}
         {:ok, modified_args} -> {false, nil, modified_args}
       end
 
@@ -1208,12 +1247,24 @@ defmodule ADK.Agent.LlmAgent do
               call_args = Map.get(modified_ctx, :tool_args, call_args)
 
               res =
-                ADK.Telemetry.Contract.tool_span(
-                  %{tool_name: tool.name, agent_name: agent.name},
-                  fn ->
-                    run_tool(tool, tool_ctx, call_args)
-                  end
-                )
+                try do
+                  ADK.Telemetry.Contract.tool_span(
+                    %{tool_name: tool.name, agent_name: agent.name},
+                    fn ->
+                      run_tool(tool, tool_ctx, call_args)
+                    end
+                  )
+                rescue
+                  e ->
+                    error_msg = "Tool '#{tool.name}' raised exception: #{Exception.message(e)}"
+                    Logger.error("[LlmAgent] #{error_msg}\n#{Exception.format_stacktrace(__STACKTRACE__)}")
+                    {:error, error_msg}
+                catch
+                  kind, reason ->
+                    error_msg = "Tool '#{tool.name}' crashed: #{inspect({kind, reason})}"
+                    Logger.error("[LlmAgent] #{error_msg}")
+                    {:error, error_msg}
+                end
 
               case res do
                 {:error, reason} ->
@@ -1260,12 +1311,24 @@ defmodule ADK.Agent.LlmAgent do
                           {:retry, ret_ctx} ->
                             ret_args = Map.get(ret_ctx, :tool_args, call_args)
 
-                            ADK.Telemetry.Contract.tool_span(
-                              %{tool_name: tool.name, agent_name: agent.name},
-                              fn ->
-                                run_tool(tool, tool_ctx, ret_args)
-                              end
-                            )
+                            try do
+                              ADK.Telemetry.Contract.tool_span(
+                                %{tool_name: tool.name, agent_name: agent.name},
+                                fn ->
+                                  run_tool(tool, tool_ctx, ret_args)
+                                end
+                              )
+                            rescue
+                              e ->
+                                error_msg = "Tool '#{tool.name}' raised exception on retry: #{Exception.message(e)}"
+                                Logger.error("[LlmAgent] #{error_msg}\n#{Exception.format_stacktrace(__STACKTRACE__)}")
+                                {:error, error_msg}
+                            catch
+                              kind, reason ->
+                                error_msg = "Tool '#{tool.name}' crashed on retry: #{inspect({kind, reason})}"
+                                Logger.error("[LlmAgent] #{error_msg}")
+                                {:error, error_msg}
+                            end
 
                           {:fallback, fallback_res} ->
                             fallback_res
@@ -1307,16 +1370,16 @@ defmodule ADK.Agent.LlmAgent do
 
     case result do
       {:transfer_to_agent, target} ->
-        %{name: call.name, result: "Transferring to #{target}", transfer_to_agent: target}
+        %{name: tool_name, result: "Transferring to #{target}", transfer_to_agent: target}
 
       {:exit_loop, reason} ->
-        %{name: call.name, result: reason, exit_loop: true}
+        %{name: tool_name, result: reason, exit_loop: true}
 
       {:ok, value} ->
-        %{name: call.name, result: ADK.Tool.ResultGuard.maybe_truncate(value)}
+        %{name: tool_name, result: ADK.Tool.ResultGuard.maybe_truncate(value)}
 
       {:error, reason} ->
-        %{name: call.name, error: reason}
+        %{name: tool_name, error: reason}
     end
   end
 
