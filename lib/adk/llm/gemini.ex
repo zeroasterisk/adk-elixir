@@ -41,7 +41,7 @@ defmodule ADK.LLM.Gemini do
   end
 
   defp do_generate(model, auth, request) do
-    base = Map.get(request, :base_url, ADK.Config.gemini_base_url() || @base_url)
+    base = Map.get(request, :base_url, default_base_url())
     url = "#{base}/#{model}:generateContent"
     body = build_request_body(request)
 
@@ -83,6 +83,16 @@ defmodule ADK.LLM.Gemini do
 
       {:error, reason} ->
         {:error, {:request_failed, reason}}
+    end
+  end
+
+  defp default_base_url do
+    if ADK.Config.google_genai_use_vertexai() do
+      project = ADK.Config.google_cloud_project() || "unknown-project"
+      location = ADK.Config.google_cloud_location() || "us-central1"
+      "https://#{location}-aiplatform.googleapis.com/v1/projects/#{project}/locations/#{location}/publishers/google/models"
+    else
+      ADK.Config.gemini_base_url() || @base_url
     end
   end
 
