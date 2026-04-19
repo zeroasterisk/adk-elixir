@@ -32,7 +32,7 @@ defmodule ADK.Agent.LlmAgent do
     tools: [],
     sub_agents: [],
     _peer_agents: [],
-    max_iterations: 15,
+    max_iterations: 25,
     iteration_delay_ms: 0,
     tool_config: nil,
     generate_config: %{},
@@ -327,7 +327,7 @@ defmodule ADK.Agent.LlmAgent do
                   # is being called repeatedly (more than twice)
                   call_signatures =
                     Enum.map(calls, fn c ->
-                      {c["name"] || Map.get(c, :name), c["args"] || Map.get(c, :args, %{})}
+                      {get_call_name(c), get_call_args(c)}
                     end)
 
                   case detect_stall(call_signatures, tool_call_history) do
