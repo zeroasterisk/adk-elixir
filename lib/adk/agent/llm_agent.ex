@@ -32,7 +32,7 @@ defmodule ADK.Agent.LlmAgent do
     tools: [],
     sub_agents: [],
     _peer_agents: [],
-    max_iterations: 25,
+    max_iterations: 50,
     iteration_delay_ms: 0,
     tool_config: nil,
     generate_config: %{},
