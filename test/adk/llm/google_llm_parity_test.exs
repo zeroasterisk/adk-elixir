@@ -392,10 +392,10 @@ defmodule ADK.LLM.GoogleLLMParityTest do
     test "returns :api_error tuple on 500 with status and body" do
       stub(500, %{"error" => %{"message" => "Internal error"}})
 
-      assert {:error, {:api_error, 500, body}} =
+      assert {:error, {:api_error, 500, error_message}} =
                Gemini.generate("gemini-flash-latest", %{messages: []})
 
-      assert body["error"]["message"] == "Internal error"
+      assert error_message == "Internal error"
     end
 
     test "returns :missing_api_key when no credentials configured" do

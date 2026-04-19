@@ -79,12 +79,17 @@ defmodule ADK.LLM.Gemini do
         {:error, :unauthorized}
 
       {:ok, %Req.Response{status: status, body: body}} ->
-        {:error, {:api_error, status, body}}
+        {:error, {:api_error, status, extract_error_message(body)}}
 
       {:error, reason} ->
         {:error, {:request_failed, reason}}
     end
   end
+
+  defp extract_error_message(%{"error" => %{"message" => message}}), do: message
+  defp extract_error_message(%{"error" => message}) when is_binary(message), do: message
+  defp extract_error_message(body) when is_binary(body), do: body
+  defp extract_error_message(body), do: inspect(body)
 
   defp default_base_url do
     cond do
