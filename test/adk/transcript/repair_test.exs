@@ -80,12 +80,22 @@ defmodule ADK.Transcript.RepairTest do
       ]
 
       repaired = Repair.repair(messages)
+      # Synthetic response is now inserted immediately after the model turn
+      # Result: [model(fc-1, fc-2), user(synthetic fc-2), user(response fc-1)]
       assert length(repaired) == 3
 
-      synthetic = List.last(repaired)
+      # The synthetic for fc-2 should be the second message (index 1)
+      synthetic = Enum.at(repaired, 1)
+      assert synthetic.role == :user
       assert [%{function_response: fr}] = synthetic.parts
       assert fr.id == "fc-2"
       assert fr.name == "fetch"
+
+      # The original response for fc-1 should be the third message
+      original_response = Enum.at(repaired, 2)
+      assert original_response.role == :user
+      assert [%{function_response: fr}] = original_response.parts
+      assert fr.id == "fc-1"
     end
 
     test "matches by id when ids are present" do
@@ -116,12 +126,21 @@ defmodule ADK.Transcript.RepairTest do
       ]
 
       repaired = Repair.repair(messages)
+      # Synthetic response is inserted immediately after the model turn
+      # Result: [model(tool_a), user(synthetic tool_a), user(response tool_b)]
       assert length(repaired) == 3
 
-      synthetic = List.last(repaired)
+      # The synthetic for tool_a should be the second message (index 1)
+      synthetic = Enum.at(repaired, 1)
+      assert synthetic.role == :user
       [%{function_response: fr}] = synthetic.parts
       assert fr.name == "tool_a"
       refute Map.has_key?(fr, :id)
+
+      # The original response for tool_b should be the third message
+      original_response = Enum.at(repaired, 2)
+      assert [%{function_response: fr}] = original_response.parts
+      assert fr.name == "tool_b"
     end
 
     test "text-only messages pass through unchanged" do

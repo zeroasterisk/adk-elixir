@@ -143,7 +143,7 @@ defmodule ADK.Agent.LlmAgent do
     def sub_agents(agent), do: agent.sub_agents
 
     def run(agent, ctx) do
-      ADK.Agent.LlmAgent.do_run(ctx, agent, 0)
+      ADK.Agent.LlmAgent.do_run(ctx, agent, 0, [])
     end
   end
 
@@ -153,9 +153,13 @@ defmodule ADK.Agent.LlmAgent do
   Run the agent's execution pipeline.
 
   This handles the iterative loop of generation and tool execution.
+
+  The `tool_call_history` parameter tracks tool calls across iterations to detect
+  stalls (when the same tool with identical arguments is called repeatedly).
   """
-  @spec do_run(ADK.Context.t(), t(), non_neg_integer()) :: [ADK.Event.t()]
-  def do_run(ctx, agent, iteration) when iteration >= agent.max_iterations do
+  @spec do_run(ADK.Context.t(), t(), non_neg_integer(), list()) :: [ADK.Event.t()]
+  def do_run(ctx, agent, iteration, _tool_call_history)
+      when iteration >= agent.max_iterations do
     Logger.warning(
       "[LlmAgent] Max iterations (#{agent.max_iterations}) reached for agent #{agent.name}"
     )
@@ -176,7 +180,7 @@ defmodule ADK.Agent.LlmAgent do
     [error_event]
   end
 
-  def do_run(ctx, agent, iteration) do
+  def do_run(ctx, agent, iteration, tool_call_history) do
     Logger.info(
       "[LlmAgent] #{agent.name} iteration=#{iteration}/#{agent.max_iterations} invocation=#{ctx.invocation_id}"
     )
@@ -315,88 +319,130 @@ defmodule ADK.Agent.LlmAgent do
                     "[LlmAgent] #{agent.name} iteration=#{iteration} tool_calls=#{inspect(tool_names)}"
                   )
 
-                  ADK.Context.emit_event(ctx, event)
-                  tool_results = execute_tools(ctx, agent, calls)
+                  # Check for stalls — detect if the same tool with identical args
+                  # is being called repeatedly (more than twice)
+                  call_signatures =
+                    Enum.map(calls, fn c ->
+                      {c["name"] || Map.get(c, :name), c["args"] || Map.get(c, :args, %{})}
+                    end)
 
-                  # Check for exit_loop, transfer, or normal continuation
-                  exit_loop = Enum.find(tool_results, &Map.get(&1, :exit_loop))
-                  transfer = Enum.find(tool_results, &Map.get(&1, :transfer_to_agent))
+                  case detect_stall(call_signatures, tool_call_history) do
+                    {:stalled, stalled_call} ->
+                      {tool_name, _args} = stalled_call
 
-                  cond do
-                    exit_loop ->
-                      exit_reason = exit_loop[:result] || "Exiting loop"
+                      stall_msg =
+                        "Detected repeated tool call loop: '#{tool_name}' has been called " <>
+                          "with identical arguments more than twice. Please try a different approach " <>
+                          "or provide different arguments."
 
-                      escalate_event =
-                        ADK.Event.new(%{
-                          invocation_id: ctx.invocation_id,
-                          author: agent.name,
-                          content: %{role: :model, parts: [%{text: exit_reason}]},
-                          actions: %ADK.EventActions{escalate: true}
-                        })
+                      Logger.warning(
+                        "[LlmAgent] #{agent.name} iteration=#{iteration} STALL DETECTED: #{tool_name}"
+                      )
 
-                      ADK.Context.emit_event(ctx, escalate_event)
-                      [event, escalate_event]
-
-                    transfer ->
-                      target_name = transfer.transfer_to_agent
-
-                      transfer_event =
+                      stall_event =
                         ADK.Event.new(%{
                           invocation_id: ctx.invocation_id,
                           author: agent.name,
                           content: %{
                             role: :model,
-                            parts: [%{text: "Transferring to #{target_name}"}]
+                            parts: [%{text: stall_msg}]
                           },
-                          actions: %ADK.EventActions{transfer_to_agent: target_name}
+                          error: :stall_detected
                         })
-
-                      ADK.Context.emit_event(ctx, transfer_event)
-
-                      # Execute the target agent within the same invocation
-                      target_events =
-                        case find_transfer_target(agent, target_name) do
-                          nil ->
-                            []
-
-                          target_agent ->
-                            target_ctx = %{ctx | agent: target_agent}
-                            do_run(target_ctx, target_agent, 0)
-                        end
-
-                      [event, transfer_event | target_events]
-
-                    true ->
-                      # Build tool response and loop
-                      response_parts =
-                        Enum.map(tool_results, fn tr ->
-                          fr = %{
-                            name: tr.name,
-                            response: wrap_tool_response(tr[:result] || tr[:error] || "")
-                          }
-
-                          # Preserve tool_call_id for backends that need it (e.g. Anthropic)
-                          fr = if tr[:id], do: Map.put(fr, :id, tr[:id]), else: fr
-
-                          %{function_response: fr}
-                        end)
-
-                      response_event =
-                        ADK.Event.new(%{
-                          invocation_id: ctx.invocation_id,
-                          author: agent.name,
-                          content: %{role: :user, parts: response_parts}
-                        })
-
-                      ADK.Context.emit_event(ctx, response_event)
 
                       maybe_append_event(ctx.session_pid, event)
-                      maybe_append_event(ctx.session_pid, response_event)
+                      maybe_append_event(ctx.session_pid, stall_event)
+                      ADK.Context.emit_event(ctx, event)
+                      ADK.Context.emit_event(ctx, stall_event)
+                      [event, stall_event]
 
-                      [event, response_event | do_run(ctx, agent, iteration + 1)]
+                    :ok ->
+                      ADK.Context.emit_event(ctx, event)
+                      tool_results = execute_tools(ctx, agent, calls)
+                      updated_history = tool_call_history ++ call_signatures
+
+                      # Check for exit_loop, transfer, or normal continuation
+                      exit_loop = Enum.find(tool_results, &Map.get(&1, :exit_loop))
+                      transfer = Enum.find(tool_results, &Map.get(&1, :transfer_to_agent))
+
+                      cond do
+                        exit_loop ->
+                          exit_reason = exit_loop[:result] || "Exiting loop"
+
+                          escalate_event =
+                            ADK.Event.new(%{
+                              invocation_id: ctx.invocation_id,
+                              author: agent.name,
+                              content: %{role: :model, parts: [%{text: exit_reason}]},
+                              actions: %ADK.EventActions{escalate: true}
+                            })
+
+                          ADK.Context.emit_event(ctx, escalate_event)
+                          [event, escalate_event]
+
+                        transfer ->
+                          target_name = transfer.transfer_to_agent
+
+                          transfer_event =
+                            ADK.Event.new(%{
+                              invocation_id: ctx.invocation_id,
+                              author: agent.name,
+                              content: %{
+                                role: :model,
+                                parts: [%{text: "Transferring to #{target_name}"}]
+                              },
+                              actions: %ADK.EventActions{transfer_to_agent: target_name}
+                            })
+
+                          ADK.Context.emit_event(ctx, transfer_event)
+
+                          # Execute the target agent within the same invocation
+                          target_events =
+                            case find_transfer_target(agent, target_name) do
+                              nil ->
+                                []
+
+                              target_agent ->
+                                target_ctx = %{ctx | agent: target_agent}
+                                do_run(target_ctx, target_agent, 0, [])
+                            end
+
+                          [event, transfer_event | target_events]
+
+                        true ->
+                          # Build tool response and loop
+                          response_parts =
+                            Enum.map(tool_results, fn tr ->
+                              fr = %{
+                                name: tr.name,
+                                response: wrap_tool_response(tr[:result] || tr[:error] || "")
+                              }
+
+                              # Preserve tool_call_id for backends that need it (e.g. Anthropic)
+                              fr = if tr[:id], do: Map.put(fr, :id, tr[:id]), else: fr
+
+                              %{function_response: fr}
+                            end)
+
+                          response_event =
+                            ADK.Event.new(%{
+                              invocation_id: ctx.invocation_id,
+                              author: agent.name,
+                              content: %{role: :user, parts: response_parts}
+                            })
+
+                          ADK.Context.emit_event(ctx, response_event)
+
+                          maybe_append_event(ctx.session_pid, event)
+                          maybe_append_event(ctx.session_pid, response_event)
+
+                          [event, response_event | do_run(ctx, agent, iteration + 1, updated_history)]
+                      end
+
+                      # cond
                   end
 
-                  # cond
+                  # stall detection case
               end
 
             {:error, reason} ->
@@ -418,7 +464,7 @@ defmodule ADK.Agent.LlmAgent do
 
                   case ADK.Callback.run_on_error(callbacks, {:error, final_reason}, cb_ctx_err) do
                     {:retry, _new_cb_ctx} ->
-                      do_run(ctx, agent, iteration + 1)
+                      do_run(ctx, agent, iteration + 1, tool_call_history)
 
                     {:fallback, {:ok, response}} ->
                       event = event_from_response(response, ctx, agent)
@@ -811,7 +857,10 @@ defmodule ADK.Agent.LlmAgent do
   # This prevents duplicate user messages when Runner.run has already appended
   # the user event to the session, without falsely deduplicating when the user
   # intentionally sends the same text again later in the conversation.
+  # Text is compared after trimming whitespace to handle minor formatting differences.
   defp last_user_message_matches?(history, [%{role: :user, parts: [%{text: text}]}]) do
+    trimmed_text = String.trim(text)
+
     history
     |> Enum.reverse()
     |> Enum.filter(fn msg ->
@@ -821,7 +870,7 @@ defmodule ADK.Agent.LlmAgent do
     |> case do
       %{parts: parts} ->
         Enum.any?(parts, fn
-          %{text: ^text} -> true
+          %{text: part_text} -> String.trim(part_text) == trimmed_text
           _ -> false
         end)
 
@@ -1280,4 +1329,21 @@ defmodule ADK.Agent.LlmAgent do
   end
 
   defp find_agent(_, _), do: nil
+
+  # Detect if any tool call signature appears more than twice in the history.
+  # Returns `{:stalled, signature}` if a stall is detected, `:ok` otherwise.
+  # A stall occurs when the same tool with identical arguments is called
+  # repeatedly, indicating the agent is stuck in a loop.
+  defp detect_stall(current_signatures, history) do
+    # Check each current signature against the history
+    Enum.find_value(current_signatures, fn signature ->
+      count = Enum.count(history, fn h -> h == signature end)
+
+      if count >= 2 do
+        {:stalled, signature}
+      else
+        nil
+      end
+    end) || :ok
+  end
 end

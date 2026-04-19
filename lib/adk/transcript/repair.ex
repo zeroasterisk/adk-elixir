@@ -69,42 +69,63 @@ defmodule ADK.Transcript.Repair do
 
   @doc """
   Repairs `messages` by first merging consecutive same-role turns, then
-  appending synthetic `function_response` parts for every orphaned
-  `function_call`. Returns the messages unchanged when no repairs are needed.
+  inserting synthetic `function_response` parts immediately after turns
+  that contain orphaned `function_call`s. Returns the messages unchanged
+  when no repairs are needed.
+
+  When a model turn contains orphaned calls (function calls without matching
+  responses), a synthetic user turn with error responses is inserted immediately
+  after that model turn, rather than appending all synthetics at the end.
+  This preserves the temporal ordering of tool calls and responses.
   """
   @spec repair(list(map())) :: list(map())
   def repair([]), do: []
 
   def repair(messages) do
     messages = merge_consecutive_roles(messages)
-    orphans = orphaned_calls(messages)
+    all_responses = collect_responses(messages)
 
-    case orphans do
-      [] ->
-        messages
+    # Process messages and insert synthetic responses immediately after
+    # turns containing orphaned calls
+    messages
+    |> Enum.flat_map(fn msg ->
+      parts = msg[:parts] || msg["parts"] || []
 
-      _ ->
-        synthetic_parts =
-          Enum.map(orphans, fn call ->
-            fc = call.function_call
+      # Find orphaned calls in this specific message
+      calls_in_msg = Enum.filter(parts, &function_call?/1)
+      orphans_in_msg = Enum.reject(calls_in_msg, fn call -> matched?(call, all_responses) end)
 
-            resp = %{
-              name: fc[:name] || fc["name"],
-              response: %{error: @error_message}
-            }
+      case orphans_in_msg do
+        [] ->
+          # No orphans in this message, return as-is
+          [msg]
 
-            resp =
-              cond do
-                fc[:id] -> Map.put(resp, :id, fc[:id])
-                fc["id"] -> Map.put(resp, :id, fc["id"])
-                true -> resp
-              end
+        orphans ->
+          # Create synthetic response for this message's orphaned calls
+          synthetic_parts =
+            Enum.map(orphans, fn call ->
+              fc = call[:function_call] || call["function_call"]
 
-            %{function_response: resp}
-          end)
+              resp = %{
+                name: fc[:name] || fc["name"],
+                response: %{error: @error_message}
+              }
 
-        messages ++ [%{role: :user, parts: synthetic_parts}]
-    end
+              resp =
+                cond do
+                  fc[:id] -> Map.put(resp, :id, fc[:id])
+                  fc["id"] -> Map.put(resp, :id, fc["id"])
+                  true -> resp
+                end
+
+              %{function_response: resp}
+            end)
+
+          synthetic_msg = %{role: :user, parts: synthetic_parts}
+          # Insert synthetic response immediately after this message
+          [msg, synthetic_msg]
+      end
+    end)
   end
 
   # -- Private helpers -------------------------------------------------------
