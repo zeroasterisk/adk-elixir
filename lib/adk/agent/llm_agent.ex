@@ -317,26 +317,58 @@ defmodule ADK.Agent.LlmAgent do
               case extract_function_calls(response) do
                 [] ->
                   if response[:finish_reason] == "MALFORMED_FUNCTION_CALL" do
-                    Logger.warning(
-                      "[LlmAgent] #{agent.name} encountered MALFORMED_FUNCTION_CALL, forcing retry."
-                    )
+                    case detect_stall([:malformed], tool_call_history) do
+                      {:stalled, :malformed} ->
+                        stall_msg =
+                          "Detected repeated tool call loop: Agent is repeatedly generating malformed function calls. Please check your system instructions or tool definitions."
 
-                    error_msg =
-                      "System Error: Your function call was malformed. #{response[:finish_message]}. Please output a valid structured tool call using JSON."
+                        Logger.warning(
+                          "[LlmAgent] #{agent.name} iteration=#{iteration} STALL DETECTED: malformed function call loop"
+                        )
 
-                    error_event =
-                      ADK.Event.new(%{
-                        invocation_id: ctx.invocation_id,
-                        author: "system",
-                        content: %{role: :user, parts: [%{text: error_msg}]}
-                      })
+                        stall_event =
+                          ADK.Event.new(%{
+                            invocation_id: ctx.invocation_id,
+                            author: agent.name,
+                            content: %{
+                              role: :model,
+                              parts: [%{text: stall_msg}]
+                            },
+                            error: :stall_detected
+                          })
 
-                    maybe_append_event(ctx.session_pid, event)
-                    maybe_append_event(ctx.session_pid, error_event)
-                    ADK.Context.emit_event(ctx, event)
-                    ADK.Context.emit_event(ctx, error_event)
+                        maybe_append_event(ctx.session_pid, event)
+                        maybe_append_event(ctx.session_pid, stall_event)
+                        ADK.Context.emit_event(ctx, event)
+                        ADK.Context.emit_event(ctx, stall_event)
+                        [event, stall_event]
 
-                    [event, error_event | do_run(ctx, agent, iteration + 1, tool_call_history)]
+                      :ok ->
+                        Logger.warning(
+                          "[LlmAgent] #{agent.name} encountered MALFORMED_FUNCTION_CALL, forcing retry."
+                        )
+
+                        error_msg =
+                          "System Error: Your function call was malformed. #{response[:finish_message]}. Please output a valid structured tool call using JSON."
+
+                        error_event =
+                          ADK.Event.new(%{
+                            invocation_id: ctx.invocation_id,
+                            author: "system",
+                            content: %{role: :user, parts: [%{text: error_msg}]}
+                          })
+
+                        maybe_append_event(ctx.session_pid, event)
+                        maybe_append_event(ctx.session_pid, error_event)
+                        ADK.Context.emit_event(ctx, event)
+                        ADK.Context.emit_event(ctx, error_event)
+
+                        [
+                          event,
+                          error_event
+                          | do_run(ctx, agent, iteration + 1, tool_call_history ++ [:malformed])
+                        ]
+                    end
                   else
                     # No tool calls — this is the final response
                     event = maybe_save_output_to_state(event, agent)
