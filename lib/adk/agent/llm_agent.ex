@@ -973,16 +973,19 @@ defmodule ADK.Agent.LlmAgent do
   # even though their author is the agent name, because Gemini requires
   # function_response parts to appear in user-role messages.
   defp infer_message_role(event, parts) do
+    role = Map.get(event.content || %{}, :role) || Map.get(event.content || %{}, "role")
+
     cond do
+      role in [:user, "user"] ->
+        :user
+
+      role in [:model, "model"] ->
+        :model
+
       has_function_response?(parts) ->
         :user
 
       event.author == "user" ->
-        :user
-
-      # Respect explicit content role if set (e.g. tool response events)
-      # Handle both atom and string keys for role
-      content_role_is_user?(event.content) and not has_text_only?(parts) ->
         :user
 
       true ->
@@ -990,10 +993,7 @@ defmodule ADK.Agent.LlmAgent do
     end
   end
 
-  defp content_role_is_user?(content) do
-    role = Map.get(content, :role) || Map.get(content, "role")
-    role in [:user, "user"]
-  end
+  
 
   defp has_function_response?(parts) do
     Enum.any?(parts, fn
