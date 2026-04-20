@@ -180,15 +180,18 @@ defmodule ADK.Harness.Budget do
     :telemetry.attach(
       handler_id,
       [:adk, :llm, :request, :stop],
-      fn _event, measurements, _metadata, _config ->
-        input = Map.get(measurements, :input_tokens, 0)
-        output = Map.get(measurements, :output_tokens, 0)
-        record_tokens(budget_pid, input, output)
-      end,
-      nil
+      &__MODULE__.telemetry_handler/4,
+      budget_pid
     )
 
     handler_id
+  end
+
+  @doc false
+  def telemetry_handler(_event, measurements, _metadata, budget_pid) do
+    input = Map.get(measurements, :input_tokens, 0)
+    output = Map.get(measurements, :output_tokens, 0)
+    record_tokens(budget_pid, input, output)
   end
 
   defp exceeded?(nil, _current), do: false

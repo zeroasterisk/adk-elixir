@@ -43,9 +43,6 @@ defmodule ADK.LLM.Gemini do
   defp do_generate(model, auth, request) do
     base = Map.get(request, :base_url, default_base_url())
     url = "#{base}/#{model}:generateContent"
-    Logger.warning("[Gemini DEBUG] URL: #{url}")
-    Logger.warning("[Gemini DEBUG] use_vertexai: #{inspect(ADK.Config.google_genai_use_vertexai())}")
-    Logger.warning("[Gemini DEBUG] GOOGLE_GENAI_USE_VERTEXAI env: #{inspect(System.get_env("GOOGLE_GENAI_USE_VERTEXAI"))}")
     body = build_request_body(request)
 
     custom_headers = Map.get(request, :custom_headers, [])

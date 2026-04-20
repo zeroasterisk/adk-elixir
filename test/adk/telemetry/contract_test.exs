@@ -6,17 +6,13 @@ defmodule ADK.Telemetry.ContractTest do
   setup do
     test_pid = self()
 
-    handler = fn event, measurements, metadata, _config ->
-      send(test_pid, {:telemetry_event, event, measurements, metadata})
-    end
-
     handler_id = "contract-test-#{inspect(test_pid)}"
 
     :telemetry.attach_many(
       handler_id,
       Contract.all_events(),
-      handler,
-      nil
+      &__MODULE__.telemetry_handler/4,
+      test_pid
     )
 
     on_exit(fn ->
@@ -24,6 +20,10 @@ defmodule ADK.Telemetry.ContractTest do
     end)
 
     :ok
+  end
+
+  def telemetry_handler(event, measurements, metadata, test_pid) do
+    send(test_pid, {:telemetry_event, event, measurements, metadata})
   end
 
   describe "all_events/0" do
