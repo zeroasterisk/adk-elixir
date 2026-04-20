@@ -1503,12 +1503,19 @@ defmodule ADK.Agent.LlmAgent do
   defp detect_stall(current_signatures, history) do
     # Check each current signature against the history
     Enum.find_value(current_signatures, fn signature ->
-      count = Enum.count(history, fn h -> h == signature end)
+      # A stall is defined as the exact same tool call signature appearing 3 times consecutively.
+      # Since `history` has the previous calls, we check if the last two calls match this signature.
+      case Enum.reverse(history) do
+        [^signature, ^signature | _] ->
+          {:stalled, signature}
 
-      if count >= 2 do
-        {:stalled, signature}
-      else
-        nil
+        _ ->
+          # Fallback to general count to prevent unbounded loops across the entire session
+          if Enum.count(history, fn h -> h == signature end) >= 4 do
+            {:stalled, signature}
+          else
+            nil
+          end
       end
     end) || :ok
   end
