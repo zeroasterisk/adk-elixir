@@ -32,16 +32,10 @@ defmodule ADK.Eval.Scorer do
     events
     |> Enum.filter(fn e -> e.author != "user" and !e.partial end)
     |> Enum.flat_map(fn e ->
-      case e.content do
-        %{parts: parts} when is_list(parts) ->
-          Enum.map(parts, fn
-            %{text: t} when is_binary(t) -> t
-            _ -> ""
-          end)
-
-        _ ->
-          []
-      end
+      parts = Map.get(e.content || %{}, :parts) || Map.get(e.content || %{}, "parts") || []
+      Enum.map(parts, fn part ->
+        Map.get(part, :text) || Map.get(part, "text") || ""
+      end)
     end)
     |> Enum.join("")
   end
@@ -51,13 +45,8 @@ defmodule ADK.Eval.Scorer do
   def function_calls(events) do
     events
     |> Enum.flat_map(fn e ->
-      case e.content do
-        %{parts: parts} when is_list(parts) ->
-          Enum.filter(parts, &match?(%{function_call: _}, &1))
-
-        _ ->
-          []
-      end
+      parts = Map.get(e.content || %{}, :parts) || Map.get(e.content || %{}, "parts") || []
+      Enum.filter(parts, fn part -> Map.has_key?(part, :function_call) or Map.has_key?(part, "function_call") end)
     end)
   end
 end
