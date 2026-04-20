@@ -450,8 +450,8 @@ defmodule ADK.Agent.LlmAgent do
                               # Format results/errors into the response map
                               response =
                                 cond do
-                                  tr[:error] ->
-                                    %{"error" => inspect(tr[:error])}
+                                  tr[:error] || tr["error"] ->
+                                    %{"error" => inspect(tr[:error] || tr["error"])}
 
                                   tr[:result] ->
                                     wrap_tool_response(tr[:result])
@@ -942,10 +942,10 @@ defmodule ADK.Agent.LlmAgent do
   # function_response parts to appear in user-role messages.
   defp infer_message_role(event, parts) do
     cond do
-      event.author == "user" ->
+      has_function_response?(parts) ->
         :user
 
-      has_function_response?(parts) ->
+      event.author == "user" ->
         :user
 
       # Respect explicit content role if set (e.g. tool response events)
